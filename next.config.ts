@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 
+const isGithubPagesBuild = process.env.GITHUB_PAGES === "true";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  output: isGithubPagesBuild ? "export" : undefined,
+  basePath: isGithubPagesBuild ? "/BUDI-Portfolio" : "",
   images: {
+    unoptimized: isGithubPagesBuild,
     // Every `quality={...}` used in the codebase must be listed here,
     // otherwise next/image logs "unconfigured qualities" in the console.
     qualities: [75, 90],

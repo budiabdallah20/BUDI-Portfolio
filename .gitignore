@@ -1,0 +1,62 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# next.js build output (regenerated on every build/deploy)
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel deployment
+.vercel/
+
+# production + debug logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# env secrets — NEVER push real keys (.env.example stays tracked as a template)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# misc secrets
+*.pem
+*.key
+*.p12
+*.pfx
+
+# tests + coverage (regenerated)
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.vitest/
+
+# bundler / turbo cache
+.turbo/
+.parcel-cache/
+
+# supabase local dev artifacts (cloud schema in supabase/*.sql stays tracked)
+supabase/.branches/
+supabase/.temp/
+
+# misc
+.DS_Store
+*.pem
+
+# ide
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# os
+Thumbs.db
+Desktop.ini

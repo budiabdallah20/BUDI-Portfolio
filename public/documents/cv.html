@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mohamed Abdallah — Full Stack Developer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* Core Colors */
+    --navy: #0f172a;
+    --accent: #1e40af;
+    --body: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --line-strong: #cbd5e1;
+
+    /* Status Colors */
+    --green: #16a34a;
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+
+    --amber: #d97706;
+    --amber-bg: #fef3c7;
+    --amber-border: #fcd34d;
+
+    --red: #dc2626;
+    --red-bg: #fee2e2;
+    --red-border: #fca5a5;
+
+    /* Section Colors */
+    --gold: #eab308;
+    --gold-dark: #a16207;
+    --gold-bg: #fef9c3;
+
+    --cert-blue: #2563eb;
+    --cert-bg: #dbeafe;
+
+    --exp-purple: #7c3aed;
+    --exp-bg: #ede9fe;
+  }
+
+  @page { size: A4 portrait; margin: 10mm 12mm; }
+
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 9.6pt;
+    line-height: 1.42;
+    color: var(--body);
+    background: #e5e7eb;
+    -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 10mm 12mm;
+    background: #ffffff;
+    margin: 20px auto;
+    box-shadow: 0 20px 60px -20px rgba(15, 23, 42, 0.25);
+  }
+
+  /* ══════════════════════════════════
+     HEADER
+     ══════════════════════════════════ */
+  .header {
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+    border-bottom: 2px solid var(--navy);
+  }
+
+  .bismillah {
+    font-family: 'Amiri', serif;
+    font-size: 10pt;
+    color: var(--muted);
+    direction: rtl;
+    text-align: center;
+    margin-bottom: 2mm;
+    letter-spacing: 0.3px;
+  }
+
+  .header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6mm;
+  }
+
+  .header-left { flex: 1; min-width: 0; }
+
+  .name {
+    font-size: 22pt;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--navy);
+    line-height: 1;
+    margin-bottom: 1.5mm;
+  }
+
+  .title {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+
+  /* Contact Cards */
+  .contact-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1mm 2mm;
+    font-size: 8pt;
+    min-width: 85mm;
+  }
+
+  .c-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5mm;
+    padding: 1mm 2mm;
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    line-height: 1.2;
+  }
+
+  .c-icon {
+    width: 4.5mm;
+    height: 4.5mm;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6pt;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .c-icon.mail { background: #dc2626; }
+  .c-icon.phone { background: #16a34a; }
+  .c-icon.loc { background: #d97706; }
+  .c-icon.gh { background: #0f172a; }
+  .c-icon.li { background: #0a66c2; }
+  .c-icon.port { background: #7c3aed; }
+
+  .c-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .c-label {
+    font-size: 6pt;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 0.3mm;
+  }
+
+  .c-value {
+    font-size: 7.8pt;
+    font-weight: 600;
+    color: var(--navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    line-height: 1;
+  }
+
+  /* ══════════════════════════════════
+     SECTIONS
+     ══════════════════════════════════ */
+  .section {
+    margin-bottom: 3mm;
+  }
+
+  .section:last-child { margin-bottom: 0; }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+    font-size: 10pt;
+    font-weight: 800;
+    color: var(--navy);
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    padding-bottom: 1mm;
+    margin-bottom: 2mm;
+    border-bottom: 1.2px solid var(--line-strong);
+  }
+
+  .section-title::before {
+    content: '';
+    width: 3.5px;
+    height: 3.5px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════
+     SUMMARY
+     ══════════════════════════════════ */
+  .summary {
+    font-size: 9.2pt;
+    line-height: 1.55;
+    color: var(--body);
+    text-align: justify;
+  }
+
+  .summary strong { color: var(--navy); font-weight: 700; }
+
+  /* ══════════════════════════════════
+     LEGEND
+     ══════════════════════════════════ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2mm 5mm;
+    padding: 1.2mm 3mm;
+    background: #f8fafc;
+    border: 1px dashed var(--line-strong);
+    border-radius: 3px;
+    margin-bottom: 2mm;
+    font-size: 7.6pt;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.2mm;
+  }
+
+  .legend-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.green { background: var(--green); }
+  .legend-dot.amber { background: var(--amber); }
+  .legend-dot.red { background: var(--red); }
+  .legend-dot.gold { background: var(--gold); }
+  .legend-dot.blue { background: var(--cert-blue); }
+  .legend-dot.purple { background: var(--exp-purple); }
+
+  /* ══════════════════════════════════
+     SKILLS — Category with status
+     ══════════════════════════════════ */
+  .skill-cat {
+    margin-bottom: 1.8mm;
+  }
+
+  .skill-cat:last-child { margin-bottom: 0; }
+
+  .skill-cat-title {
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+    font-size: 8.8pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1mm;
+  }
+
+  .skill-cat-title::before {
+    content: '';
+    width: 8px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1mm;
+    padding-left: 4mm;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 1mm;
+    font-size: 8pt;
+    font-weight: 600;
+    padding: 0.6mm 2mm;
+    border-radius: 3px;
+    border: 1px solid;
+    line-height: 1.2;
+  }
+
+  .tag::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .tag.green {
+    background: var(--green-bg);
+    color: #15803d;
+    border-color: var(--green-border);
+  }
+  .tag.green::before { background: var(--green); }
+
+  .tag.amber {
+    background: var(--amber-bg);
+    color: #b45309;
+    border-color: var(--amber-border);
+  }
+  .tag.amber::before { background: var(--amber); }
+
+  .tag.red {
+    background: var(--red-bg);
+    color: #b91c1c;
+    border-color: var(--red-border);
+  }
+  .tag.red::before { background: var(--red); }
+
+  /* ══════════════════════════════════
+     ENTRIES
+     ══════════════════════════════════ */
+  .entry {
+    margin-bottom: 2.4mm;
+    padding-left: 3mm;
+    border-left: 2.5px solid var(--line-strong);
+  }
+
+  .entry:last-child { margin-bottom: 0; }
+
+  .entry.exp { border-left-color: var(--exp-purple); }
+  .entry.award { border-left-color: var(--gold); }
+  .entry.cert { border-left-color: var(--cert-blue); }
+  .entry.project { border-left-color: var(--accent); }
+  .entry.edu { border-left-color: var(--navy); }
+
+  .entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 4mm;
+    margin-bottom: 0.3mm;
+  }
+
+  .entry-title {
+    font-size: 9.8pt;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.25;
+  }
+
+  .entry-date {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+  }
+
+  .entry-sub {
+    font-size: 8.6pt;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.6mm;
+  }
+
+  .entry-links {
+    font-size: 8pt;
+    margin-bottom: 0.6mm;
+    font-weight: 600;
+    display: flex;
+    gap: 3mm;
+  }
+
+  .entry-links a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .entry-links .sep {
+    color: var(--line-strong);
+  }
+
+  ul.bullets {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  ul.bullets li {
+    position: relative;
+    padding-left: 3.5mm;
+    font-size: 8.8pt;
+    line-height: 1.48;
+    color: var(--body);
+    margin-bottom: 0.5mm;
+  }
+
+  ul.bullets li:last-child { margin-bottom: 0; }
+
+  ul.bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0.4mm;
+    top: 5px;
+    width: 2.5px;
+    height: 2.5px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  ul.bullets li strong {
+    color: var(--navy);
+    font-weight: 700;
+  }
+
+  /* ══════════════════════════════════
+     LANGUAGES
+     ══════════════════════════════════ */
+  .lang-row {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    padding: 1mm 0;
+    font-size: 9pt;
+  }
+
+  .lang-name {
+    font-weight: 700;
+    color: var(--navy);
+    min-width: 22mm;
+  }
+
+  .lang-level {
+    font-weight: 600;
+    padding: 0.6mm 2mm;
+    border-radius: 3px;
+    font-size: 8pt;
+    border: 1px solid;
+  }
+
+  .lang-level.native {
+    background: var(--green-bg);
+    color: #15803d;
+    border-color: var(--green-border);
+  }
+
+  .lang-level.inter {
+    background: var(--amber-bg);
+    color: #b45309;
+    border-color: var(--amber-border);
+  }
+
+  /* ══════════════════════════════════
+     FOOTER
+     ══════════════════════════════════ */
+  .footer {
+    margin-top: 3mm;
+    padding-top: 1.8mm;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-family: 'Amiri', serif;
+    font-size: 9pt;
+    color: var(--muted);
+    direction: rtl;
+    letter-spacing: 0.3px;
+  }
+
+  /* ══════════════════════════════════
+     PRINT
+     ══════════════════════════════════ */
+  @media print {
+    html, body { background: #ffffff; font-size: 9.6pt; }
+    .page { margin: 0; padding: 0; box-shadow: none; width: 100%; min-height: auto; }
+    a { color: var(--accent) !important; text-decoration: none !important; }
+    .section, .entry, .skill-cat { page-break-inside: avoid; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header class="header">
+    <div class="bismillah">بسم الله الرحمن الرحيم</div>
+
+    <div class="header-main">
+      <div class="header-left">
+        <h1 class="name">Mohamed Abdallah</h1>
+        <div class="title">Full Stack Developer</div>
+      </div>
+
+      <div class="contact-cards">
+        <div class="c-card">
+          <div class="c-icon mail">@</div>
+          <div class="c-body">
+            <div class="c-label">Email</div>
+            <a class="c-value" href="mailto:budiabdallah922@gmail.com">budiabdallah922@gmail.com</a>
+          </div>
+        </div>
+
+        <div class="c-card">
+          <div class="c-icon phone">☎</div>
+          <div class="c-body">
+            <div class="c-label">Phone</div>
+            <a class="c-value" href="tel:+201065228072">+20 106 522 8072</a>
+          </div>
+        </div>
+
+        <div class="c-card">
+          <div class="c-icon gh">GH</div>
+          <div class="c-body">
+            <div class="c-label">GitHub</div>
+            <a class="c-value" href="https://github.com/budiabdallah20">budiabdallah20</a>
+          </div>
+        </div>
+
+        <div class="c-card">
+          <div class="c-icon li">in</div>
+          <div class="c-body">
+            <div class="c-label">LinkedIn</div>
+            <a class="c-value" href="https://www.linkedin.com/in/budi-abdallah-ba61323a7/">budi-abdallah</a>
+          </div>
+        </div>
+
+        <div class="c-card">
+          <div class="c-icon port">◆</div>
+          <div class="c-body">
+            <div class="c-label">Portfolio</div>
+            <a class="c-value" href="https://budi-abdallah.vercel.app/">budi-abdallah.vercel.app</a>
+          </div>
+        </div>
+
+        <div class="c-card">
+          <div class="c-icon loc">◎</div>
+          <div class="c-body">
+            <div class="c-label">Location</div>
+            <div class="c-value">Suez, Egypt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════ PROFESSIONAL SUMMARY ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Professional Summary</h2>
+    <p class="summary">
+      Results-driven <strong>Full Stack Developer</strong> with <strong>2+ years of hands-on experience</strong> building scalable web applications using <strong>React, Node.js, and MongoDB</strong>. Currently pursuing a B.Sc. in <strong>Mathematics &amp; Computer Science</strong> at Suez University. Delivered <strong>6+ production-grade projects</strong> from concept to deployment. Strong foundation in <strong>algorithms, data structures, and software engineering</strong>. Seeking internship or junior developer opportunities.
+    </p>
+  </section>
+
+  <!-- ═══════════════ TECHNICAL SKILLS ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Technical Skills</h2>
+
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot green"></span> Advanced</span>
+      <span class="legend-item"><span class="legend-dot amber"></span> Intermediate</span>
+      <span class="legend-item"><span class="legend-dot red"></span> Learning</span>
+    </div>
+
+    <div class="skill-cat">
+      <div class="skill-cat-title">Programming Languages</div>
+      <div class="tags">
+        <span class="tag green">JavaScript (ES6+)</span>
+        <span class="tag green">HTML5</span>
+        <span class="tag green">CSS3</span>
+        <span class="tag amber">Python</span>
+        <span class="tag amber">C++</span>
+        <span class="tag red">SQL</span>
+      </div>
+    </div>
+
+    <div class="skill-cat">
+      <div class="skill-cat-title">Frontend Development</div>
+      <div class="tags">
+        <span class="tag green">React</span>
+        <span class="tag green">Tailwind CSS</span>
+        <span class="tag green">Responsive Design</span>
+        <span class="tag amber">Next.js</span>
+        <span class="tag amber">Bootstrap</span>
+      </div>
+    </div>
+
+    <div class="skill-cat">
+      <div class="skill-cat-title">Backend &amp; Databases</div>
+      <div class="tags">
+        <span class="tag green">Node.js</span>
+        <span class="tag green">Express.js</span>
+        <span class="tag green">MongoDB</span>
+        <span class="tag green">REST APIs</span>
+        <span class="tag green">JWT Auth</span>
+        <span class="tag amber">MySQL</span>
+        <span class="tag red">Firebase</span>
+      </div>
+    </div>
+
+    <div class="skill-cat">
+      <div class="skill-cat-title">Tools &amp; Platforms</div>
+      <div class="tags">
+        <span class="tag green">Git</span>
+        <span class="tag green">GitHub</span>
+        <span class="tag green">VS Code</span>
+        <span class="tag green">Vercel</span>
+        <span class="tag amber">Postman</span>
+        <span class="tag amber">Figma</span>
+        <span class="tag red">Docker</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ PROFESSIONAL EXPERIENCE ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Professional Experience</h2>
+
+    <div class="entry exp">
+      <div class="entry-head">
+        <div class="entry-title">Freelance Full Stack Developer</div>
+        <div class="entry-date">January 2024 — Present</div>
+      </div>
+      <div class="entry-sub">Self-Employed · Suez, Egypt</div>
+      <ul class="bullets">
+        <li>Delivered <strong>5+ web projects</strong> for students and small businesses — frontend, UI design, and deployment.</li>
+        <li>Built responsive interfaces with <strong>React &amp; Tailwind</strong>, achieving 90+ Lighthouse scores.</li>
+      </ul>
+    </div>
+
+    <div class="entry exp">
+      <div class="entry-head">
+        <div class="entry-title">Event Organizer &amp; Volunteer</div>
+        <div class="entry-date">March 2024 — Present</div>
+      </div>
+      <div class="entry-sub">Red Bull · Fiore · Suez University Events</div>
+      <ul class="bullets">
+        <li>Volunteered in organizing <strong>Red Bull activations</strong> and <strong>Fiore community events</strong>.</li>
+        <li>Coordinated logistics and on-ground operations for university activities.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════════ PROJECTS ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Projects</h2>
+
+    <div class="entry project">
+      <div class="entry-head">
+        <div class="entry-title">Zaker — Integrated Learning Platform</div>
+        <div class="entry-date">March 2025</div>
+      </div>
+      <div class="entry-sub">React · Node.js · Express · MongoDB · JWT</div>
+      <div class="entry-links">
+        <a href="https://budi-abdallah.vercel.app/">Live Demo</a>
+        <span class="sep">|</span>
+        <a href="https://github.com/budiabdallah20">GitHub</a>
+      </div>
+    </div>
+
+    <div class="entry project">
+      <div class="entry-head">
+        <div class="entry-title">Monjez — Ad-Free Streaming Platform</div>
+        <div class="entry-date">April 2025</div>
+      </div>
+      <div class="entry-sub">HTML5 · CSS3 · JavaScript · Responsive Design</div>
+      <div class="entry-links">
+        <a href="https://github.com/budiabdallah20">GitHub</a>
+      </div>
+    </div>
+
+    <div class="entry project">
+      <div class="entry-head">
+        <div class="entry-title">University Schedule Manager</div>
+        <div class="entry-date">February 2025</div>
+      </div>
+      <div class="entry-sub">JavaScript · Puppeteer · JSON</div>
+      <div class="entry-links">
+        <a href="https://github.com/budiabdallah20">GitHub</a>
+      </div>
+    </div>
+
+    <div class="entry project">
+      <div class="entry-head">
+        <div class="entry-title">Portfolio Management SaaS Dashboard</div>
+        <div class="entry-date">May 2025 — Present</div>
+      </div>
+      <div class="entry-sub">React · Node.js · MongoDB · JWT</div>
+      <div class="entry-links">
+        <a href="https://github.com/budiabdallah20">GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ EDUCATION ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Education</h2>
+
+    <div class="entry edu">
+      <div class="entry-head">
+        <div class="entry-title">Suez University — Faculty of Science</div>
+        <div class="entry-date">September 2025 — June 2028 (Expected)</div>
+      </div>
+      <div class="entry-sub">B.Sc. in Mathematics &amp; Computer Science</div>
+    </div>
+
+    <div class="entry edu">
+      <div class="entry-head">
+        <div class="entry-title">Military Secondary School for Boys — Suez</div>
+        <div class="entry-date">September 2022 — June 2025</div>
+      </div>
+      <div class="entry-sub">General Secondary Education Certificate</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CERTIFICATIONS ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Certifications</h2>
+
+    <div class="entry cert">
+      <div class="entry-head">
+        <div class="entry-title">Full Stack Web Development</div>
+        <div class="entry-date">2024</div>
+      </div>
+      <div class="entry-sub">Self-Taught · Online Learning Platforms</div>
+    </div>
+
+    <div class="entry cert">
+      <div class="entry-head">
+        <div class="entry-title">React &amp; Node.js Specialization</div>
+        <div class="entry-date">2025</div>
+      </div>
+      <div class="entry-sub">Online Learning Platforms</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ AWARDS & ACHIEVEMENTS ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Awards &amp; Achievements</h2>
+
+    <div class="entry award">
+      <div class="entry-head">
+        <div class="entry-title">Multiple Gold Medals — Football Tournaments</div>
+        <div class="entry-date">2018 — Present</div>
+      </div>
+      <div class="entry-sub">Local &amp; Regional Competitions</div>
+    </div>
+
+    <div class="entry award">
+      <div class="entry-head">
+        <div class="entry-title">Volunteer Recognition</div>
+        <div class="entry-date">2024</div>
+      </div>
+      <div class="entry-sub">Suez University Events &amp; Red Bull Activations</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ LANGUAGES ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title">Languages</h2>
+
+    <div class="lang-row">
+      <span class="lang-name">Arabic</span>
+      <span class="lang-level native">Native</span>
+    </div>
+    <div class="lang-row">
+      <span class="lang-name">English</span>
+      <span class="lang-level inter">Professional Working Proficiency</span>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="footer">
+    وَلَا تَقُولَنَّ إِنِّي فَاعِلٌ ذَٰلِكَ غَدًا إِلَّا أَن يَشَاءَ اللَّهُ
+  </footer>
+
+</div>
+
+</body>
+</html>

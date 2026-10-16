@@ -70,7 +70,10 @@ export function LanguageProvider({ children }: { children: ReactNode }): React.J
       /* private mode — language simply won't persist */
     }
     try {
-      document.cookie = `${STORAGE_KEY}=${lang};max-age=31536000;path=/;SameSite=Lax`;
+      // Secure only over HTTPS so the lang cookie is never sent in cleartext;
+      // on http (localhost dev) we omit Secure so the cookie still works.
+      const secure = location.protocol === "https:" ? ";Secure" : "";
+      document.cookie = `${STORAGE_KEY}=${lang};max-age=31536000;path=/;SameSite=Lax${secure}`;
     } catch {
       /* cookies blocked — ignore */
     }

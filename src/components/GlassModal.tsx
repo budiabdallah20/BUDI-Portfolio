@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useModalScroll } from "@/hooks/useModalScroll";
+import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,20 +31,11 @@ export default function GlassModal({
   children: React.ReactNode;
 }): React.JSX.Element {
   const reduced = useReducedMotion();
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return (): void => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open, onClose]);
+  const scroll = useModalScroll<HTMLDivElement>(open);
+  // Counted lock (stacked dossier + image preview can't wedge the page)
+  // + topmost-wins Escape (stacked layers peel off one press at a time).
+  useBodyScrollLock(open);
+  useTopmostEscape(open, onClose);
 
   return (
     <AnimatePresence>
@@ -65,9 +57,12 @@ export default function GlassModal({
             exit={reduced ? undefined : { scale: 0.95, y: 18 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
+            ref={scroll.ref}
+            tabIndex={-1}
+            onKeyDown={scroll.onKeyDown}
             className={cn(
               // Reference recipe: rounded-3xl + border-white/10 + bg-black/40 + backdrop-blur-xl
-              "group/modal relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-white/10 bg-black/40 shadow-[0_10px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl",
+              "group/modal relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-white/10 bg-black/40 shadow-[0_10px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl focus:outline-none",
               wide ? "max-w-3xl" : "max-w-xl",
             )}
             style={{
@@ -101,7 +96,6 @@ export default function GlassModal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              autoFocus
               className="absolute top-3 right-3 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-black/60 text-white/70 backdrop-blur-md transition-all hover:rotate-90 hover:border-[#ff3d00] hover:text-[#ff3d00]"
             >
               <X className="h-4 w-4" />

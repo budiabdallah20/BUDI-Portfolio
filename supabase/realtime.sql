@@ -5,6 +5,8 @@
 --
 -- What this file does:
 --  1) realtime publication: dashboard writes push to the site live
+--     (services/skills/projects/certs/settings + likes, so vote counts
+--     repaint on every open tab too)
 --  2) re-ensures decrement_like exists (also in schema.sql — harmless)
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -14,6 +16,7 @@ alter table skills replica identity full;
 alter table projects replica identity full;
 alter table certs replica identity full;
 alter table settings replica identity full;
+alter table likes replica identity full;
 
 -- ── 2) add tables to realtime (skips ones already added) ─────────────
 do $$ begin
@@ -41,6 +44,11 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+do $$ begin
+  alter publication supabase_realtime add table likes;
+exception when duplicate_object then null;
+end $$;
+
 -- ── 3) unlike RPC (floor at zero, never negative) ────────────────────
 create or replace function decrement_like(p_id text)
 returns int language plpgsql security definer set search_path = public
@@ -51,6 +59,10 @@ begin
     on conflict (id) do update set count = greatest(likes.count - 1, 0)
     returning count into v;
   return v;
+  
 end; $$;
 
-grant execute on function decrement_like(text) to anon, authenticated;
+-- (Counter writes go ONLY through /api/engagement/* with service_role —
+-- direct anon/authenticated RPC execution is revoked in schema.sql.)
+-- Kept here for safety on DBs that ran an older schema.sql first:
+revoke execute on function decrement_like(text) from anon, authenticated;

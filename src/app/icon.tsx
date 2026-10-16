@@ -4,7 +4,7 @@ export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
 /**
- * Tab icon — ember tile, lime orbit ring, bold B core, signal node.
+ * Tab icon — official black × gold mark: black tile, gold border, gold B.
  */
 export default function Icon(): ImageResponse {
   return new ImageResponse(
@@ -16,15 +16,15 @@ export default function Icon(): ImageResponse {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#150b05",
+          background: "#0b0b0c",
           borderRadius: 14,
-          border: "2px solid rgba(255,61,0,0.55)",
+          border: "2px solid #d4af37",
           position: "relative",
         }}
       >
         <div
           style={{
-            color: "#ffd9bd",
+            color: "#e9ce7a",
             fontSize: 36,
             fontWeight: 900,
             fontFamily: "sans-serif",
@@ -41,7 +41,7 @@ export default function Icon(): ImageResponse {
             width: 9,
             height: 9,
             borderRadius: 999,
-            background: "#ff3d00",
+            background: "#d4af37",
           }}
         />
       </div>

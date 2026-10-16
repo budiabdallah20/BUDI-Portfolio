@@ -3,37 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import Logo from "@/components/Logo";
-import SmartImage from "@/components/SmartImage";
 import { cn } from "@/lib/utils";
 import { storeSecret } from "./remote";
-import { isWorkspaceAuthed, markWorkspaceAuthed } from "./workspaces";
 
-export interface LoginWorkspace {
-  id: string;
-  name: string;
-  tagline: string;
-  logo: string;
-  theme: string;
-  pin: string;
-  kind: "builtin" | "external";
-}
-
-export const SECRET_CODE = "2909";
 const AUTH_KEY = "budi-admin";
-
-/** Boot status lines — cinematic, same spirit as the main-site loader. */
-const BOOT_LINES = [
-  "Waking secure shell…",
-  "Verifying private area…",
-  "Decrypting dashboard…",
-  "Access gate ready",
-] as const;
 
 export function isAuthed(): boolean {
   try {
     return sessionStorage.getItem(AUTH_KEY) === "1";
   } catch {
     return false;
+  }
+}
+
+export function logout(): void {
+  try {
+    sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem("budi-admin-secret");
+  } catch {
+    /* ignore */
   }
 }
 
@@ -78,7 +66,6 @@ function AdminBackdrop(): React.JSX.Element {
             "radial-gradient(ellipse 60% 45% at 50% 30%, rgba(255,61,0,0.12), transparent 65%)",
         }}
       />
-      {/* Floating dust */}
       <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         {[
           { l: "12%", t: "22%", d: "0s", s: "6px" },
@@ -114,25 +101,15 @@ function AdminBackdrop(): React.JSX.Element {
   );
 }
 
-/** Mini boot → PIN gate. Colorful loader with 0→100, then a glowing PIN gate. */
+/**
+ * Single control-center gate — server-side PIN verification only.
+ * No multi-account, no per-workspace PINs. Protected by /api/admin/verify.
+ */
 export default function Login({
   onAuthed,
-  workspace,
-  onSwitchAccount,
 }: {
   onAuthed: () => void;
-  /** BUDI OS account — per-workspace PIN, logo, theme. Omitted = legacy gate. */
-  workspace?: LoginWorkspace;
-  /** Back to the BUDI OS hub (account switcher). */
-  onSwitchAccount?: () => void;
 }): React.JSX.Element {
-  /** Only the main BUDI Portfolio console verifies server-side (it owns
-   *  the cloud secret). Every other account is a local gate: its own
-   *  4-digit PIN, its own isolated storage, zero cloud calls. */
-  const isMain = !workspace || workspace.id === "budi-portfolio";
-  const accent = workspace?.theme ?? "#ff3d00";
-  const [booted, setBooted] = useState(false);
-  const [bootPct, setBootPct] = useState(0);
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const [error, setError] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -144,51 +121,13 @@ export default function Login({
   const doneRef = useRef(onAuthed);
   doneRef.current = onAuthed;
 
-  /* Boot progress 0 → 100 — mirrors the main-site loader counter.
-     rAF drives the animation; an independent timeout guarantees the gate
-     opens even if rAF stalls (background tab, throttled device). */
   useEffect(() => {
-    if (workspace && isWorkspaceAuthed(workspace.id)) {
-      onAuthed();
-      return;
-    }
     if (isAuthed()) {
       onAuthed();
       return;
     }
-    let done = false;
-    const open = (): void => {
-      if (done) return;
-      done = true;
-      setBootPct(100);
-      window.setTimeout(() => {
-        setBooted(true);
-        window.setTimeout(() => boxes.current[0]?.focus(), 120);
-      }, 220);
-    };
-    let raf = 0;
-    const start = performance.now();
-    const dur = 1400;
-    const tick = (now: number): void => {
-      if (done) return;
-      const p = Math.min(1, (now - start) / dur);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setBootPct(Math.round(eased * 100));
-      if (p < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        open();
-      }
-    };
-    raf = requestAnimationFrame(tick);
-    const fallback = window.setTimeout(open, 3000);
-    return (): void => {
-      done = true;
-      cancelAnimationFrame(raf);
-      window.clearTimeout(fallback);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    window.setTimeout(() => boxes.current[0]?.focus(), 120);
+  }, [onAuthed]);
 
   const fail = (): void => {
     setError(true);
@@ -199,13 +138,12 @@ export default function Login({
     window.setTimeout(() => setError(false), 1700);
   };
 
-  const win = (secret: string, persistSecret = true): void => {
+  const win = (secret: string): void => {
     setSuccess(true);
     window.setTimeout(() => {
       try {
         sessionStorage.setItem(AUTH_KEY, "1");
-        if (persistSecret) storeSecret(secret);
-        if (workspace) markWorkspaceAuthed(workspace.id);
+        storeSecret(secret);
       } catch {
         /* session-only fallback */
       }
@@ -213,27 +151,10 @@ export default function Login({
     }, 550);
   };
 
-  /**
-   * PIN verification — the secret is checked SERVER-side (/api/admin/verify,
-   * brute-force shielded). Local 2909 fallback applies ONLY when the API is
-   * unreachable or unconfigured, so the gate never locks you out locally —
-   * real protection always lives on the server around every write.
-   */
   const submit = (values: string[]): void => {
     if (success || checking) return;
     if (values.some((d) => d === "")) return;
     const pin = values.join("");
-    // Local accounts: instant 4-digit gate, no server round-trip, no
-    // cloud secret — the console runs fully local for this workspace.
-    if (!isMain && workspace) {
-      setChecking(true);
-      window.setTimeout(() => {
-        setChecking(false);
-        if (pin === workspace.pin) win(pin, false);
-        else fail();
-      }, 350);
-      return;
-    }
     setChecking(true);
     setLockMsg(null);
     void (async (): Promise<void> => {
@@ -245,13 +166,11 @@ export default function Login({
         });
         setChecking(false);
         if (res.ok) {
-          // 200 carries { ok } — a wrong PIN answers { ok: false } with a 200
-          // on purpose, so typos never log a red 4xx in the console.
           let ok = false;
           try {
             ok = ((await res.json()) as { ok?: unknown }).ok === true;
           } catch {
-            /* non-JSON — treat as failure */
+            /* non-JSON */
           }
           if (ok) {
             win(pin);
@@ -273,17 +192,15 @@ export default function Login({
           return;
         }
         if (res.status === 500) {
-          // Server misconfigured — local fallback gate (dev resilience).
-          if (pin === SECRET_CODE) win(pin);
-          else fail();
+          setLockMsg("Server not configured — contact the site owner");
+          fail();
           return;
         }
         fail();
       } catch {
-        // Offline — local fallback gate so the dashboard stays usable.
         setChecking(false);
-        if (pin === SECRET_CODE) win(pin);
-        else fail();
+        setLockMsg("Offline — connect and retry");
+        fail();
       }
     })();
   };
@@ -310,9 +227,6 @@ export default function Login({
     if (event.key === "Enter") {
       submit(digits);
     }
-    if (event.key === "v" && (event.ctrlKey || event.metaKey)) {
-      /* allow paste flow — handled by onPaste */
-    }
   };
 
   const onPaste = (event: React.ClipboardEvent): void => {
@@ -329,81 +243,8 @@ export default function Login({
 
   const filled = digits.filter((d) => d !== "").length;
   const pinPct = Math.round((filled / 4) * 100);
-  const bootLine =
-    BOOT_LINES[Math.min(BOOT_LINES.length - 1, Math.floor((bootPct / 100) * BOOT_LINES.length))];
+  const accent = "#ff3d00";
 
-  /* ————— BOOT / LOADING SCREEN ————— */
-  if (!booted) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        aria-label={`Loading admin — ${bootPct} percent`}
-        className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0a0b] px-5"
-      >
-        <AdminBackdrop />
-        <p className="absolute top-0 flex w-full items-center justify-between px-6 pt-6 font-mono text-[11px] tracking-[0.25em] text-white/50 uppercase sm:px-10">
-          <span>BUDI&reg; Admin</span>
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-[#bef264]" aria-hidden="true" />
-            Secure shell
-          </span>
-        </p>
-        <div className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
-          <span className="relative flex h-28 w-28 items-center justify-center">
-            <span
-              aria-hidden="true"
-              className="animate-spin-conic absolute inset-0 rounded-full"
-              style={{
-                background:
-                  "conic-gradient(from 0deg, #ff3d00, #bef264, #22d3ee, #8b5cf6, #ff3d00)",
-                mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                WebkitMask:
-                  "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                maskComposite: "exclude",
-                WebkitMaskComposite: "xor",
-                padding: "3px",
-                filter: "drop-shadow(0 0 14px rgba(255,61,0,0.55))",
-              }}
-            />
-            <span className="scale-125">
-              <Logo />
-            </span>
-          </span>
-          <p className="mt-6 font-mono text-[11px] tracking-[0.45em] text-white/60 uppercase">
-            Admin
-          </p>
-          <p className="font-display mt-2 text-7xl font-bold text-white tabular-nums sm:text-8xl">
-            {bootPct}
-            <span className="text-2xl text-[#ff3d00]">%</span>
-          </p>
-          <p className="mt-2 h-4 font-mono text-[11px] tracking-[0.25em] text-[#bef264]/80 uppercase">
-            {bootLine}
-          </p>
-          <div className="mt-5 h-[4px] w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full w-full origin-left rounded-full"
-              style={{
-                transform: `scaleX(${bootPct / 100})`,
-                background:
-                  "linear-gradient(to right, #ff3d00, #bef264 55%, #22d3ee)",
-                boxShadow: "0 0 16px rgba(255,61,0,0.8)",
-              }}
-            />
-          </div>
-          <div className="mt-3 flex w-full items-center justify-between font-mono text-[10px] tracking-[0.22em] text-white/40 uppercase tabular-nums">
-            <span>0</span>
-            <span>100</span>
-          </div>
-        </div>
-        <p className="absolute bottom-0 w-full px-6 pb-6 text-center font-mono text-[10px] tracking-[0.3em] text-white/30 uppercase sm:px-10">
-          Encrypted gate · BUDI private area
-        </p>
-      </div>
-    );
-  }
-
-  /* ————— LOGIN / PIN GATE ————— */
   return (
     <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0a0b] px-5 py-10">
       <AdminBackdrop />
@@ -423,7 +264,6 @@ export default function Login({
       </p>
 
       <div key={shake} className={cn("relative z-10 w-full max-w-sm", shake > 0 && "animate-shake")}>
-        {/* Gradient-border shell */}
         <div className="relative rounded-2xl p-[1.5px]">
           <span
             aria-hidden="true"
@@ -461,23 +301,16 @@ export default function Login({
               </span>
             </div>
             <div className="relative mt-4 flex justify-center">
-              {workspace && workspace.logo !== "" ? (
-                <span className="relative block h-10 w-10 overflow-hidden rounded-xl border border-white/15 bg-white">
-                  <SmartImage src={workspace.logo} alt="" fill fit="contain" sizes="40px" />
-                </span>
-              ) : (
-                <Logo />
-              )}
+              <Logo />
             </div>
             <h1 className="font-display relative mt-3 text-2xl font-bold text-[#f4f4ef]">
-              {workspace ? workspace.name : "Admin Access"}
+              Control Center Access
             </h1>
             <p className="relative mt-1.5 flex items-center justify-center gap-1.5 font-mono text-[11px] tracking-[0.3em] text-[#8a8a82] uppercase">
               <ShieldCheck className="h-3.5 w-3.5 text-[#bef264]" aria-hidden="true" />
-              Enter the secret code
+              Enter the access code
             </p>
 
-            {/* PIN progress — the 1→100 thread, tied to typed digits */}
             <div className="relative mt-6">
               <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.22em] text-white/40 uppercase tabular-nums">
                 <span>Unlock</span>
@@ -545,7 +378,7 @@ export default function Login({
             <div aria-live="polite" className="relative mt-4 min-h-5">
               {success ? (
                 <p className="font-mono text-[11px] tracking-[0.2em] text-[#bef264] uppercase">
-                  Welcome back, chief ✓
+                  Welcome — opening control center ✓
                 </p>
               ) : lockMsg ? (
                 <p className="font-mono text-[11px] tracking-[0.2em] text-amber-300 uppercase">
@@ -573,30 +406,12 @@ export default function Login({
             <p className="relative mt-4 border-t border-white/10 pt-4 font-mono text-[10px] tracking-[0.18em] text-white/30 uppercase">
               Tip — paste the 4-digit code · Enter unlocks
             </p>
-            {onSwitchAccount && (
-              <button
-                type="button"
-                onClick={onSwitchAccount}
-                className="relative mt-3 cursor-pointer font-mono text-[10px] tracking-[0.2em] text-white/40 uppercase underline decoration-white/20 underline-offset-4 transition-colors hover:text-white"
-              >
-                ← Switch account · BUDI OS
-              </button>
-            )}
           </div>
         </div>
         <p className="mt-4 text-center font-mono text-[10px] tracking-[0.3em] text-white/30 uppercase">
-          v1 · Local gate
+          v1 · Control center gate
         </p>
       </div>
     </div>
   );
-}
-
-export function logout(): void {
-  try {
-    sessionStorage.removeItem(AUTH_KEY);
-    sessionStorage.removeItem("budi-admin-secret");
-  } catch {
-    /* ignore */
-  }
 }

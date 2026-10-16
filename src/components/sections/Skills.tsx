@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Briefcase, Check, Copy, Crown, Flame, FolderGit, Heart, LayoutGrid, Plus, Search, Sprout, Star } from "lucide-react";
 import GlassModal from "@/components/GlassModal";
@@ -48,6 +48,201 @@ const PROOF_ICONS: Record<ProofKey, typeof Flame> = {
   client: Briefcase,
   learning: Sprout,
 };
+
+/** 5-segment mastery meter — visual scan, no raw percentages. Pure + module-level so tiles stay memoized. */
+function segments(level: number): boolean[] {
+  return Array.from({ length: 5 }, (_, i) => i < Math.round(level / 20));
+}
+
+interface SkillUsage {
+  count: number;
+  projects: string[];
+  score: number;
+}
+
+/**
+ * Memoized tile — opening the dossier (detailName change) must NOT re-render
+ * the whole grid: 12 motion articles × layout measurement was the open lag.
+ * Props are all stable (primitives / memoized refs), so re-renders only
+ * happen when the skill itself, its like, or the language changes.
+ */
+const SkillTile = memo(function SkillTile({
+  skill,
+  usage,
+  liked,
+  lang,
+  catLabel,
+  barsLabel,
+  levelName,
+  proofText,
+  proofLabel,
+  seeWork,
+  likeLabel,
+  unlikeLabel,
+  noProjectText,
+  scoreText,
+  reduced,
+  onLike,
+  onOpen,
+}: {
+  skill: Skill;
+  usage: SkillUsage | undefined;
+  liked: boolean;
+  lang: string;
+  catLabel: string;
+  barsLabel: string;
+  levelName: string;
+  proofText: string;
+  proofLabel: string;
+  seeWork: string;
+  likeLabel: string;
+  unlikeLabel: string;
+  noProjectText: string;
+  scoreText: string;
+  reduced: boolean;
+  onLike: (name: string) => void;
+  onOpen: (name: string) => void;
+}): React.JSX.Element {
+  const meta = LEVEL_META[skill.levelKey];
+  const ProofIcon = PROOF_ICONS[skill.proof];
+  const segs = segments(skill.level);
+  return (
+    <motion.article
+      layout
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduced ? undefined : { opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="group relative overflow-hidden rounded-xl border border-border bg-surface/60 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-[0_16px_44px_-20px_var(--accent)]"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute top-0 left-0 z-10 h-[2px] w-0 transition-all duration-500 group-hover:w-full"
+        style={{ background: `linear-gradient(to right, ${meta.bg}, transparent)`, boxShadow: meta.glow }}
+      />
+      <div className="flex items-center gap-2.5">
+        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white/[0.04]">
+          <span
+            aria-hidden="true"
+            className="absolute h-8 w-8 rounded-full bg-accent/15 blur-xl transition-all duration-500 group-hover:bg-accent/25"
+          />
+          {(() => {
+            const Lib = libIcon(skill.icon);
+            if (Lib) {
+              return <Lib className="relative block h-[26px] w-[26px] transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />;
+            }
+            return <SmartImage src={skill.logo} alt="" fill fit="contain" sizes="26px" className="block h-[26px] w-[26px] transition-transform duration-300 group-hover:scale-110" />;
+          })()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => onOpen(skill.name)}
+            aria-haspopup="dialog"
+            className="truncate font-display cursor-pointer text-left text-[15px] font-bold text-foreground transition-colors hover:text-accent"
+          >
+            {skill.name}
+          </button>
+          <p className="font-mono text-[9px] tracking-[0.18em] text-faint uppercase">
+            {catLabel}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-center gap-1">
+          <span className="font-mono text-xs font-bold tabular-nums" style={{ color: meta.bg }}>
+            {skill.level}
+          </span>
+          <button
+            type="button"
+            onClick={() => onLike(skill.name)}
+            aria-pressed={liked}
+            aria-label={liked ? unlikeLabel : likeLabel}
+            title={liked ? unlikeLabel : likeLabel}
+            className={cn(
+              "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-[9px] tabular-nums transition-all duration-200",
+              liked
+                ? "border-accent bg-accent/15 text-accent shadow-[0_0_12px_rgba(255,61,0,0.35)]"
+                : "border-border text-faint hover:border-accent/60 hover:text-accent",
+            )}
+          >
+            <Heart
+              className="h-2.5 w-2.5"
+              fill={liked ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+            {liked ? 1 : 0}
+          </button>
+        </div>
+      </div>
+      {/* Mastery meter — 5 segments, screen-reader friendly */}
+      <div
+        role="img"
+        aria-label={`${barsLabel}: ${skill.level} / 100 — ${levelName}`}
+        className="mt-2.5 flex items-center gap-1"
+      >
+        {segs.map((on, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="h-1 flex-1 rounded-full transition-all duration-300"
+            style={
+              on
+                ? { backgroundColor: meta.bg, boxShadow: meta.glow }
+                : { backgroundColor: "rgba(244,244,239,0.12)" }
+            }
+          />
+        ))}
+        <span
+          className="ml-1.5 rounded-full border px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.12em] uppercase"
+          style={{
+            borderColor: `${meta.bg}70`,
+            backgroundColor: `${meta.bg}1f`,
+            color: meta.bg,
+          }}
+        >
+          {levelName}
+        </span>
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-[2.5em] text-[13px] leading-snug text-muted">
+        {lang === "fr" ? skill.detail.fr : skill.detail.en}
+      </p>
+      {usage && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <span
+            title={(usage.projects ?? []).join(" · ") || noProjectText}
+            className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent/[0.07] px-2 py-0.5 font-mono text-[9px] font-bold tracking-[0.08em] text-accent uppercase"
+          >
+            <FolderGit className="h-3 w-3" aria-hidden="true" />
+            {lang === "fr" ? `× ${usage.count} projets` : `× ${usage.count} projects`}
+          </span>
+          <span
+            title={scoreText}
+            className="flex items-center gap-1 rounded-full border border-border bg-background/60 px-2 py-0.5 font-mono text-[9px] font-bold tracking-[0.08em] text-foreground uppercase tabular-nums"
+          >
+            <Star className="h-3 w-3 text-[#d7fd44]" aria-hidden="true" />
+            {usage.score}
+          </span>
+        </div>
+      )}
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border pt-2.5">
+        <span
+          title={`${proofLabel}: ${proofText}`}
+          className="flex min-w-0 items-center gap-1 rounded-full border border-border bg-background/50 px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-muted uppercase"
+        >
+          <ProofIcon className="h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
+          <span className="truncate">{proofText}</span>
+        </span>
+        <a
+          href="#projects"
+          aria-label={`${seeWork} — ${skill.name}`}
+          className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-muted transition-colors duration-200 hover:text-accent"
+        >
+          {seeWork}
+          <ArrowUpRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </a>
+      </div>
+    </motion.article>
+  );
+});
 
 /** Site source of truth — the admin dashboard seeds from this (do not duplicate). */
 export const SKILLS: Skill[] = [
@@ -218,11 +413,8 @@ export default function Skills({
     return map;
   }, [list, projects]);
 
-  /** 5-segment mastery meter — visual scan, no raw percentages. */
-  const segments = (level: number): boolean[] =>
-    Array.from({ length: 5 }, (_, i) => i < Math.round(level / 20));
-
-  const toggleSkillLike = (name: string): void => {
+  /** 5-segment mastery meter lives at module level (see `segments`). */
+  const toggleSkillLike = useCallback((name: string): void => {
     // Pure updater (StrictMode-safe) — persistence happens after, outside.
     setSkillLiked((prev) => {
       const next = { ...prev };
@@ -238,7 +430,11 @@ export default function Skills({
     } catch {
       /* storage blocked — heart still counts this session */
     }
-  };
+  }, []);
+
+  const openDetail = useCallback((name: string): void => {
+    setDetailName(name);
+  }, []);
 
   const copyStack = (): void => {
     const text = list.map((s) => s.name).join(", ");
@@ -500,153 +696,31 @@ export default function Skills({
         ) : (
           <>
             <motion.div layout className="mt-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              <AnimatePresence mode="popLayout">
-                {filtered.map((skill) => {
-                  const meta = LEVEL_META[skill.levelKey];
-                  const ProofIcon = PROOF_ICONS[skill.proof];
-                  const segs = segments(skill.level);
-                  return (
-                  <motion.article
-                    layout
+              {/* initial={false}: tiles mount quietly — no entrance choreography
+                  competing with the dossier modal for the main thread. */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {filtered.map((skill) => (
+                  <SkillTile
                     key={skill.name}
-                    initial={reduced ? false : { opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduced ? undefined : { opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="group relative overflow-hidden rounded-xl border border-border bg-surface/60 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-[0_16px_44px_-20px_var(--accent)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0 left-0 z-10 h-[2px] w-0 transition-all duration-500 group-hover:w-full"
-                      style={{ background: `linear-gradient(to right, ${meta.bg}, transparent)`, boxShadow: meta.glow }}
-                    />
-                    <div className="flex items-center gap-2.5">
-                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white/[0.04]">
-                        <span
-                          aria-hidden="true"
-                          className="absolute h-8 w-8 rounded-full bg-accent/15 blur-xl transition-all duration-500 group-hover:bg-accent/25"
-                        />
-                        {(() => {
-                          const Lib = libIcon(skill.icon);
-                          if (Lib) {
-                            return <Lib className="relative block h-[26px] w-[26px] transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />;
-                          }
-                          return <SmartImage src={skill.logo} alt="" fill fit="contain" sizes="26px" className="block h-[26px] w-[26px] transition-transform duration-300 group-hover:scale-110" />;
-                        })()}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => setDetailName(skill.name)}
-                          aria-haspopup="dialog"
-                          className="truncate font-display cursor-pointer text-left text-[15px] font-bold text-foreground transition-colors hover:text-accent"
-                        >
-                          {skill.name}
-                        </button>
-                        <p className="font-mono text-[9px] tracking-[0.18em] text-faint uppercase">
-                          {t.tabs[skill.cat]}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-center gap-1">
-                        <span className="font-mono text-xs font-bold tabular-nums" style={{ color: meta.bg }}>
-                          {skill.level}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => toggleSkillLike(skill.name)}
-                          aria-pressed={!!skillLiked[skill.name]}
-                          aria-label={skillLiked[skill.name] ? t.unlike : t.like}
-                          title={skillLiked[skill.name] ? t.unlike : t.like}
-                          className={cn(
-                            "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-[9px] tabular-nums transition-all duration-200",
-                            skillLiked[skill.name]
-                              ? "border-accent bg-accent/15 text-accent shadow-[0_0_12px_rgba(255,61,0,0.35)]"
-                              : "border-border text-faint hover:border-accent/60 hover:text-accent",
-                          )}
-                        >
-                          <Heart
-                            className="h-2.5 w-2.5"
-                            fill={skillLiked[skill.name] ? "currentColor" : "none"}
-                            aria-hidden="true"
-                          />
-                          {skillLiked[skill.name] ? 1 : 0}
-                        </button>
-                      </div>
-                    </div>
-                    {/* Mastery meter — 5 segments, screen-reader friendly */}
-                    <div
-                      role="img"
-                      aria-label={`${t.barsLabel}: ${skill.level} / 100 — ${t.levels[skill.levelKey]}`}
-                      className="mt-2.5 flex items-center gap-1"
-                    >
-                      {segs.map((on, i) => (
-                        <span
-                          key={i}
-                          aria-hidden="true"
-                          className="h-1 flex-1 rounded-full transition-all duration-300"
-                          style={
-                            on
-                              ? { backgroundColor: meta.bg, boxShadow: meta.glow }
-                              : { backgroundColor: "rgba(244,244,239,0.12)" }
-                          }
-                        />
-                      ))}
-                      <span
-                        className="ml-1.5 rounded-full border px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.12em] uppercase"
-                        style={{
-                          borderColor: `${meta.bg}70`,
-                          backgroundColor: `${meta.bg}1f`,
-                          color: meta.bg,
-                        }}
-                      >
-                        {t.levels[skill.levelKey]}
-                      </span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 min-h-[2.5em] text-[13px] leading-snug text-muted">
-                      {lang === "fr" ? skill.detail.fr : skill.detail.en}
-                    </p>
-                    {(() => {
-                      const usage = usageByName[skill.name];
-                      if (!usage) return null;
-                      return (
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <span
-                            title={(usage.projects ?? []).join(" · ") || (lang === "fr" ? "Aucun projet lié" : "No linked project yet")}
-                            className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent/[0.07] px-2 py-0.5 font-mono text-[9px] font-bold tracking-[0.08em] text-accent uppercase"
-                          >
-                            <FolderGit className="h-3 w-3" aria-hidden="true" />
-                            {lang === "fr" ? `× ${usage.count} projets` : `× ${usage.count} projects`}
-                          </span>
-                          <span
-                            title={lang === "fr" ? "Score vitrine = maîtrise + preuve projets" : "Showcase score = mastery + project proof"}
-                            className="flex items-center gap-1 rounded-full border border-border bg-background/60 px-2 py-0.5 font-mono text-[9px] font-bold tracking-[0.08em] text-foreground uppercase tabular-nums"
-                          >
-                            <Star className="h-3 w-3 text-[#d7fd44]" aria-hidden="true" />
-                            {usage.score}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border pt-2.5">
-                      <span
-                        title={`${t.proofLabel}: ${t.proofs[skill.proof]}`}
-                        className="flex min-w-0 items-center gap-1 rounded-full border border-border bg-background/50 px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-muted uppercase"
-                      >
-                        <ProofIcon className="h-3 w-3 shrink-0 text-accent" aria-hidden="true" />
-                        <span className="truncate">{t.proofs[skill.proof]}</span>
-                      </span>
-                      <a
-                        href="#projects"
-                        aria-label={`${t.seeWork} — ${skill.name}`}
-                        className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-muted transition-colors duration-200 hover:text-accent"
-                      >
-                        {t.seeWork}
-                        <ArrowUpRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </a>
-                    </div>
-                  </motion.article>
-                  );
-                })}
+                    skill={skill}
+                    usage={usageByName[skill.name]}
+                    liked={!!skillLiked[skill.name]}
+                    lang={lang}
+                    catLabel={t.tabs[skill.cat]}
+                    barsLabel={t.barsLabel}
+                    levelName={t.levels[skill.levelKey]}
+                    proofText={t.proofs[skill.proof]}
+                    proofLabel={t.proofLabel}
+                    seeWork={t.seeWork}
+                    likeLabel={t.like}
+                    unlikeLabel={t.unlike}
+                    noProjectText={lang === "fr" ? "Aucun projet lié" : "No linked project yet"}
+                    scoreText={lang === "fr" ? "Score vitrine = maîtrise + preuve projets" : "Showcase score = mastery + project proof"}
+                    reduced={reduced}
+                    onLike={toggleSkillLike}
+                    onOpen={openDetail}
+                  />
+                ))}
               </AnimatePresence>
             </motion.div>
 

@@ -1,80 +1,94 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { checkAdmin } from "../_guard";
-import { supabaseService } from "@/lib/supabase/server";
+import { upsertResilient } from "../_db";
+import { SAVE_TABLES, bodyTooLarge, sanitizeRow } from "../_validate";
+import { audit, auditEventFromReq } from "@/lib/audit";
 
-const TABLES = ["services", "skills", "projects", "certs", "settings"] as const;
+/** 512KB per row-write — dashboard rows are kilobytes; anything bigger is abuse. */
+const BODY_CAP = 512 * 1024;
 
-/** Settings allowlist — stale dashboard tabs may still send retired v2
- *  boolean keys; strip them so the upsert never hits missing columns. */
-const SETTINGS_COLUMNS = [
-  "id",
-  "siteName",
-  "tagline",
-  "maintenance",
-  "showLoader",
-  "likesEnabled",
-  "contactEmail",
-  "heroImage",
-  "aboutImage",
-  "workStatus",
-  "workNote",
-  "workNoteFr",
-  "workUntil",
-  "vodafoneState",
-  "vodafoneNumber",
-  "vodafoneAt",
-  "taptapState",
-  "taptapAt",
-  "instapayState",
-  "instapayHandle",
-  "instapayAt",
-  "siteVerified",
-  "verificationBadges",
-] as const;
+function gateError(gate: { status: number; error: string; retryAfterSec?: number }): NextResponse {
+  const headers = gate.retryAfterSec ? { "Retry-After": String(gate.retryAfterSec) } : undefined;
+  return NextResponse.json({ error: gate.error }, { status: gate.status, headers });
+}
+
+/** Log a failed admin attempt (append-only audit) then build the response. */
+function auditFail(
+  ev: ReturnType<typeof auditEventFromReq>,
+  error: string,
+  status = 400,
+): NextResponse {
+  ev.ok = false;
+  ev.error = error;
+  void audit(ev);
+  return NextResponse.json({ error }, { status });
+}
 
 /** Upsert one row — every dashboard create/edit lands here (service_role). */
 export async function POST(req: Request): Promise<NextResponse> {
   const gate = checkAdmin(req);
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const ev = auditEventFromReq(req, "save");
+  if (!gate.ok) {
+    ev.ok = false;
+    ev.error = gate.error;
+    void audit(ev);
+    return gateError(gate);
+  }
 
+  if (bodyTooLarge(req.headers.get("content-length"), BODY_CAP)) {
+    return auditFail(ev, "Payload too large", 413);
+  }
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
+    return auditFail(ev, "Bad JSON", 400);
+  }
+  // Post-parse ceiling: Content-Length can be omitted/chunked — measure reality.
+  if (JSON.stringify(body)?.length > BODY_CAP * 2) {
+    return auditFail(ev, "Payload too large", 413);
   }
   const { table, row } = body as { table?: unknown; row?: unknown };
-  if (typeof table !== "string" || !(TABLES as readonly string[]).includes(table)) {
-    return NextResponse.json({ error: "Unknown table" }, { status: 400 });
+  if (typeof table !== "string" || !(SAVE_TABLES as readonly string[]).includes(table)) {
+    return auditFail(ev, "Unknown table", 400);
   }
-  if (!row || typeof row !== "object" || Array.isArray(row)) {
-    return NextResponse.json({ error: "Bad row" }, { status: 400 });
-  }
-  const clean = { ...(row as Record<string, unknown>) };
-  if (table === "settings") {
-    for (const key of Object.keys(clean)) {
-      if (!(SETTINGS_COLUMNS as readonly string[]).includes(key)) delete clean[key];
-    }
-  }
-  if (typeof clean.id !== "string" || clean.id.length === 0 || clean.id.length > 120) {
-    return NextResponse.json({ error: "Row needs a valid id" }, { status: 400 });
+  // Server-side gate: allowlist + types + lengths + URL whitelist.
+  // Client zod is bypassable — THIS is what actually protects the DB.
+  const res = sanitizeRow(table, row);
+  if (!res.ok || !res.clean) {
+    return auditFail(ev, res.error ?? "Bad row", 400);
   }
 
   try {
-    const sb = supabaseService();
-    const { error } = await sb.from(table).upsert(clean, { onConflict: "id" });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Resilient: unknown (not-yet-migrated) columns are dropped + retried
+    // instead of 500ing the whole save — see _db.ts.
+    const saved = await upsertResilient(table, res.clean);
+    if (!saved.ok) {
+      return auditFail(ev, "Database error", 500);
+    }
+    if (saved.dropped.length > 0) {
+      try {
+        revalidatePath("/");
+      } catch {
+        /* static route — ignore */
+      }
+      ev.meta = { table, droppedColumns: saved.dropped };
+      void audit(ev);
+      return NextResponse.json(
+        { ok: true, revalidated: true, at: Date.now(), droppedColumns: saved.dropped },
+      );
+    }
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Database unreachable" },
-      { status: 500 },
-    );
+    console.error(`[admin/save] unreachable (${table}):`, e instanceof Error ? e.message : e);
+    return auditFail(ev, "Database unreachable", 500);
   }
   try {
     revalidatePath("/");
   } catch {
     /* static route — ignore */
   }
+  ev.meta = { table };
+  void audit(ev);
   return NextResponse.json({ ok: true, revalidated: true, at: Date.now() });
 }

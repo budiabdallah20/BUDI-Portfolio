@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import AppProviders from "@/components/providers/AppProviders";
+import PwaRegister from "@/components/PwaRegister";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -60,6 +61,12 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: siteConfig.shortName,
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -105,6 +112,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: FAILSAFE_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: RECOVERY_SCRIPT }} />
         <AppProviders>{children}</AppProviders>
+        <PwaRegister />
       </body>
     </html>
   );

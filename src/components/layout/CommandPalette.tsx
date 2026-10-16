@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Download, Languages, Mail, Search } from "lucide-react";
 import { heroCopy, navLinks, profile } from "@/data/portfolio";
 import { useLanguage } from "@/components/providers/LanguageProvider";
+import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
 import { cn } from "@/lib/utils";
 
 interface CommandPaletteProps {
@@ -89,15 +90,15 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
     return items.filter((item) => item.label.toLowerCase().includes(q));
   }, [items, query]);
 
+  useBodyScrollLock(open);
+  useTopmostEscape(open, onClose);
+
   useEffect(() => {
     if (!open) return;
     setQuery("");
     setCursor(0);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const timer = window.setTimeout(() => inputRef.current?.focus(), 60);
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose();
       if (event.key === "ArrowDown") {
         event.preventDefault();
         setCursor((c) => (filtered.length === 0 ? 0 : (c + 1) % filtered.length));
@@ -111,10 +112,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
     document.addEventListener("keydown", onKey);
     return (): void => {
       window.clearTimeout(timer);
-      document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose, filtered, cursor]);
+  }, [open, filtered, cursor]);
 
   const icons = { go: ArrowUpRight, lang: Languages, mail: Mail, cv: Download } as const;
 

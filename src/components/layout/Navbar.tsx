@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, ArrowUpRight, Menu, MessageCircle, Search, X } from "lucide-react";
+import { ArrowUp, Menu, Search, X } from "lucide-react";
 import { navLinks, profile } from "@/data/portfolio";
 import { workDeadlineSuffix, workLabel, type SiteAvailability } from "@/components/WorkStatus";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
+import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
 import LangFlag from "./LangFlag";
@@ -114,7 +115,6 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
     }) + workDeadlineSuffix(avail, lang);
   const availLive = avail.status === "available";
   const topLabel = lang === "fr" ? "Retour en haut" : "Back to top";
-  const hireLabel = lang === "fr" ? "Embauchez-moi" : "Hire me";
 
   useEffect(() => {
     const onScroll = (): void => {
@@ -151,22 +151,12 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   }, []);
 
   // Lock background scroll + handle Escape + restore focus.
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        toggleRef.current?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return (): void => {
-      document.body.style.overflow = prev;
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  // Counted lock + topmost Escape: safe when the palette opens above the menu.
+  useBodyScrollLock(open);
+  useTopmostEscape(open, () => {
+    setOpen(false);
+    toggleRef.current?.focus();
+  });
 
   const solid = scrolled || open;
   const shown = visible && !hidden;
@@ -191,18 +181,12 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
             href="#home"
             onClick={() => setOpen(false)}
             className={cn(
-              "group flex items-center gap-3 rounded-xl transition-all duration-300",
-              solid && "drop-shadow-[0_0_14px_rgba(255,61,0,0.35)]",
+              "group flex items-center rounded-xl transition-all duration-300",
+              solid && "drop-shadow-[0_0_14px_rgba(212,175,55,0.4)]",
             )}
             aria-label="BUDI — back to home"
           >
-            <Logo />
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-xl font-bold tracking-tight">BUDI</span>
-              <span className="font-mono text-[9px] tracking-[0.3em] text-faint uppercase">
-                Folio — 26
-              </span>
-            </span>
+            <Logo variant="full" />
           </a>
 
           <ul className="hidden items-center gap-0.5 lg:flex">
@@ -267,13 +251,6 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
               </span>
               <span className="truncate">{availLabel}</span>
             </span>
-            <a
-              href="#contact"
-              className="group flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13px] font-bold text-accent-foreground shadow-[0_10px_30px_-12px_var(--accent)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-12px_var(--accent)]"
-            >
-              {hireLabel}
-              <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
-            </a>
             <ControlCluster onSearch={() => setPaletteOpen(true)} />
           </div>
 
@@ -289,11 +266,11 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </nav>
-        {/* Scroll progress hairline — ember into lime as you travel the page */}
+        {/* Scroll progress hairline — black × gold official identity */}
         <span
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-[2.5px] origin-left bg-gradient-to-r from-accent via-[#ff8a3d] to-[#d7fd44]"
-          style={{ transform: `scaleX(${progress})`, boxShadow: "0 0 14px rgba(255,61,0,0.65)" }}
+          className="absolute inset-x-0 bottom-0 h-[2.5px] origin-left bg-gradient-to-r from-[#8a6d1b] via-[#d4af37] to-[#f9edb0]"
+          style={{ transform: `scaleX(${progress})`, boxShadow: "0 0 14px rgba(212,175,55,0.65)" }}
         />
       </motion.header>
 
@@ -352,25 +329,6 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
                 variants={{ open: { opacity: 1, y: 0 }, closed: { opacity: 0, y: 14 } }}
                 className="mt-auto pt-8"
               >
-                <div className="flex gap-2.5">
-                  <a
-                    href="#contact"
-                    onClick={() => setOpen(false)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3.5 text-sm font-black text-accent-foreground shadow-[0_14px_40px_-14px_var(--accent)]"
-                  >
-                    {hireLabel}
-                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                  <a
-                    href="https://wa.me/201065228072"
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="WhatsApp"
-                    className="flex w-[52px] shrink-0 items-center justify-center rounded-xl bg-[#25d366] text-[#062d1a] shadow-[0_14px_40px_-14px_rgba(37,211,102,0.9)]"
-                  >
-                    <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                  </a>
-                </div>
                 <div className="mt-4 flex items-center justify-center">
                   <ControlCluster
                     onAction={() => setOpen(false)}

@@ -24,8 +24,8 @@ export interface RemoteContent {
  */
 export async function fetchContent(): Promise<RemoteContent | null> {
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+    const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
     if (!url || !key) return null;
     const sb = supabaseAnon();
     const [services, skills, projects, certs, settings, visits, likes] = await Promise.all([

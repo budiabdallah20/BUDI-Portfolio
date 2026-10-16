@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 import WelcomeToast from "@/components/home/WelcomeToast";
+import ConsoleWelcome from "@/components/home/ConsoleWelcome";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/home/Hero";
 import RealtimeRefresh from "@/components/home/RealtimeRefresh";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import ErrorReporter from "@/components/ErrorReporter";
 import type { RemoteContent } from "@/lib/content";
 import { availabilityFromSettings, paymentsFromSettings } from "@/components/WorkStatus";
 import About from "@/components/sections/About";
@@ -131,7 +132,13 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
     }
     void (async (): Promise<void> => {
       try {
-        await supabaseBrowser().rpc("increment_visit", { p_id: "site" });
+        // Rate-limited server proxy (10/min per IP) — direct RPC calls
+        // from the browser are unthrottled and inflatable.
+        await fetch("/api/engagement/visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: "site" }),
+        });
       } catch {
         /* offline or unreachable — local fallback stays in the dashboard */
       }
@@ -179,6 +186,8 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
   return (
     <>
       <RealtimeRefresh />
+      <ErrorReporter />
+      <ConsoleWelcome />
       <a
         href="#home"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[110] focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-foreground"

@@ -10,9 +10,58 @@ import { checkAdmin } from "../_guard";
  * (save / remove / seed) already revalidates server-side too — this route
  * is the explicit, provable trigger with a timestamp the UI can show.
  */
+const CORS = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-admin-secret",
+} as const;
+
+/**
+ * Origins allowed to READ this endpoint cross-origin: the deployed site
+ * itself + local dev servers (the dashboard often runs on localhost while
+ * purging prod). Anything else gets no ACAO header → the browser blocks it.
+ * (The secret is still mandatory regardless — this only shrinks who may
+ * even attempt from a browser.)
+ */
+function allowedOrigin(origin: string): boolean {
+  if (origin === "") return false;
+  try {
+    const u = new URL(origin);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+    const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+    if (site !== "") {
+      try {
+        if (u.origin === new URL(site).origin) return true;
+      } catch {
+        /* misconfigured env — fall through */
+      }
+    }
+    // Same-origin fetches send no Origin; Vercel previews share the suffix.
+    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(u.origin)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const headers: Record<string, string> = { ...CORS };
+  if (allowedOrigin(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
+}
+
+export async function OPTIONS(req: Request): Promise<NextResponse> {
+  // NOTE: no credentials, no caching of preflights with secrets.
+  return new NextResponse(null, { headers: corsHeaders(req) });
+}
+
 export async function POST(req: Request): Promise<NextResponse> {
   const gate = checkAdmin(req);
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const headers = corsHeaders(req);
+  if (!gate.ok) {
+    if (gate.retryAfterSec) headers["Retry-After"] = String(gate.retryAfterSec);
+    return NextResponse.json({ error: gate.error }, { status: gate.status, headers });
+  }
 
   const paths: string[] = [];
   try {
@@ -27,5 +76,5 @@ export async function POST(req: Request): Promise<NextResponse> {
   } catch {
     /* static export — nothing to purge */
   }
-  return NextResponse.json({ ok: true, revalidated: true, at: Date.now(), paths });
+  return NextResponse.json({ ok: true, revalidated: true, at: Date.now(), paths }, { headers });
 }

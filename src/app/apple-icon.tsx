@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-/** Apple touch icon — larger canvas, same monogram identity as the favicon. */
+/** Apple touch icon — official black × gold mark. */
 export default function AppleIcon(): ImageResponse {
   return new ImageResponse(
     (
@@ -14,15 +14,15 @@ export default function AppleIcon(): ImageResponse {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0a0a0b",
+          background: "#0b0b0c",
           borderRadius: 40,
-          border: "5px solid rgba(215,253,68,0.55)",
+          border: "5px solid #d4af37",
           position: "relative",
         }}
       >
         <div
           style={{
-            color: "#d7fd44",
+            color: "#e9ce7a",
             fontSize: 104,
             fontWeight: 900,
             fontFamily: "sans-serif",
@@ -39,7 +39,7 @@ export default function AppleIcon(): ImageResponse {
             width: 26,
             height: 26,
             borderRadius: 999,
-            background: "#d7fd44",
+            background: "#d4af37",
           }}
         />
       </div>

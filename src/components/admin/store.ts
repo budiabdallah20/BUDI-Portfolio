@@ -9,7 +9,6 @@
  * load/save internals for API calls and the whole dashboard keeps working.
  */
 
-import { z } from "zod";
 import { dictionaries } from "@/i18n/dictionaries";
 import { SKILLS as SITE_SKILLS } from "@/components/sections/Skills";
 
@@ -90,6 +89,8 @@ export interface AdminCert {
   skills: string[];
   image: string;
   verify: string;
+  /** Verified-issuer logo shown beside the verify link (upload or URL). */
+  verifyLogo: string;
   visible: boolean;
 }
 
@@ -144,6 +145,21 @@ export interface AdminSettings {
   /** Site imagery — dashboard-owned hero + about photos (upload or URL). */
   heroImage: string;
   aboutImage: string;
+  /** Console display renames for categories — `"<section>:<value>" → label`
+   *  (section = service | skill). The site enums never change; only the
+   *  console inventory, pickers and badges show the custom label. */
+  catLabels: Record<string, string>;
+}
+
+/** Console display label for a category value — per-account rename or fallback. */
+export function catDisplayLabel(
+  labels: Record<string, string> | undefined,
+  section: "service" | "skill",
+  value: string,
+  fallback: string,
+): string {
+  const hit = labels?.[`${section}:${value}`];
+  return hit && hit.trim() !== "" ? hit : fallback;
 }
 
 /**
@@ -161,6 +177,16 @@ export function normalizeSettings(raw: unknown): AdminSettings {
     typeof v === "string" && (RAIL_STATES as readonly string[]).includes(v)
       ? (v as RailState)
       : fb;
+  const catLabels = (v: unknown): Record<string, string> => {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val !== "string" || k.length > 80) continue;
+      out[k.slice(0, 80)] = val.slice(0, 60);
+      if (Object.keys(out).length >= 60) break;
+    }
+    return out;
+  };
   const badges = (v: unknown): VerificationBadgeItem[] => {
     if (!Array.isArray(v)) return [...fresh.verificationBadges];
     return v
@@ -197,6 +223,7 @@ export function normalizeSettings(raw: unknown): AdminSettings {
     verificationBadges: badges(r.verificationBadges),
     heroImage: str(r.heroImage, fresh.heroImage).slice(0, 1500000),
     aboutImage: str(r.aboutImage, fresh.aboutImage).slice(0, 1500000),
+    catLabels: catLabels(r.catLabels),
   };
 }
 
@@ -277,97 +304,20 @@ export const CATEGORY_DEFAULTS: Record<
 };
 
 /* ------------------------- zod protection layer ------------------------ */
-/* Every editor validates through these schemas before touching the DB —
-   the dashboard never stores malformed, oversized or hostile input. */
-
-const str = (max: number, label: string): z.ZodString =>
-  z
-    .string({ error: `Invalid ${label}` })
-    .trim()
-    .min(1, `${label} is required`)
-    .max(max, `${label} is too long (max ${max})`);
-
-const strArr = (maxItems: number, maxLen: number, label: string) =>
-  z
-    .array(z.string().trim().min(1).max(maxLen))
-    .max(maxItems, `Too many ${label} (max ${maxItems})`)
-    .default([]);
-
-export const serviceSchema = z.object({
-  title: str(80, "Title"),
-  titleFr: z.string().trim().max(80).default(""),
-  desc: str(400, "Description"),
-  descFr: z.string().trim().max(400).default(""),
-  tags: strArr(12, 30, "tags"),
-  points: strArr(10, 160, "deliverables"),
-  pointsFr: strArr(10, 160, "deliverables (FR)"),
-  category: z.enum(["development", "design", "backend", "growth"]),
-  icon: z.string().trim().max(40).default(""),
-  iconImage: z.string().trim().max(1500000).default(""),
-  bestForEn: str(80, "Best-for (EN)"),
-  bestForFr: str(80, "Best-for (FR)"),
-  timelineEn: str(80, "Timeline (EN)"),
-  timelineFr: str(80, "Timeline (FR)"),
-});
-
-export const skillSchema = z.object({
-  name: str(40, "Name"),
-  cat: z.enum(["frontend", "backend", "tools"]),
-  level: z.coerce.number().int().min(10).max(100),
-  proof: z.enum(["daily", "portfolio", "client", "learning"]),
-  logo: z.string().trim().max(160).default(""),
-  icon: z.string().trim().max(40).default(""),
-  detailEn: z.string().trim().max(220).default(""),
-  detailFr: z.string().trim().max(220).default(""),
-});
-
-export const projectSchema = z.object({
-  title: str(80, "Title"),
-  titleFr: z.string().trim().max(80).default(""),
-  desc: str(400, "Description"),
-  descFr: z.string().trim().max(400).default(""),
-  tech: strArr(14, 30, "tech"),
-  status: z.enum(["completed", "in-progress"]),
-  category: z.string().trim().max(40).default(""),
-  github: z.string().trim().max(200).default(""),
-  period: z.string().trim().max(40).default(""),
-  year: z.string().trim().max(9).default(""),
-  demo: z.string().trim().max(200).default(""),
-  image: z.string().trim().max(1500000).default(""),
-  roleEn: z.string().trim().max(120).default(""),
-  roleFr: z.string().trim().max(120).default(""),
-  timelineEn: z.string().trim().max(80).default(""),
-  timelineFr: z.string().trim().max(80).default(""),
-  briefEn: strArr(8, 220, "brief points"),
-  briefFr: strArr(8, 220, "brief points"),
-});
-
-export const certSchema = z.object({
-  titleEn: str(90, "Title (EN)"),
-  titleFr: str(90, "Title (FR)"),
-  issuerEn: str(60, "Issuer (EN)"),
-  issuerFr: str(60, "Issuer (FR)"),
-  year: z.string().trim().max(9).default(""),
-  months: z.coerce.number().int().min(1).max(60),
-  code: z.string().trim().max(40).default(""),
-  skills: strArr(10, 30, "skills"),
-  image: z.string().trim().max(1500000).default(""),
-  verify: z.string().trim().max(200).default(""),
-});
-
-export type ValidationResult =
-  | { ok: true }
-  | { ok: false; errors: string[] };
-
-export function validate<T>(schema: z.ZodType<T>, data: unknown): ValidationResult {
-  const res = schema.safeParse(data);
-  if (res.success) return { ok: true };
-  const errors = res.error.issues.map((i) => {
-    const path = i.path.join(".");
-    return path ? `${path}: ${i.message}` : i.message;
-  });
-  return { ok: false, errors: errors.slice(0, 5) };
-}
+/* Schemas live in @/lib/validation (server-safe) so /api/admin/* writes
+   re-validate with the SAME rules — re-exported here so every dashboard
+   editor keeps importing from the store untouched. */
+export {
+  certSchema,
+  isTableName,
+  projectSchema,
+  serviceSchema,
+  skillSchema,
+  tableSchemas,
+  validate,
+  type TableName as ValidatedTableName,
+  type ValidationResult,
+} from "@/lib/validation";
 
 /* --------------------------------- seed --------------------------------- */
 
@@ -429,6 +379,7 @@ function seedCerts(): AdminCert[] {
     skills: [...skills],
     image: images[code] ?? "",
     verify: "",
+    verifyLogo: "",
     visible: true,
   }));
 }
@@ -497,10 +448,59 @@ function seed(): AdminDB {
       verificationBadges: [],
       heroImage: "/images/general/hero.jpg",
       aboutImage: "/images/general/about2.jpg",
+      catLabels: {},
     },
     visitsBase: 0,
     visitsBump: 0,
   };
+}
+
+/**
+ * Empty console for a brand-new BUDI OS account — zero services, skills,
+ * projects and certificates, so opening e.g. Kayan never shows another
+ * dashboard's content. Only the main BUDI Portfolio workspace inherits the
+ * full seed; every other account starts blank with its own welcome.
+ */
+function emptyDb(): AdminDB {
+  const base = seed();
+  base.skills = [];
+  base.services = [];
+  base.projects = [];
+  base.certs = [];
+  base.visitsBase = 0;
+  base.visitsBump = 0;
+  // Blank BUDI-specific identity — a new account must never wake up
+  // wearing another dashboard's name, email, payment rails or photos.
+  base.settings = {
+    ...base.settings,
+    siteName: "",
+    tagline: "",
+    contactEmail: "",
+    workNote: "",
+    workNoteFr: "",
+    workUntil: "",
+    vodafoneNumber: "",
+    vodafoneAt: "",
+    taptapAt: "",
+    instapayHandle: "",
+    instapayAt: "",
+    heroImage: "",
+    aboutImage: "",
+    catLabels: {},
+  };
+  return base;
+}
+
+/**
+ * True only for the main console — every other namespace starts empty.
+ * FAIL-CLOSED: an unset ("") namespace is NEVER treated as main. The old
+ * behavior ("" → main seed + legacy key) meant any code path that read the
+ * DB before the namespace was set would wake up wearing BUDI's identity —
+ * exactly the "Kayan opens BUDI's dashboard" leak. Now that path yields an
+ * empty console instead of someone else's data.
+ */
+function isMainNamespace(): boolean {
+  return storeNamespace === "budi-portfolio";
 }
 
 /** v1/v2 → v3 migration — keeps every edit, fills new bilingual fields. */
@@ -584,6 +584,7 @@ function migrateToV3(raw: Record<string, unknown>): AdminDB {
             skills: Array.isArray(c.skills) ? (c.skills as string[]) : [...fallback.skills],
             image: typeof c.image === "string" ? c.image : fallback.image,
             verify: typeof c.verify === "string" ? c.verify : fallback.verify,
+            verifyLogo: typeof c.verifyLogo === "string" ? c.verifyLogo.slice(0, 1500000) : "",
             visible: typeof c.visible === "boolean" ? c.visible : true,
           };
         })
@@ -639,15 +640,26 @@ function backfillMedia(db: AdminDB): void {
     if (typeof (p as { sponsored?: unknown }).sponsored !== "boolean")
       (p as { sponsored: boolean }).sponsored = false;
   }
+  for (const c of db.certs) {
+    if (typeof (c as { verifyLogo?: unknown }).verifyLogo !== "string")
+      (c as { verifyLogo: string }).verifyLogo = "";
+  }
   if (db.settings) {
     const st = db.settings as unknown as Record<string, unknown>;
     if (typeof st.siteVerified !== "boolean") st.siteVerified = true;
     if (!Array.isArray(st.verificationBadges)) st.verificationBadges = [];
+    if (!st.catLabels || typeof st.catLabels !== "object" || Array.isArray(st.catLabels))
+      st.catLabels = {};
   }
 }
 
 export function loadDB(): AdminDB {
   const key = scopedKey(STORE_KEY);
+  if (storeNamespace === "" && typeof console !== "undefined" && process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[admin-store] loadDB with unset namespace — call setStoreNamespace(workspaceId) first. Failing closed to an empty console.",
+    );
+  }
   try {
     let raw = window.localStorage.getItem(key);
     // Upgrade path: ONLY the main BUDI Portfolio workspace inherits the
@@ -681,7 +693,9 @@ export function loadDB(): AdminDB {
   } catch {
     /* corrupted/blocked — reseed */
   }
-  const fresh = seed();
+  // Fresh account with no stored DB: main console gets the full seed,
+  // every other workspace gets a blank console + its own welcome.
+  const fresh = isMainNamespace() ? seed() : emptyDb();
   saveDB(fresh);
   return fresh;
 }
@@ -695,7 +709,7 @@ export function saveDB(db: AdminDB): void {
 }
 
 export function resetDB(): AdminDB {
-  const fresh = seed();
+  const fresh = isMainNamespace() ? seed() : emptyDb();
   fresh.visitsBump = 0;
   saveDB(fresh);
   return fresh;
@@ -864,5 +878,10 @@ export function readSkillLiked(): Record<string, boolean> {
 }
 
 export function uid(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4).toString(36)}`;
+  // Crypto-random IDs: Math.random is predictable + collision-prone.
+  try {
+    return `${prefix}-${crypto.randomUUID()}`;
+  } catch {
+    return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+  }
 }

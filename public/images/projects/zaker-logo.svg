@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="zaker-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5e0a8"/>
+      <stop offset="55%" stop-color="#e9c46a"/>
+      <stop offset="100%" stop-color="#b8933a"/>
+    </linearGradient>
+    <radialGradient id="zaker-glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#e9c46a" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#e9c46a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="400" height="300" rx="24" fill="#05080d"/>
+  <rect x="0" y="0" width="400" height="300" rx="24" fill="url(#zaker-glow)"/>
+  <g transform="translate(200,138)">
+    <polygon
+      points="0,-92 80,-46 80,46 0,92 -80,46 -80,-46"
+      fill="rgba(233,196,106,0.08)"
+      stroke="url(#zaker-gold)"
+      stroke-width="5"
+      stroke-linejoin="round"
+    />
+    <circle cx="0" cy="-92" r="8" fill="#e9c46a"/>
+    <text x="0" y="38" text-anchor="middle" font-size="96" font-weight="900" font-family="Arial, sans-serif" fill="#e9c46a">Z</text>
+  </g>
+  <text x="200" y="262" text-anchor="middle" font-size="34" font-weight="900" letter-spacing="10" font-family="Arial, sans-serif" fill="#f5e0a8">ZAKER</text>
+</svg>

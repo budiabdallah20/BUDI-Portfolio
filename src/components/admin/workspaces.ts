@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * BUDI OS — workspace registry (the "100 dashboards, one app" system).
+ * BUDI OS — workspace registry (dashboards as saved entities).
  *
- * One workspace = one dashboard account (BUDI Portfolio, Kayan, Massar…).
- * The registry is intentionally LIGHTWEIGHT — meta + login record only:
- * id, name, logo, theme, PIN gate, optional external dashboard URL.
- * Project data is NEVER stored here: builtin workspaces keep their own
+ * One workspace = one dashboard (BUDI Portfolio, Kayan, Massar…). 
+ * The registry is intentionally lightweight — meta + login record only:
+ * id, name, logo, theme, optional external dashboard URL, motto.
+ * Project data is never stored here: builtin workspaces keep their own
  * isolated local DB (`budi-admin-db__<id>`) + their own Supabase project,
  * external workspaces live wherever their dashboard URL points.
  *
  * Session model:
  * - localStorage `budi-os-workspaces` → the registry (survives restart)
- * - localStorage `budi-os-last` → last opened workspace (resume on return)
- * - sessionStorage `budi-os-auth__<id>` → unlocked this tab (per-workspace)
- * - sessionStorage admin secret stays per-tab via remote.ts
+ * - localStorage `budi-os-last` → last opened dashboard (resume on return)
+ * - sessionStorage `budi-admin` → control-center gate (single)
+ * - sessionStorage `budi-admin-secret` → admin secret for writes
  */
 
 export interface Workspace {
@@ -23,12 +23,14 @@ export interface Workspace {
   tagline: string;
   /** Logo image (path / URL / data URL). Empty = BUDI mark. */
   logo: string;
-  /** Accent color for this workspace's loader + hub card. */
+  /** Accent color for this workspace's hub card. */
   theme: string;
-  /** Local PIN gate for this workspace — exactly 4 digits (matches the
-   *  PIN pad). Server PIN still guards cloud writes for the builtin
-   *  workspace via /api/admin/verify. */
-  pin: string;
+  /** Console opening verse — this dashboard's own voice on the home tab.
+   *  Empty = main console rotates the shared verses, other consoles show
+   *  a setup hint until the owner sets one from the hub. */
+  mottoAr: string;
+  mottoEn: string;
+  mottoRef: string;
   /** "builtin" = this app's full dashboard · "external" = linked URL. */
   kind: "builtin" | "external";
   /** External dashboard URL (external workspaces only). */
@@ -41,7 +43,6 @@ export interface Workspace {
 
 const REGISTRY_KEY = "budi-os-workspaces";
 const LAST_KEY = "budi-os-last";
-const AUTH_PREFIX = "budi-os-auth__";
 
 const DEFAULT_THEME = "#ff3d00";
 
@@ -61,7 +62,9 @@ export function builtinWorkspace(): Workspace {
     tagline: "Full-stack portfolio console",
     logo: "",
     theme: DEFAULT_THEME,
-    pin: "2909",
+    mottoAr: "",
+    mottoEn: "",
+    mottoRef: "",
     kind: "builtin",
     dashboardUrl: "",
     createdAt: 0,
@@ -81,13 +84,16 @@ function normalize(raw: unknown): Workspace | null {
     typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0;
   const theme =
     typeof r.theme === "string" && /^#[0-9a-fA-F]{6}$/.test(r.theme) ? r.theme : DEFAULT_THEME;
+  const id = r.id.slice(0, 60);
   return {
-    id: r.id.slice(0, 60),
+    id,
     name: r.name.slice(0, 60),
     tagline: str(r.tagline, "", 120),
     logo: str(r.logo, "", 1500000),
     theme,
-    pin: typeof r.pin === "string" && /^\d{4}$/.test(r.pin) ? r.pin : "2909",
+    mottoAr: str(r.mottoAr, "", 300),
+    mottoEn: str(r.mottoEn, "", 300),
+    mottoRef: str(r.mottoRef, "", 80),
     kind: r.kind === "external" ? "external" : "builtin",
     dashboardUrl: str(r.dashboardUrl, "", 500),
     createdAt: num(r.createdAt),
@@ -127,7 +133,7 @@ export function saveWorkspace(ws: Workspace): Workspace[] {
   const merged = [clean, ...loadWorkspaces().filter((w) => w.id !== clean.id)];
   const builtin = merged.find((w) => w.id === builtinWorkspace().id);
   const rest = merged.filter((w) => w.id !== builtinWorkspace().id);
-  rest.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt || b.createdAt - a.createdAt);
+  rest.sort((a, b) => b.lastOpenedAt - a.createdAt || b.createdAt - a.createdAt);
   const next = [...(builtin ? [builtin] : []), ...rest].slice(0, 101);
   persist(next);
   return next;
@@ -139,7 +145,6 @@ export function removeWorkspace(id: string): Workspace[] {
   persist(next);
   try {
     window.localStorage.removeItem(`budi-admin-db__${id}`);
-    window.sessionStorage.removeItem(`${AUTH_PREFIX}${id}`);
   } catch {
     /* ignore */
   }
@@ -151,19 +156,24 @@ export function createWorkspace(input: {
   tagline?: string;
   logo?: string;
   theme?: string;
-  pin?: string;
+  mottoAr?: string;
+  mottoEn?: string;
+  mottoRef?: string;
   kind?: "builtin" | "external";
   dashboardUrl?: string;
 }): Workspace {
   const now = Date.now();
+  const id = `${slugId(input.name)}-${now.toString(36)}`;
   const ws: Workspace = {
-    id: `${slugId(input.name)}-${now.toString(36)}`,
+    id,
     name: input.name.trim().slice(0, 60),
     tagline: (input.tagline ?? "").trim().slice(0, 120),
     logo: (input.logo ?? "").slice(0, 1500000),
     theme:
       input.theme && /^#[0-9a-fA-F]{6}$/.test(input.theme) ? input.theme : DEFAULT_THEME,
-    pin: input.pin && /^\d{4}$/.test(input.pin) ? input.pin : "2909",
+    mottoAr: (input.mottoAr ?? "").trim().slice(0, 300),
+    mottoEn: (input.mottoEn ?? "").trim().slice(0, 300),
+    mottoRef: (input.mottoRef ?? "").trim().slice(0, 80),
     kind: input.kind === "external" ? "external" : "builtin",
     dashboardUrl: (input.dashboardUrl ?? "").trim().slice(0, 500),
     createdAt: now,
@@ -174,7 +184,7 @@ export function createWorkspace(input: {
   return ws;
 }
 
-/** Record a successful unlock — the "سجل امتى دخل" login ledger. */
+/** Record a successful open — the login ledger (last open + open count). */
 export function recordOpen(id: string): Workspace[] {
   const list = loadWorkspaces().map((w) =>
     w.id === id ? { ...w, lastOpenedAt: Date.now(), openCount: w.openCount + 1 } : w,
@@ -204,45 +214,7 @@ export function clearLastWorkspace(): void {
   }
 }
 
-function authKey(id: string): string {
-  return `${AUTH_PREFIX}${id}`;
-}
-
-export function isWorkspaceAuthed(id: string): boolean {
-  try {
-    // Legacy single-dashboard session counts for the builtin workspace.
-    if (id === builtinWorkspace().id && window.sessionStorage.getItem("budi-admin") === "1")
-      return true;
-    return window.sessionStorage.getItem(authKey(id)) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function markWorkspaceAuthed(id: string): void {
-  try {
-    window.sessionStorage.setItem(authKey(id), "1");
-    if (id === builtinWorkspace().id) window.sessionStorage.setItem("budi-admin", "1");
-  } catch {
-    /* session-only fallback */
-  }
-}
-
-export function logoutWorkspace(id: string): void {
-  try {
-    window.sessionStorage.removeItem(authKey(id));
-    if (id === builtinWorkspace().id) {
-      window.sessionStorage.removeItem("budi-admin");
-      window.sessionStorage.removeItem("budi-admin-secret");
-    } else {
-      window.sessionStorage.removeItem(`budi-admin-secret__${id}`);
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
-/** First-open welcome flag — one designed greeting per account, ever. */
+/** First-open welcome flag — one designed greeting per dashboard. */
 function welcomedKey(id: string): string {
   return `budi-os-welcomed__${id}`;
 }

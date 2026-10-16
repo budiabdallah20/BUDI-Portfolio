@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import SmartImage from "@/components/SmartImage";
+import { EgyptFlag, SuezFlag } from "@/components/Flags";
 import type { SiteAvailability } from "@/components/WorkStatus";
 import { formatBadgeDate, workLabel } from "@/components/WorkStatus";
 import { personal, profile, stackChips } from "@/data/portfolio";
@@ -622,6 +623,17 @@ export default function About({
             </a>
             <p className="mt-4 text-center font-mono text-[11px] tracking-[0.22em] text-faint uppercase">
               {profile.name} — 29.97°N · 32.55°E
+            </p>
+            {/* From-frame — official flags beside each home */}
+            <p className="mt-2.5 flex items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] py-0.5 pr-2.5 pl-1">
+                <SuezFlag />
+                <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">Suez</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] py-0.5 pr-2.5 pl-1">
+                <EgyptFlag />
+                <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">Egypt</span>
+              </span>
             </p>
             <p className="mt-2 text-center font-mono text-[11px] tracking-[0.22em] text-faint uppercase">
               <SuezClock />

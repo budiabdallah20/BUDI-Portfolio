@@ -1,14 +1,15 @@
 "use client";
 
-import { Award, Briefcase, Cpu, FolderGit, PartyPopper, ArrowRight } from "lucide-react";
+import { Award, Briefcase, Cpu, FolderGit, PartyPopper, ArrowRight, Quote } from "lucide-react";
 import Logo from "@/components/Logo";
 import SmartImage from "@/components/SmartImage";
+import { VERSES } from "@/data/verses";
 
 /**
- * First-open welcome for a brand-new dashboard account — even an empty
- * console gets a designed moment: the account's own logo, name, theme,
- * a greeting and the 4-step quick start. Dismiss once, never shown again
- * (flag: `budi-os-welcomed__<id>`).
+ * First-open welcome for a new dashboard — one designed moment: the dashboard's
+ * own logo, name, theme, a Quranic verse (deterministic per dashboard, SSR-safe
+ * — no random), a greeting and the 4-step quick start. Dismiss once, never
+ * shown again (flag: `budi-os-welcomed__<id>`).
  */
 export default function WorkspaceWelcome({
   name,
@@ -24,11 +25,14 @@ export default function WorkspaceWelcome({
   onEnter: () => void;
 }): React.JSX.Element {
   const steps = [
-    { icon: Briefcase, title: "أضف خدماتك", sub: "Services tab" },
-    { icon: Cpu, title: "سجّل مهاراتك", sub: "Skills tab" },
-    { icon: FolderGit, title: "اعرض مشاريعك", sub: "Projects tab" },
-    { icon: Award, title: "وثّق شهاداتك", sub: "Certificates tab" },
+    { icon: Briefcase, title: "Add your services", sub: "Services tab" },
+    { icon: Cpu, title: "Log your skills", sub: "Skills tab" },
+    { icon: FolderGit, title: "Showcase projects", sub: "Projects tab" },
+    { icon: Award, title: "Verify certificates", sub: "Certificates tab" },
   ];
+  let h = 0;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const verse = VERSES[h % VERSES.length] ?? VERSES[0]!;
   return (
     <div
       role="dialog"
@@ -67,16 +71,37 @@ export default function WorkspaceWelcome({
           style={{ color: theme }}
         >
           <PartyPopper className="h-3.5 w-3.5" aria-hidden="true" />
-          حساب جديد · New account
+          New dashboard
         </p>
         <h2 className="font-display relative mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-          أهلاً بيك في <span style={{ color: theme }}>{name}</span>
+          Welcome to <span style={{ color: theme }}>{name}</span>
         </h2>
         <p className="relative mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/60">
-          {tagline !== "" ? tagline : "لوحة تحكم جديدة فاضية ومستعدة — املاها بطريقتك."}
+          {tagline !== "" ? tagline : "A brand-new console, empty and ready — make it yours."}
           <br />
-          <span className="text-white/40">This console is yours: isolated data, own loader, own PIN.</span>
+          <span className="text-white/40">This console is yours: isolated data.</span>
         </p>
+
+        <blockquote
+          className="relative mx-auto mt-5 max-w-md overflow-hidden rounded-2xl border px-5 py-4"
+          style={{ borderColor: `${theme}44`, backgroundColor: `${theme}0d` }}
+        >
+          <Quote
+            className="absolute top-2 left-3 h-4 w-4 opacity-40"
+            style={{ color: theme }}
+            aria-hidden="true"
+          />
+          <p dir="rtl" lang="ar" className="text-[15px] leading-loose text-white/90">
+            {verse.ar}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-white/50">{verse.en}</p>
+          <footer
+            className="mt-2 font-mono text-[10px] tracking-[0.25em] uppercase tabular-nums"
+            style={{ color: theme }}
+          >
+            {verse.ref}
+          </footer>
+        </blockquote>
 
         <div className="relative mt-6 grid grid-cols-2 gap-2 text-left">
           {steps.map((s, i) => (
@@ -108,11 +133,11 @@ export default function WorkspaceWelcome({
           className="relative mt-7 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-black transition-all hover:-translate-y-0.5 hover:brightness-110"
           style={{ backgroundColor: theme, color: "#0a0a0b", boxShadow: `0 18px 50px -14px ${theme}` }}
         >
-          افتح لوحة التحكم · Enter console
+          Enter console
           <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </button>
         <p className="relative mt-3 font-mono text-[9px] tracking-[0.2em] text-white/30 uppercase">
-          BUDI OS · isolated workspace
+          BUDI OS · isolated dashboard
         </p>
       </div>
     </div>

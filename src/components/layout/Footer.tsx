@@ -1,25 +1,37 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
 import {
   ArrowUp,
   ArrowUpRight,
+  Cake,
   Check,
   Copy,
   Heart,
+  Lock,
   Mail,
   MapPin,
   MessageCircle,
+  PartyPopper,
   Phone,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import { EgyptFlag, SuezFlag } from "@/components/Flags";
 import { navLinks, profile, socialLinks, stackChips } from "@/data/portfolio";
 import { TECH_STACK, techLogo } from "@/data/techLogos";
 import { verseOfDay } from "@/data/verses";
 import { useLanguage } from "@/components/providers/LanguageProvider";
+import {
+  daysUntilBirthday,
+  isBirthday,
+  isPreviewHost,
+  nextBirthdayStartMs,
+  splitCountdown,
+} from "@/lib/birthday";
 import { useNow } from "@/hooks/useNow";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import type { SiteAvailability } from "@/components/WorkStatus";
@@ -47,6 +59,20 @@ const COPY = {
     rights: "All rights reserved.",
     top: "Back to top",
     status: "All systems operational",
+    secured: "Secured · HTTPS",
+    securedLocal: "Secure context · Local",
+    securedHttp: "HTTP · Dev only",
+    securedTitle: "HTTPS + HSTS preload + CSP — anonymous stats only, your data stays yours.",
+    bdayToday: "BUDI Vault — open now",
+    bdayPreview: "Vault preview",
+    bdayTitleOpen: "October 24 is here — the BUDI Vault is open.",
+    bdayTitleLocked: "BUDI Vault opens every October 24.",
+    vaultName: "BUDI Vault",
+    vaultOpens: "Opens Oct 24",
+    vaultDaysLeft: "days left",
+    vaultDayLeft: "day left",
+    vaultToday: "Unlocked — step inside",
+    vaultAr: "فاضل كام يوم ويفتح",
   },
   fr: {
     eyebrow: "La dernière image",
@@ -69,6 +95,20 @@ const COPY = {
     rights: "Tous droits réservés.",
     top: "Retour en haut",
     status: "Tous les systèmes sont opérationnels",
+    secured: "Protégé · HTTPS",
+    securedLocal: "Contexte sûr · Local",
+    securedHttp: "HTTP · Dev uniquement",
+    securedTitle: "HTTPS + HSTS preload + CSP — stats anonymes, vos données restent à vous.",
+    bdayToday: "Coffre BUDI — ouvert",
+    bdayPreview: "Aperçu du coffre",
+    bdayTitleOpen: "Le 24 octobre est là — le coffre est ouvert.",
+    bdayTitleLocked: "Le coffre BUDI ouvre chaque 24 octobre.",
+    vaultName: "Coffre BUDI",
+    vaultOpens: "Ouvre le 24 oct",
+    vaultDaysLeft: "jours restants",
+    vaultDayLeft: "jour restant",
+    vaultToday: "Déverrouillé — entrez",
+    vaultAr: "فاضل كام يوم ويفتح",
   },
 } as const;
 
@@ -97,6 +137,38 @@ export default function Footer({
   const now = useNow(1000);
   const [copied, setCopied] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  /**
+   * Transport badge — resolved AFTER mount so SSR and first paint stay
+   * byte-identical (no hydration mismatch): the pill appears the moment
+   * the browser tells us the real scheme. https → green shield, localhost
+   * → secure-context shield (browsers treat it as secure), plain-LAN http
+   * → honest amber dev-only badge, never a fake green.
+   */
+  const [transport, setTransport] = useState<"https" | "local" | "http" | null>(null);
+  /**
+   * Birthday button — same mount-only pattern: null until the browser tells
+   * us hostname + Cairo date (single source of truth in @/lib/birthday).
+   * Visitors see a locked Oct-24 pill with the live days-left; the owner
+   * (local preview) or Oct 24 itself gets the glowing button.
+   */
+  const [bday, setBday] = useState<{ open: boolean; preview: boolean; days: number } | null>(null);
+  useEffect(() => {
+    try {
+      const host = window.location.hostname;
+      if (window.location.protocol === "https:") {
+        setTransport("https");
+      } else {
+        setTransport(host === "localhost" || host === "127.0.0.1" || host === "::1" ? "local" : "http");
+      }
+      const now = new Date();
+      const preview = isPreviewHost(host);
+      const today = isBirthday(now);
+      setBday({ open: today || preview, preview: preview && !today, days: daysUntilBirthday(now) });
+    } catch {
+      setTransport(null);
+      setBday(null);
+    }
+  }, []);
   const ctaRef = useRef<HTMLAnchorElement>(null);
   const c = lang === "fr" ? COPY.fr : COPY.en;
   const year = new Date().getFullYear();
@@ -298,47 +370,47 @@ export default function Footer({
               }}
             />
             <a href="#home" className="group relative inline-flex items-center gap-3" aria-label="BUDI — back to home">
-              {/* Living logo — orbiting conic glow + breathing aura + play on hover */}
+              {/* Official mark — gold aura, calm */}
               <span className="relative flex h-12 w-12 items-center justify-center">
                 {!reduced && (
                   <>
                     <span
                       aria-hidden="true"
-                      className="animate-spin-conic absolute inset-0 rounded-full opacity-80"
+                      className="animate-spin-conic absolute inset-0 rounded-full opacity-70"
                       style={{
                         background:
-                          "conic-gradient(from 0deg, transparent 0%, #ff3d00 18%, #d7fd44 38%, transparent 55%, transparent 70%, #a78bfa 85%, transparent 100%)",
+                          "conic-gradient(from 0deg, transparent 0%, #d4af37 22%, #f9edb0 38%, transparent 55%, transparent 70%, #d4af37 85%, transparent 100%)",
                         filter: "blur(5px)",
                       }}
                     />
                     <span
                       aria-hidden="true"
-                      className="animate-ping-soft absolute inset-1 rounded-full border border-accent/50"
+                      className="animate-ping-soft absolute inset-1 rounded-full border border-[#d4af37]/40"
                     />
                   </>
                 )}
                 <span
                   aria-hidden="true"
-                  className="absolute inset-[3px] rounded-full bg-background shadow-[0_0_26px_rgba(255,61,0,0.5)] transition-shadow duration-300 group-hover:shadow-[0_0_38px_rgba(215,253,68,0.65)]"
+                  className="absolute inset-[3px] rounded-full bg-background shadow-[0_0_26px_rgba(212,175,55,0.45)] transition-shadow duration-300 group-hover:shadow-[0_0_38px_rgba(212,175,55,0.6)]"
                 />
                 <span className="relative transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
-                  <Logo />
+                  <Logo variant="mark" />
                 </span>
               </span>
               <span className="leading-none">
                 <span
                   className="font-display block text-2xl font-black tracking-tight"
                   style={{
-                    background: "linear-gradient(100deg, #f4f4ef 20%, #d7fd44 50%, #ff3d00 80%)",
+                    background: "linear-gradient(100deg, #f5eed6 20%, #e9ce7a 50%, #d4af37 80%)",
                     WebkitBackgroundClip: "text",
                     backgroundClip: "text",
                     color: "transparent",
-                    filter: "drop-shadow(0 0 14px rgba(255,61,0,0.35))",
+                    filter: "drop-shadow(0 0 14px rgba(212,175,55,0.35))",
                   }}
                 >
                   BUDI
                 </span>
-                <span className="mt-1 flex items-center gap-1 font-mono text-[9px] tracking-[0.3em] text-accent uppercase">
+                <span className="mt-1 flex items-center gap-1 font-mono text-[9px] tracking-[0.3em] text-[#d4af37] uppercase">
                   <Sparkles className="h-3 w-3" aria-hidden="true" />
                   Full-Stack Dev
                 </span>
@@ -347,14 +419,16 @@ export default function Footer({
             <p className="relative mt-4 max-w-xs border-l-2 border-accent/60 pl-3 text-sm leading-relaxed text-muted italic transition-all duration-300 group-hover/brand:border-accent group-hover/brand:text-foreground/90 group-hover/brand:drop-shadow-[0_0_16px_rgba(255,61,0,0.25)]">
               {t.about.lede}
             </p>
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1.5 font-mono text-[11px] tracking-[0.2em] text-muted uppercase tabular-nums" suppressHydrationWarning>
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 py-1.5 pr-3 pl-1.5 font-mono text-[11px] tracking-[0.2em] text-muted uppercase tabular-nums" suppressHydrationWarning>
               <span className="relative flex h-1.5 w-1.5">
                 {!reduced && (
                   <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-accent" />
                 )}
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
               </span>
-              Suez, EG{suezTime ? ` · ${suezTime}` : ""}
+              <SuezFlag />
+              <span>Suez, EG{suezTime ? ` · ${suezTime}` : ""}</span>
+              <EgyptFlag />
             </p>
           </div>
 
@@ -545,6 +619,112 @@ export default function Footer({
             </span>
             {c.status}
           </p>
+          {transport !== null && (
+            <p
+              title={c.securedTitle}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase ${
+                transport === "http"
+                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.28)]"
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                {!reduced && (
+                  <span
+                    className={`animate-ping-soft absolute inline-flex h-full w-full rounded-full ${
+                      transport === "http" ? "bg-amber-400" : "bg-emerald-400"
+                    }`}
+                  />
+                )}
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${
+                    transport === "http" ? "bg-amber-400" : "bg-emerald-400"
+                  }`}
+                />
+              </span>
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              {transport === "https"
+                ? c.secured
+                : transport === "local"
+                  ? c.securedLocal
+                  : c.securedHttp}
+            </p>
+          )}
+          {bday !== null &&
+            (() => {
+              const targetMs = !bday.open && now ? nextBirthdayStartMs(now.getTime()) : 0;
+              const left = !bday.open && now ? splitCountdown(targetMs - now.getTime()) : null;
+              const pad = (n: number): string => String(n).padStart(2, "0");
+              const timer = left ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}` : `${bday.days}d`;
+              const yearProgress = Math.min(100, Math.max(0, ((365 - bday.days) / 365) * 100));
+              if (bday.open) {
+                return (
+                  <span className="flex flex-col items-center gap-1.5">
+                    <a
+                      href="/birthday"
+                      title={c.bdayTitleOpen}
+                      className="flex items-center gap-2 rounded-full border border-[#d4af37]/60 bg-[#d4af37]/10 px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-[#f9edb0] uppercase shadow-[0_0_28px_rgba(212,175,55,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
+                    >
+                      <span className="relative flex h-2 w-2">
+                        {!reduced && (
+                          <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-[#d4af37]" />
+                        )}
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#d4af37]" />
+                      </span>
+                      {bday.preview ? (
+                        <>
+                          <Cake className="h-3.5 w-3.5" aria-hidden="true" />
+                          {c.bdayPreview}
+                        </>
+                      ) : (
+                        <>
+                          <PartyPopper className="h-3.5 w-3.5" aria-hidden="true" />
+                          {c.bdayToday}
+                        </>
+                      )}
+                    </a>
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-[#e9ce7a] uppercase">
+                      {c.vaultToday}
+                    </span>
+                  </span>
+                );
+              }
+              return (
+                <span className="flex flex-col items-center gap-1.5">
+                  <a
+                    href="/birthday"
+                    title={c.bdayTitleLocked}
+                    className="group flex items-center gap-2 rounded-full border border-[#d4af37]/35 bg-surface/70 px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-muted uppercase transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/60 hover:text-[#e9ce7a] hover:shadow-[0_0_28px_rgba(212,175,55,0.35)]"
+                  >
+                    <Lock className="h-3.5 w-3.5 text-[#d4af37]" aria-hidden="true" />
+                    <span className="font-bold text-[#e9ce7a]">{c.vaultName}</span>
+                    <span aria-hidden="true" className="text-faint">
+                      ·
+                    </span>
+                    <span suppressHydrationWarning className="tabular-nums">
+                      {timer}
+                    </span>
+                  </a>
+                  <span className="flex flex-col items-center gap-0.5 text-center">
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-faint uppercase">
+                      {c.vaultOpens} · {bday.days} {bday.days === 1 ? c.vaultDayLeft : c.vaultDaysLeft}
+                    </span>
+                    <span dir="rtl" lang="ar" className="text-[11px] leading-relaxed text-[#e9ce7a]/90">
+                      {c.vaultAr} · فاضل {bday.days} {bday.days === 1 ? "يوم" : "يوم"} ويفتح
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 h-[3px] w-36 overflow-hidden rounded-full bg-white/10"
+                    >
+                      <span
+                        className="block h-full rounded-full bg-gradient-to-r from-[#d4af37] via-[#f9edb0] to-[#ff3d00]"
+                        style={{ width: `${yearProgress.toFixed(1)}%` }}
+                      />
+                    </span>
+                  </span>
+                </span>
+              );
+            })()}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -594,35 +774,51 @@ export default function Footer({
 
 
 
-        {/* Forged-with strip — the real stack behind this site, original marks */}
-        <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-surface/40 px-6 py-6">
-          <p className="text-center font-mono text-[10px] tracking-[0.35em] text-faint uppercase">
-            {lang === "fr" ? "Forgé avec" : "Forged with"}
-          </p>
-          <div
-            className="marquee relative mt-5 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
-            aria-label={lang === "fr" ? "Technologies du site" : "Site technology stack"}
+        {/* ——— Finale: verse → BUDI → slim tech strip, organized ——— */}
+        {/* BUDI finale — giant gold outline like the 07 ghost numeral */}
+        <div aria-hidden="true" className="mt-10 overflow-hidden text-center select-none">
+          <span
+            className="display block leading-none font-black tracking-tight whitespace-nowrap uppercase text-transparent"
+            style={{
+              fontSize: "clamp(4.5rem, 15vw, 11rem)",
+              WebkitTextStroke: "2px rgba(212,175,55,0.6)",
+              textShadow: "0 0 70px rgba(212,175,55,0.18)",
+            }}
           >
-            <div className="marquee-track flex w-max items-center gap-3">
+            BUDI
+          </span>
+          <span className="mx-auto mt-3 flex max-w-md items-center justify-center gap-3">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d4af37]/60 to-[#d4af37]/60" />
+            <span className="h-1.5 w-1.5 rotate-45 bg-[#d4af37] shadow-[0_0_12px_rgba(212,175,55,0.9)]" />
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-[#d4af37]/60 to-[#d4af37]/60" />
+          </span>
+          <span
+            className="budi-shimmer font-display mt-3 block text-sm font-bold tracking-[0.5em] uppercase"
+          >
+            BUDI · MMXXVI
+          </span>
+        </div>
+
+        {/* Forged-with — slim icons-only strip in a thin frame */}
+        <div className="relative mx-auto mt-8 max-w-2xl overflow-hidden rounded-full border border-[#d4af37]/20 bg-surface/40 px-5 py-3">
+          <div
+            className="marquee relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+            aria-label={lang === "fr" ? "Technologies du site" : "Site technology stack"}
+            title={lang === "fr" ? "Forgé avec" : "Forged with"}
+          >
+            <div className="marquee-track flex w-max items-center gap-4">
               {[...TECH_STACK, ...TECH_STACK].map((tech, i) => (
-                <span
+                <Image
                   key={`${tech.name}-${i}`}
+                  src={tech.logo}
+                  alt={i < TECH_STACK.length ? tech.name : ""}
                   aria-hidden={i >= TECH_STACK.length ? true : undefined}
                   title={tech.name}
-                  className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border bg-background/70 px-4 py-2.5 transition-colors duration-300 hover:border-accent/50"
-                >
-                  <Image
-                    src={tech.logo}
-                    alt=""
-                    width={22}
-                    height={22}
-                    loading="lazy"
-                    className="block h-[22px] w-[22px] object-contain"
-                  />
-                  <span className="text-[13px] font-bold whitespace-nowrap text-foreground">
-                    {tech.name}
-                  </span>
-                </span>
+                  width={20}
+                  height={20}
+                  loading="lazy"
+                  className="block h-5 w-5 shrink-0 object-contain opacity-70 transition-opacity duration-300 hover:opacity-100"
+                />
               ))}
             </div>
           </div>

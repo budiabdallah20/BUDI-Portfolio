@@ -471,7 +471,7 @@ const en: Dictionary = {
     ],
     items: [
       {
-        title: "Kayan — Study Companion",
+        title: "Zaker — Study Companion",
         desc: "Bilingual Arabic study platform: AI assistant, Pomodoro focus, flashcards, tasks, prayer times and analytics.",
         tech: ["JavaScript", "Three.js", "HTML", "CSS", "Node.js"],
         status: "in-progress",
@@ -837,7 +837,7 @@ const fr: Dictionary = {
     ],
     items: [
       {
-        title: "Kayan — Study Companion",
+        title: "Zaker — Study Companion",
         desc: "Plateforme d'étude bilingue arabe : assistant IA, focus Pomodoro, flashcards, tâches, prières et analyses.",
         tech: ["JavaScript", "Three.js", "HTML", "CSS", "Node.js"],
         status: "in-progress",

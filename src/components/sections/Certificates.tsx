@@ -9,6 +9,8 @@ import GlassModal from "@/components/GlassModal";
 import type { AdminCert } from "@/components/admin/store";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useModalScroll } from "@/hooks/useModalScroll";
+import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
 import { techLogo } from "@/data/techLogos";
 import SmartImage from "@/components/SmartImage";
 import { cn } from "@/lib/utils";
@@ -137,6 +139,11 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
   const reduced = useReducedMotion();
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const lightboxScroll = useModalScroll<HTMLDivElement>(lightbox !== null);
+  // Same counted lock + topmost Escape as GlassModal: the lightbox opens
+  // ON TOP of the dossier, so it must not fight it over body scroll.
+  useBodyScrollLock(lightbox !== null);
+  useTopmostEscape(lightbox !== null, () => setLightbox(null));
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const t = lang === "fr" ? COPY.fr : COPY.en;
   const fr = lang === "fr";
@@ -215,20 +222,6 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
   const onCardLeave = (event: React.MouseEvent<HTMLElement>): void => {
     event.currentTarget.style.transform = "";
   };
-
-  useEffect(() => {
-    if (lightbox === null) return;
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setLightbox(null);
-    };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return (): void => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [lightbox]);
 
   return (
     <section
@@ -678,7 +671,7 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setLightbox(null)}
-            className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm sm:p-10"
+            className="fixed inset-0 z-[95] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-sm sm:p-10"
           >
             <motion.div
               initial={{ scale: 0.94, y: 12 }}
@@ -686,7 +679,10 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
               exit={{ scale: 0.94, y: 12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-full w-full max-w-4xl overflow-hidden border border-border bg-surface"
+              ref={lightboxScroll.ref}
+              tabIndex={-1}
+              onKeyDown={lightboxScroll.onKeyDown}
+              className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto border border-border bg-surface focus:outline-none"
             >
               <SmartImage
                 src={certs[lightbox].image as string}

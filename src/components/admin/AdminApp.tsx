@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Dashboard from "./Dashboard";
-import Login from "./Login";
+import Login, { isAuthed } from "./Login";
 import AdminLoadingScreen from "./AdminLoadingScreen";
 import GlobalSplash from "./GlobalSplash";
 import WorkspaceHub from "./WorkspaceHub";
@@ -11,7 +11,6 @@ import { setStoreNamespace } from "./store";
 import {
   builtinWorkspace,
   hasSeenWelcome,
-  isWorkspaceAuthed,
   lastWorkspaceId,
   clearLastWorkspace,
   loadWorkspaces,
@@ -21,30 +20,58 @@ import {
 } from "./workspaces";
 
 type View =
+  | { name: "gate" }
   | { name: "hub" }
   | { name: "boot"; ws: Workspace }
-  | { name: "login"; ws: Workspace }
   | { name: "app"; ws: Workspace };
 
+/** Dev StrictMode remounts effects — the banner must still print once. */
+let adminBannerShown = false;
+
 /**
- * /admin root — BUDI OS flow:
- *   global splash → hub (or last-opened account) → per-workspace
- *   loader → PIN gate → isolated console.
- * Each workspace owns its TAB session + its local DB namespace
- * (`budi-admin-db__<id>`); switching accounts never mixes data.
+ * /admin root — new flow:
+ *   global splash → control-center gate (server-verified) → hub (dashboards) →
+ *   dashboard loader → console.
+ * Each dashboard owns its isolated local DB namespace (`budi-admin-db__<id>`).
  */
 export default function AdminApp(): React.JSX.Element {
   const [splash, setSplash] = useState(true);
-  // Lazy registry read is SSR-safe (loadWorkspaces guards window) and
-  // gives the splash the real account count on first paint.
-  const [list, setList] = useState<Workspace[]>(() => loadWorkspaces());
-  const [view, setView] = useState<View>({ name: "hub" });
-  const [booted, setBooted] = useState(false);
-  /** First-open greeting for brand-new accounts (dashboard above it). */
+  const [list, setList] = useState<Workspace[]>(() => [builtinWorkspace()]);
+  const [view, setView] = useState<View>({ name: "gate" });
   const [welcome, setWelcome] = useState(false);
 
   useEffect(() => {
     setList(loadWorkspaces());
+  }, []);
+
+  /** Chic devtools hello — static strings only, zero secrets. Confirms the
+   *  error trap is armed: any runtime error surfaces here AND as a toast. */
+  useEffect(() => {
+    if (adminBannerShown) return;
+    adminBannerShown = true;
+    // Production console stays silent — devtools hello is dev-only.
+    if (process.env.NODE_ENV === "production") return;
+    try {
+      const secure =
+        window.location.protocol === "https:" ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+      console.log(
+        "%cBUDI OS %ccontrol center",
+        "font-black font-size:20px; letter-spacing:4px; color:#ff3d00",
+        "font-bold font-size:12px; color:#d7fd44",
+      );
+      console.log(
+        "%cWelcome back, chief — every save rebuilds the live site in seconds.",
+        "font-size:12px; color:#a1a1aa",
+      );
+      console.log(
+        `%cTrap armed: runtime errors toast + log here · transport ${secure ? "secure" : "NOT secure — serve over https"}`,
+        `font-size:12px; color:${secure ? "#34d399" : "#fbbf24"}`,
+      );
+    } catch {
+      /* console blocked */
+    }
   }, []);
 
   const openWorkspace = useCallback(
@@ -54,12 +81,12 @@ export default function AdminApp(): React.JSX.Element {
         try {
           window.open(ws.dashboardUrl, "_blank", "noopener,noreferrer");
         } catch {
-          /* popup blocked — ledger still recorded */
+          /* popup blocked */
         }
         return;
       }
       setStoreNamespace(ws.id);
-      setBooted(false);
+      setList(recordOpen(ws.id));
       setView({ name: "boot", ws });
     },
     [],
@@ -67,17 +94,15 @@ export default function AdminApp(): React.JSX.Element {
 
   const finishSplash = useCallback((): void => {
     setSplash(false);
-    const fresh = loadWorkspaces();
-    setList(fresh);
-    // Resume where you left off: last-opened account boots directly,
-    // the hub is one tap away from its PIN screen.
+    setList(loadWorkspaces());
+    if (!isAuthed()) {
+      setView({ name: "gate" });
+      return;
+    }
     const last = lastWorkspaceId();
+    const fresh = loadWorkspaces();
     const target = last ? fresh.find((w) => w.id === last) : undefined;
-    if (target && (target.kind !== "external" || target.dashboardUrl === "")) {
-      if (target.kind === "external") {
-        setView({ name: "hub" });
-        return;
-      }
+    if (target && target.kind !== "external") {
       openWorkspace(target);
       return;
     }
@@ -85,49 +110,51 @@ export default function AdminApp(): React.JSX.Element {
   }, [openWorkspace]);
 
   const enterApp = useCallback((ws: Workspace): void => {
-    setBooted(true);
-    // Empty dashboards get a designed first moment — one greeting ever.
     setWelcome(ws.id !== builtinWorkspace().id && !hasSeenWelcome(ws.id));
     setView({ name: "app", ws });
   }, []);
 
-  const enterBoot = useCallback(
+  const enterBootDone = useCallback(
     (ws: Workspace): void => {
-      // Loader done → authed tabs skip the PIN, fresh tabs stop at the gate.
-      if (isWorkspaceAuthed(ws.id)) {
-        enterApp(ws);
-        return;
-      }
-      setBooted(true);
-      setView({ name: "login", ws });
-    },
-    [enterApp],
-  );
-
-  const handleAuthed = useCallback(
-    (ws: Workspace): void => {
-      setList(recordOpen(ws.id));
       enterApp(ws);
     },
     [enterApp],
   );
 
-  const handleLogout = useCallback(
-    (ws: Workspace): void => {
-      // Locked to this workspace's PIN screen (session cleared by Dashboard).
-      setBooted(true);
-      setView({ name: "login", ws });
-    },
-    [],
-  );
+  const handleAuthed = useCallback((): void => {
+    setList(loadWorkspaces());
+    const last = lastWorkspaceId();
+    const fresh = loadWorkspaces();
+    const target = last ? fresh.find((w) => w.id === last) : undefined;
+    if (target && target.kind !== "external") {
+      openWorkspace(target);
+      return;
+    }
+    setView({ name: "hub" });
+  }, [openWorkspace]);
 
   const goHub = useCallback((): void => {
-    setBooted(true);
     setView({ name: "hub" });
+  }, []);
+
+  const quickOpen = useCallback(
+    (id: string): void => {
+      const target = loadWorkspaces().find((w) => w.id === id);
+      if (target) openWorkspace(target);
+    },
+    [openWorkspace],
+  );
+
+  const handleLogout = useCallback((): void => {
+    setView({ name: "gate" });
   }, []);
 
   if (splash) {
     return <GlobalSplash workspaces={list.length} onComplete={finishSplash} />;
+  }
+
+  if (view.name === "gate") {
+    return <Login onAuthed={handleAuthed} />;
   }
 
   if (view.name === "hub") {
@@ -144,25 +171,29 @@ export default function AdminApp(): React.JSX.Element {
   }
 
   const ws = view.ws;
-  const authedView = view.name === "app";
-  const showConsole = view.name === "boot" || authedView;
   const isMain = ws.id === builtinWorkspace().id;
 
   return (
     <>
-      {showConsole && (
-        <Dashboard
-          key={ws.id}
-          workspaceId={ws.id}
-          workspaceName={isMain ? undefined : ws.name}
-          workspaceLogo={isMain ? undefined : ws.logo || undefined}
-          workspaceTheme={isMain ? undefined : ws.theme}
-          cloudSync={isMain}
-          onSwitchAccount={goHub}
-          onLogout={() => handleLogout(ws)}
-        />
-      )}
-      {authedView && welcome && (
+      <Dashboard
+        key={ws.id}
+        workspaceId={ws.id}
+        workspaceName={isMain ? undefined : ws.name}
+        workspaceLogo={isMain ? undefined : ws.logo || undefined}
+        workspaceTheme={isMain ? undefined : ws.theme}
+        cloudSync={isMain}
+        onSwitchAccount={goHub}
+        workspaces={list}
+        onQuickOpen={quickOpen}
+        isMainConsole={isMain}
+        workspaceMotto={
+          ws.mottoAr !== "" || ws.mottoEn !== ""
+            ? { ar: ws.mottoAr, en: ws.mottoEn, ref: ws.mottoRef }
+            : null
+        }
+        onLogout={handleLogout}
+      />
+      {view.name === "app" && welcome && (
         <WorkspaceWelcome
           name={ws.name}
           tagline={ws.tagline}
@@ -174,28 +205,7 @@ export default function AdminApp(): React.JSX.Element {
           }}
         />
       )}
-      {view.name === "boot" && (
-        <AdminLoadingScreen
-          word={ws.id === builtinWorkspace().id ? undefined : ws.name}
-          subtitle={ws.id === builtinWorkspace().id ? undefined : ws.tagline}
-          onComplete={() => enterBoot(ws)}
-        />
-      )}
-      {view.name === "login" && (
-        <Login
-          workspace={{
-            id: ws.id,
-            name: ws.name,
-            tagline: ws.tagline,
-            logo: ws.logo,
-            theme: ws.theme,
-            pin: ws.pin,
-            kind: ws.kind,
-          }}
-          onSwitchAccount={goHub}
-          onAuthed={() => handleAuthed(ws)}
-        />
-      )}
+      {view.name === "boot" && <AdminLoadingScreen onComplete={() => enterBootDone(ws)} />}
     </>
   );
 }

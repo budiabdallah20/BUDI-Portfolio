@@ -20,7 +20,9 @@ export async function GET(): Promise<NextResponse> {
       (r) => r.error,
     )?.error;
     if (firstError) {
-      return NextResponse.json({ error: firstError.message }, { status: 500 });
+      // Never leak raw DB errors (schema/table names) to the public.
+      console.error("[api/content] supabase error:", firstError.message);
+      return NextResponse.json({ error: "Content unavailable" }, { status: 500 });
     }
     return NextResponse.json({
       services: services.data ?? [],
@@ -32,9 +34,7 @@ export async function GET(): Promise<NextResponse> {
       likes: Object.fromEntries((likes.data ?? []).map((r) => [r.id, r.count ?? 0])),
     });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Database unreachable" },
-      { status: 500 },
-    );
+    console.error("[api/content] unreachable:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "Content unavailable" }, { status: 500 });
   }
 }

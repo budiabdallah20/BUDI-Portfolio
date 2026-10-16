@@ -3,8 +3,15 @@ import HomeShell from "@/components/home/HomeShell";
 import { siteConfig } from "@/config/site";
 import { fetchContent } from "@/lib/content";
 
-/** Fresh content at most a minute old — realtime pushes land even sooner. */
-export const revalidate = 60;
+/**
+ * ALWAYS fresh — zero stale cache, by owner demand: every dashboard edit
+ * (skill hide, badge, hero/about image, anything) must appear on the live
+ * site within seconds, no refresh. So this page renders on every request
+ * straight from Supabase instead of serving ISR snapshots.
+ * Cost: one server render + a few DB reads per visit — negligible at
+ * portfolio traffic, and crawlers still get full SSR HTML for SEO.
+ */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: siteConfig.title,

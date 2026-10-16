@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="budi-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F9EDB0"/>
+      <stop offset="38%" stop-color="#E9CE7A"/>
+      <stop offset="72%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#F5E08C"/>
+    </linearGradient>
+    <linearGradient id="budi-frame" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8A6D1B"/>
+      <stop offset="50%" stop-color="#E9CE7A"/>
+      <stop offset="100%" stop-color="#8A6D1B"/>
+    </linearGradient>
+    <radialGradient id="budi-glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="400" height="300" rx="24" fill="#050505"/>
+  <rect x="0" y="0" width="400" height="300" rx="24" fill="url(#budi-glow)"/>
+  <g transform="translate(200,140)">
+    <rect x="-150" y="-52" width="300" height="104" fill="url(#budi-gold)"/>
+    <rect x="-150" y="-52" width="72" height="104" fill="#0B0B0C"/>
+    <rect x="-40" y="-52" width="80" height="104" fill="#0B0B0C"/>
+    <text x="-114" y="30" text-anchor="middle" font-size="64" font-weight="900" font-family="Arial, sans-serif" fill="#E9CE7A">B</text>
+    <text x="-58" y="30" text-anchor="middle" font-size="64" font-weight="900" font-family="Arial, sans-serif" fill="#0B0B0C">U</text>
+    <text x="0" y="30" text-anchor="middle" font-size="64" font-weight="900" font-family="Arial, sans-serif" fill="#E9CE7A">D</text>
+    <text x="94" y="30" text-anchor="middle" font-size="64" font-weight="900" font-family="Arial, sans-serif" fill="#0B0B0C">I</text>
+    <rect x="-152" y="-54" width="304" height="108" fill="none" stroke="url(#budi-frame)" stroke-width="3"/>
+  </g>
+  <text x="200" y="258" text-anchor="middle" font-size="22" font-weight="700" letter-spacing="8" font-family="Arial, sans-serif" fill="#8A6D1B">FULL-STACK DEVELOPER</text>
+</svg>

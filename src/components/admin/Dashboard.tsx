@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import * as Sentry from "@sentry/nextjs";
 import {
@@ -11,6 +11,7 @@ import {
   Cake,
   Calendar,
   Check,
+  CircleCheck,
   Copy,
   Cpu,
   Database,
@@ -21,12 +22,15 @@ import {
   Flame,
   FolderGit,
   Gauge,
+  Gift,
   Globe,
   GraduationCap,
   HardDrive,
   Hash,
   Heart,
+  Hourglass,
   ImagePlus,
+  Info,
   Layers,
   LayoutDashboard,
   LayoutGrid,
@@ -37,6 +41,8 @@ import {
   Plus,
   Quote,
   RefreshCcw,
+  Rocket,
+  Route,
   Search,
   Server,
   Settings as SettingsIcon,
@@ -45,18 +51,21 @@ import {
   Sprout,
   Star,
   Trash2,
+  TriangleAlert,
   Upload,
   Users,
   X,
   Zap,
 } from "lucide-react";
 import { skillProjectUsage } from "@/lib/skill-usage";
+import { grantBirthdayPreview } from "@/lib/birthday";
 import Logo from "@/components/Logo";
 import { availabilityFromSettings, formatBadgeDate, workDeadlineSuffix, workLabel } from "@/components/WorkStatus";
 import { logout } from "./Login";
-import { logoutWorkspace } from "./workspaces";
+import { type Workspace } from "./workspaces";
 import {
   bumpVisit,
+  catDisplayLabel,
   certSchema,
   checkIntegrity,
   exportJSON,
@@ -70,6 +79,7 @@ import {
   resetDB,
   saveDB,
   serviceSchema,
+  setStoreNamespace,
   skillSchema,
   skillLikesKey,
   uid,
@@ -87,18 +97,33 @@ import {
   type ServiceCategory,
 } from "./store";
 import { techLogo } from "@/data/techLogos";
+import { TECH_PRESETS } from "@/data/techPresets";
 import { LIB_ICON_CHOICES, LIB_ICONS, libIcon } from "@/lib/brandIcons";
+import TechPicker from "./TechPicker";
+import TranslateEnFr from "./TranslateEnFr";
+import { TOAST_EVENT, notify, type ToastMsg } from "./toasts";
+import SuggestCopy from "./SuggestCopy";
+import CategoryManager from "./CategoryManager";
+import PrayerTimes from "./PrayerTimes";
+import Appointments from "./Appointments";
+import NotificationsInbox from "./NotificationsInbox";
+import ReminderEngine from "./ReminderEngine";
+import YearCalendar from "./YearCalendar";
 import SmartImage from "@/components/SmartImage";
 import { VERSES } from "@/data/verses";
 import { personal } from "@/data/portfolio";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
+  adminSecret,
+  deployPunch,
+  deployStatus,
   fetchSnapshot,
   remoteRemove,
   remoteSave,
   remoteSeed,
   requestRevalidate,
+  type DeployStatus,
 } from "./remote";
 
 type Tab = "home" | "services" | "skills" | "projects" | "certs" | "settings";
@@ -162,21 +187,6 @@ const PROOF_LABEL: Record<AdminSkill["proof"], string> = {
   client: "Client projects",
   learning: "Leveling up",
 };
-
-const LOGO_PRESETS = [
-  "/icons/tech/react.svg",
-  "/icons/tech/nextjs.svg",
-  "/icons/tech/typescript.svg",
-  "/icons/tech/javascript.svg",
-  "/icons/tech/tailwind.svg",
-  "/icons/tech/html.svg",
-  "/icons/tech/css.svg",
-  "/icons/tech/nodejs.svg",
-  "/icons/tech/git.svg",
-  "/icons/tech/gsap.svg",
-  "/icons/tech/framer.svg",
-  "/icons/tech/figma.svg",
-];
 
 const levelTag = (level: number): string =>
   level >= 85 ? "Expert" : level >= 70 ? "Advanced" : "Intermediate";
@@ -334,12 +344,15 @@ function ImageUploadField({
             <button
               type="button"
               onClick={() => {
+                if (!window.confirm("Delete this image? The card falls back to its default art.")) return;
                 onChange("");
                 setErr(null);
               }}
-              className="cursor-pointer font-mono text-[9px] tracking-[0.08em] text-white/30 uppercase transition-colors hover:text-red-400"
+              title="Delete image"
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-mono text-[9px] font-black tracking-[0.08em] text-red-300 uppercase transition-all hover:bg-red-500/20"
             >
-              Clear
+              <Trash2 className="h-3 w-3" aria-hidden="true" />
+              Delete image
             </button>
           )}
         </span>
@@ -396,6 +409,21 @@ function ImageUploadField({
   );
 }
 
+const LOGO_PRESETS = [
+  "/icons/tech/react.svg",
+  "/icons/tech/nextjs.svg",
+  "/icons/tech/typescript.svg",
+  "/icons/tech/javascript.svg",
+  "/icons/tech/tailwind.svg",
+  "/icons/tech/html.svg",
+  "/icons/tech/css.svg",
+  "/icons/tech/nodejs.svg",
+  "/icons/tech/git.svg",
+  "/icons/tech/gsap.svg",
+  "/icons/tech/framer.svg",
+  "/icons/tech/figma.svg",
+];
+
 /** Library-icon quick pick — one tap sets the code, tapping again clears. */
 function LibIconPicker({
   value,
@@ -430,6 +458,70 @@ function LibIconPicker({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Tech-logo quick pick — real brand marks from the top-50 pool, searchable.
+ *  One tap sets the image path, tapping again clears. Replaces the generic
+ *  icon grid: services and skills now wear real tech logos that also render
+ *  on the site cards (stored as image paths). */
+function TechLogoPicker({
+  value,
+  onPick,
+  accent,
+}: {
+  value: string;
+  onPick: (logo: string) => void;
+  accent: string;
+}): React.JSX.Element {
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const items = TECH_PRESETS.filter(
+    (p) => p.logo !== "" && (query === "" || p.name.toLowerCase().includes(query)),
+  );
+  return (
+    <div>
+      <div className="relative mb-2">
+        <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-white/30" aria-hidden="true" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search brand marks…"
+          aria-label="Search brand marks"
+          className="w-full rounded-lg border border-white/10 bg-black/40 py-2.5 pr-3 pl-9 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/35"
+        />
+      </div>
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-white/15 p-3 text-center text-xs text-white/40">
+          No brand mark matches — paste a custom image link below.
+        </p>
+      ) : (
+        <div className="grid max-h-44 grid-cols-6 gap-1.5 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-2.5 sm:grid-cols-8" role="group" aria-label="Tech logos">
+          {items.map((p) => {
+            const active = value === p.logo;
+            return (
+              <button
+                key={p.name}
+                type="button"
+                title={p.name}
+                aria-label={`Tech logo ${p.name}`}
+                aria-pressed={active}
+                onClick={() => onPick(active ? "" : p.logo)}
+                className={cn(
+                  "flex h-11 cursor-pointer items-center justify-center rounded-lg border bg-white p-1 transition-all duration-200 hover:-translate-y-0.5",
+                  active ? "border-transparent" : "border-white/10 hover:border-white/40",
+                )}
+                style={active ? { borderColor: `${accent}88`, boxShadow: `0 0 14px ${accent}66` } : undefined}
+              >
+                <span className="relative block h-7 w-7">
+                  <SmartImage src={p.logo} alt="" fill fit="contain" sizes="28px" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -647,6 +739,332 @@ function Modal({
         </div>
         <div className="relative max-h-[72vh] overflow-y-auto p-6 pt-2">{children}</div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Chic toast stack — non-blocking feedback that replaces window.alert.
+ * Errors glow red for 9s (role=alert), wins/info fade in 4.5s. Listens on
+ * the budi-toast bus so any console piece can notify without prop drilling.
+ */
+function ToastStack(): React.JSX.Element {
+  const [items, setItems] = useState<ToastMsg[]>([]);
+  useEffect(() => {
+    const onToast = (ev: Event): void => {
+      const msg = (ev as CustomEvent<ToastMsg>).detail;
+      if (!msg || typeof msg.title !== "string") return;
+      setItems((prev) => [...prev.slice(-3), msg]);
+      window.setTimeout(
+        () => {
+          setItems((prev) => prev.filter((t) => t.id !== msg.id));
+        },
+        msg.kind === "err" ? 9000 : 4500,
+      );
+    };
+    window.addEventListener(TOAST_EVENT, onToast);
+    return (): void => {
+      window.removeEventListener(TOAST_EVENT, onToast);
+    };
+  }, []);
+  if (items.length === 0) return <></>;
+  return (
+    <div aria-live="polite" className="pointer-events-none fixed right-4 bottom-4 z-[140] flex w-[min(92vw,360px)] flex-col gap-2">
+      {items.map((t) => {
+        const Icon = t.kind === "err" ? TriangleAlert : t.kind === "ok" ? CircleCheck : Info;
+        const ring =
+          t.kind === "err"
+            ? "border-red-500/50 shadow-[0_18px_50px_-12px_rgba(239,68,68,0.55)]"
+            : t.kind === "ok"
+              ? "border-emerald-400/40 shadow-[0_18px_50px_-12px_rgba(52,211,153,0.45)]"
+              : "border-sky-400/40 shadow-[0_18px_50px_-12px_rgba(56,189,248,0.45)]";
+        const glow =
+          t.kind === "err" ? "text-red-400" : t.kind === "ok" ? "text-emerald-300" : "text-sky-300";
+        return (
+          <div
+            key={t.id}
+            role={t.kind === "err" ? "alert" : "status"}
+            className={`animate-modal-pop pointer-events-auto flex items-start gap-3 rounded-2xl border bg-[#131316]/95 p-4 backdrop-blur-xl ${ring}`}
+          >
+            <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${glow}`} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white">{t.title}</p>
+              {t.body && <p className="mt-1 text-xs leading-relaxed break-words text-white/60">{t.body}</p>}
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setItems((prev) => prev.filter((x) => x.id !== t.id))}
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Giza night — pyramid-blue canvas with a whisper of gold. Static by design
+ * (motion-safe, zero cost): glass cards float above it, readability untouched.
+ * Three pyramids + a moon disc drawn in faint gold over a deep-blue sky.
+ */
+const GIZA_STARS: { l: string; t: string; s: number; o: number }[] = [
+  { l: "6%", t: "8%", s: 2, o: 0.7 },
+  { l: "12%", t: "22%", s: 1.5, o: 0.5 },
+  { l: "18%", t: "6%", s: 2, o: 0.8 },
+  { l: "24%", t: "30%", s: 1.5, o: 0.4 },
+  { l: "31%", t: "12%", s: 2, o: 0.7 },
+  { l: "38%", t: "26%", s: 1.5, o: 0.45 },
+  { l: "44%", t: "7%", s: 2.5, o: 0.85 },
+  { l: "52%", t: "18%", s: 1.5, o: 0.5 },
+  { l: "58%", t: "5%", s: 2, o: 0.75 },
+  { l: "63%", t: "28%", s: 1.5, o: 0.4 },
+  { l: "70%", t: "10%", s: 2, o: 0.7 },
+  { l: "76%", t: "24%", s: 1.5, o: 0.5 },
+  { l: "82%", t: "6%", s: 2.5, o: 0.85 },
+  { l: "88%", t: "20%", s: 1.5, o: 0.55 },
+  { l: "93%", t: "10%", s: 2, o: 0.7 },
+  { l: "97%", t: "30%", s: 1.5, o: 0.4 },
+  { l: "3%", t: "38%", s: 1.5, o: 0.35 },
+  { l: "48%", t: "34%", s: 1.5, o: 0.35 },
+];
+
+function GizaBackdrop(): React.JSX.Element {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, #0b1a33 0%, #081426 42%, #0a1224 68%, #0c1425 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-x-0 top-0 h-[30vh]"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% -10%, rgba(56,130,248,0.12), transparent 65%)",
+        }}
+      />
+      {GIZA_STARS.map((s, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full bg-[#f9edb0]"
+          style={{
+            left: s.l,
+            top: s.t,
+            width: s.s,
+            height: s.s,
+            opacity: s.o,
+            boxShadow: "0 0 6px rgba(249,237,176,0.8)",
+          }}
+        />
+      ))}
+      <div
+        className="absolute inset-x-0 bottom-0 h-[48vh]"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 70% at 50% 108%, rgba(212,175,55,0.14), transparent 65%)",
+        }}
+      />
+      <svg
+        className="absolute inset-x-0 bottom-0 h-[30vh] w-full"
+        viewBox="0 0 1440 320"
+        preserveAspectRatio="xMidYMax slice"
+      >
+        <g fill="rgba(212,175,55,0.05)" stroke="rgba(212,175,55,0.25)" strokeWidth="1.5">
+          <polygon points="80,320 180,208 280,320" opacity="0.7" />
+          <polygon points="380,320 620,76 860,320" />
+          <polygon points="830,320 1020,128 1210,320" />
+          <polygon points="1212,320 1300,190 1388,320" opacity="0.8" />
+        </g>
+        <g stroke="rgba(249,237,176,0.14)" strokeWidth="1">
+          <line x1="620" y1="76" x2="620" y2="320" />
+          <line x1="1020" y1="128" x2="1020" y2="320" />
+          <line x1="180" y1="208" x2="180" y2="320" />
+          <line x1="1300" y1="190" x2="1300" y2="320" />
+        </g>
+        <circle cx="1150" cy="66" r="26" fill="rgba(249,237,176,0.10)" />
+        <circle
+          cx="1150"
+          cy="66"
+          r="26"
+          fill="none"
+          stroke="rgba(249,237,176,0.28)"
+          strokeWidth="1.5"
+        />
+      </svg>
+      <div
+        className="absolute inset-x-0 bottom-0 h-24"
+        style={{ background: "linear-gradient(180deg, transparent, rgba(8,20,38,0.9))" }}
+      />
+    </div>
+  );
+}
+
+/**
+ * "اضرب يا بودي" — the big glowing punch: repo status + one-tap
+ * commit-and-push to GitHub. Vercel (wired to the same repo) builds and
+ * ships the production domain by itself right after — the card says so.
+ * Server does the git work (gated + rate-limited + audited); this is UI.
+ */
+function DeployCard(): React.JSX.Element {
+  const [status, setStatus] = useState<DeployStatus | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [punching, setPunching] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    // No secret, no request: firing an unauthenticated status check would
+    // only stain the console red. Real logins always carry the secret.
+    if (adminSecret().trim() === "") {
+      setStatus({ ok: true, git: false, reason: "No session secret — log in again to arm the punch." });
+      return;
+    }
+    setChecking(true);
+    try {
+      const s = await deployStatus();
+      setStatus(s);
+      setResult(null);
+    } catch (e: unknown) {
+      notify("err", "Deploy status unreachable", e instanceof Error ? e.message : "unreachable");
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const punch = (): void => {
+    if (punching) return;
+    const n = status?.dirty ?? 0;
+    if (!window.confirm(`Punch ${n} file(s) to GitHub now? This commits + pushes everything.`)) return;
+    setPunching(true);
+    setResult(null);
+    void deployPunch()
+      .then(async (res) => {
+        if (res.clean) {
+          setResult(res.message ?? "Tree already clean — nothing to punch.");
+          notify("info", "Nothing to punch", "Tree already clean.");
+        } else {
+          setResult(res.message ?? `Pushed ${res.files ?? 0} file(s) (${res.hash ?? ""}).`);
+          notify(
+            "ok",
+            "Punched to GitHub",
+            `${res.files ?? 0} file(s) · ${res.hash ?? ""} · Vercel ships the domain next.`,
+          );
+          try {
+            await requestRevalidate();
+          } catch {
+            /* local purge is best-effort */
+          }
+        }
+        await refresh();
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "unreachable";
+        setResult(msg);
+        notify("err", "Punch failed", msg);
+      })
+      .finally(() => {
+        setPunching(false);
+      });
+  };
+
+  const dirty = status?.dirty ?? 0;
+  const canPunch = !!status?.git && dirty > 0 && !checking && !punching;
+  return (
+    <div className="relative mt-5 overflow-hidden rounded-2xl border border-[#ff3d00]/30 bg-gradient-to-br from-[#ff3d00]/[0.08] via-transparent to-[#d4af37]/[0.07] p-6">
+      <span
+        aria-hidden="true"
+        className="animate-spin-conic absolute inset-[-70%] m-auto h-[240%] w-[45%] opacity-25"
+        style={{
+          background:
+            "conic-gradient(from 0deg, transparent 0%, #ff3d00 15%, #d7fd44 30%, transparent 45%, transparent 60%, #d4af37 75%, transparent 90%)",
+          filter: "blur(18px)",
+        }}
+      />
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[#ff3d00]/50 bg-[#ff3d00]/10 shadow-[0_0_40px_rgba(255,61,0,0.4)]">
+          <Rocket className="h-8 w-8 text-[#ff8a5c]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#ff8a5c]/80 uppercase">
+            Ship center · GitHub ⇄ production domain
+          </p>
+          <p dir="rtl" lang="ar" className="font-display mt-1 text-3xl font-black tracking-tight text-white">
+            اضرب يا بودي
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-white/55">
+            Commits + pushes every change to GitHub in one punch — Vercel rebuilds and ships the domain by
+            itself right after.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-[0.12em] uppercase" aria-live="polite">
+            {checking || !status ? (
+              <span className="text-white/40">Reading repo…</span>
+            ) : !status.git ? (
+              <span className="text-amber-300">{status.reason ?? "git unavailable on this server"}</span>
+            ) : (
+              <>
+                <span className="rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-white/70">
+                  {status.branch} · {dirty} file{dirty === 1 ? "" : "s"} dirty
+                </span>
+                {status.lastCommit && (
+                  <span className="max-w-full truncate rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-white/50" title={`${status.lastCommit.hash} · ${status.lastCommit.subject}`}>
+                    {status.lastCommit.hash} · {status.lastCommit.subject.slice(0, 48)}
+                  </span>
+                )}
+                {status.ahead !== null && status.ahead !== undefined && status.ahead > 0 && (
+                  <span className="rounded-lg border border-sky-400/40 bg-sky-400/10 px-2 py-1 text-sky-300">
+                    {status.ahead} ahead — punch it
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          {result && (
+            <p className="mt-2 max-w-full truncate rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white/70" title={result}>
+              {result}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-2">
+          <button
+            type="button"
+            onClick={punch}
+            disabled={!canPunch}
+            title={dirty === 0 ? "Tree clean — nothing to push" : `Commit + push ${dirty} file(s) to GitHub now`}
+            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff3d00] to-[#ff7a00] px-8 py-4 text-base font-black text-[#1a0e05] shadow-[0_16px_50px_-12px_rgba(255,61,0,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+          >
+            <Rocket className={cn("h-5 w-5", punching && "animate-bounce")} aria-hidden="true" />
+            {punching ? "Punching…" : "Punch it"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={checking || punching}
+            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 font-mono text-[10px] tracking-[0.14em] text-white/60 uppercase transition-colors hover:border-white/35 hover:text-white disabled:cursor-wait disabled:opacity-50"
+          >
+            <RefreshCcw className={cn("h-3.5 w-3.5", checking && "animate-spin")} aria-hidden="true" />
+            {checking ? "Reading…" : "Refresh status"}
+          </button>
+        </div>
+      </div>
+      {status?.git === true && dirty > 0 && (status.files?.length ?? 0) > 0 && (
+        <div className="relative mt-4 max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-[10px] leading-relaxed text-white/45" dir="ltr">
+          {status.files!.slice(0, 12).map((f) => (
+            <p key={f} className="truncate">
+              {f}
+            </p>
+          ))}
+          {(status.files?.length ?? 0) > 12 && <p>…+{(status.files?.length ?? 0) - 12} more</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1009,6 +1427,17 @@ function useSecurityMonitor(db: AdminDB | null): Monitor {
       const msg = ev.message || "Unknown runtime error";
       setTrapped((n) => n + 1);
       setLastError(msg);
+      // Chic + loud: toast the owner AND leave one clean console line.
+      // (No noise otherwise — the monitor panel keeps the full history.)
+      notify("err", "Runtime error trapped", msg.slice(0, 200));
+      // Dev-only console line — prod stays silent (toast + Sentry carry it).
+      if (process.env.NODE_ENV !== "production") {
+        try {
+          console.error("%cBUDI console — runtime error trapped", "color:#ff5d5d;font-weight:bold", msg);
+        } catch {
+          /* console unavailable */
+        }
+      }
       try {
         Sentry.captureException(new Error(msg));
       } catch {
@@ -1020,6 +1449,15 @@ function useSecurityMonitor(db: AdminDB | null): Monitor {
       const msg = reason instanceof Error ? reason.message : String(reason ?? "Unhandled rejection");
       setTrapped((n) => n + 1);
       setLastError(msg);
+      notify("err", "Unhandled rejection trapped", msg.slice(0, 200));
+      // Dev-only console line — prod stays silent (toast + Sentry carry it).
+      if (process.env.NODE_ENV !== "production") {
+        try {
+          console.error("%cBUDI console — unhandled rejection", "color:#ff5d5d;font-weight:bold", msg);
+        } catch {
+          /* console unavailable */
+        }
+      }
       try {
         Sentry.captureException(reason instanceof Error ? reason : new Error(msg));
       } catch {
@@ -1047,6 +1485,10 @@ export default function Dashboard({
   workspaceLogo,
   workspaceTheme,
   onSwitchAccount,
+  workspaces,
+  onQuickOpen,
+  isMainConsole,
+  workspaceMotto,
   cloudSync,
 }: {
   onLogout: () => void;
@@ -1058,6 +1500,14 @@ export default function Dashboard({
   workspaceTheme?: string;
   /** Back to the BUDI OS hub (account switcher). */
   onSwitchAccount?: () => void;
+  /** Full account registry for the fast console switcher (logo per account). */
+  workspaces?: Workspace[];
+  /** Jump straight into another console (loader → PIN), no hub round-trip. */
+  onQuickOpen?: (id: string) => void;
+  /** True only for the BUDI Portfolio console (owns verses rotation + cloud). */
+  isMainConsole?: boolean;
+  /** This account's own opening verse (hub-owned). Null = none set yet. */
+  workspaceMotto?: { ar: string; en: string; ref: string } | null;
   /** Local consoles skip every cloud call — zero 401 noise, pure local. */
   cloudSync?: boolean;
 }): React.JSX.Element {
@@ -1094,6 +1544,11 @@ export default function Dashboard({
   const dbRef = useRef<AdminDB | null>(null);
 
   useEffect(() => {
+    // SELF-SUFFICIENT isolation: pin the storage namespace to THIS console
+    // before touching any data. Relying on a module var set by a previous
+    // screen is what let one account wake up inside another's database
+    // (reloads, remounts, future flows). Empty id → fail closed (own key).
+    if (workspaceId) setStoreNamespace(workspaceId);
     setDb(loadDB());
     try {
       if (!sessionStorage.getItem("budi-visit-counted")) {
@@ -1103,7 +1558,10 @@ export default function Dashboard({
     } catch {
       /* ignore */
     }
-  }, []);
+    // workspaceId is fixed for the mounted console (parent remounts per
+    // account via key) — never re-runs, just satisfies exhaustive-deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId]);
 
   /* Cloud sync — Supabase rows replace the local cache when present.
      Empty cloud DB is a real state: the Home tab offers one-click seeding.
@@ -1171,7 +1629,7 @@ export default function Dashboard({
 
   const doSeed = (): void => {
     if (!CLOUD) {
-      window.alert("Local workspace — cloud seeding is off. Data stays in this browser.");
+      notify("info", "Local workspace — cloud seeding is off", "Data stays in this browser.");
       return;
     }
     const current = dbRef.current;
@@ -1179,8 +1637,10 @@ export default function Dashboard({
     setSeeding(true);
     void remoteSeed(current)
       .then((res) => {
-        window.alert(
-           `Database seeded: ${res.seeded?.services ?? 0} services · ${res.seeded?.skills ?? 0} skills · ${res.seeded?.projects ?? 0} projects · ${res.seeded?.certs ?? 0} certs. The site rebuilds instantly — open any preview to see it.`,
+        notify(
+          "ok",
+          "Database seeded",
+          `${res.seeded?.services ?? 0} services · ${res.seeded?.skills ?? 0} skills · ${res.seeded?.projects ?? 0} projects · ${res.seeded?.certs ?? 0} certs. The site rebuilds instantly — open any preview to see it.`,
         );
         return fetchSnapshot();
       })
@@ -1223,8 +1683,7 @@ export default function Dashboard({
   };
 
   const doLogout = (): void => {
-    if (workspaceId) logoutWorkspace(workspaceId);
-    else logout();
+    logout();
     onLogout();
   };
 
@@ -1241,17 +1700,27 @@ export default function Dashboard({
 
   /**
    * Sync failure handler — a 401 means the tab holds a stale secret
-   * (logged in before the server env changed). Instead of nagging with
-   * alerts, bounce back to the PIN screen for a fresh login.
+   * (logged in before the server env changed). Toast it, then bounce back
+   * to the PIN screen for a fresh login. Everything else becomes a chic
+   * red toast (auto-dismiss) + a styled console line — never a nagging
+   * blocking alert, never silent.
    */
   const syncFailed = (e: unknown, prefix: string): void => {
     if (e instanceof ApiError && e.status === 401) {
-      window.alert("Session expired — logging you out, please log in again with the current PIN.");
+      notify("err", "Session expired — logging you out", "Log in again with the current PIN.");
       doLogout();
       return;
     }
     const msg = e instanceof Error ? e.message : "unreachable";
-    window.alert(`${prefix}cloud sync failed: ${msg}`);
+    notify("err", `${prefix}cloud sync failed`, msg);
+    // Dev-only console line — prod stays silent (toast carries it).
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        console.error("%cBUDI console — cloud sync failed", "color:#ff5d5d;font-weight:bold", `${prefix}${msg}`);
+      } catch {
+        /* console unavailable */
+      }
+    }
   };
 
   /** Local-first save with cloud mirror — failures stay visible, never silent. */
@@ -1329,7 +1798,7 @@ export default function Dashboard({
    */
   const doPushAll = async (): Promise<void> => {
     if (!CLOUD) {
-      window.alert("Local workspace — cloud push is off. Data stays in this browser.");
+      notify("info", "Local workspace — cloud push is off", "Data stays in this browser.");
       return;
     }
     const current = dbRef.current;
@@ -1346,15 +1815,17 @@ export default function Dashboard({
     });
     if (!res) return;
     setLastRefresh(res.at ?? Date.now());
-    window.alert(
-      `Pushed to cloud: ${res.seeded?.services ?? 0} services · ${res.seeded?.skills ?? 0} skills · ${res.seeded?.projects ?? 0} projects · ${res.seeded?.certs ?? 0} certs. Site rebuilt instantly.`,
+    notify(
+      "ok",
+      "Pushed to cloud",
+      `${res.seeded?.services ?? 0} services · ${res.seeded?.skills ?? 0} skills · ${res.seeded?.projects ?? 0} projects · ${res.seeded?.certs ?? 0} certs. Site rebuilt instantly.`,
     );
   };
 
   /** Pull the cloud snapshot over the local DB — "make this screen == cloud". */
   const doPullAll = async (): Promise<void> => {
     if (!CLOUD) {
-      window.alert("Local workspace — cloud pull is off. Data stays in this browser.");
+      notify("info", "Local workspace — cloud pull is off", "Data stays in this browser.");
       return;
     }
     if (
@@ -1374,7 +1845,7 @@ export default function Dashboard({
     const hasRows =
       snap.services.length + snap.skills.length + snap.projects.length + snap.certs.length > 0;
     if (!hasRows) {
-      window.alert("Cloud is empty — nothing to pull. Push first.");
+      notify("info", "Cloud is empty — nothing to pull", "Push first.");
       return;
     }
     const prev = dbRef.current;
@@ -1390,7 +1861,7 @@ export default function Dashboard({
     saveDB(next);
     setDb(next);
     setRemote({ visitsTotal: snap.visitsTotal, likes: snap.likes, synced: true, empty: false });
-    window.alert("Pulled cloud snapshot — dashboard now mirrors the live site.");
+    notify("ok", "Pulled cloud snapshot", "Dashboard now mirrors the live site.");
   };
 
   /**
@@ -1463,7 +1934,7 @@ export default function Dashboard({
     const list = current[kind] as { id: string; visible: boolean }[];
     const targets = (list as never[]).filter(match);
     if (targets.length === 0) {
-      window.alert("Nothing matches — nothing changed.");
+      notify("info", "Nothing matches — nothing changed.");
       return;
     }
     if (action === "delete") {
@@ -1527,14 +1998,75 @@ export default function Dashboard({
     settings: null,
   };
 
+  /** Rename a free-form group value (project category / cert issuer):
+   *  every matching row is rewritten locally + re-saved to the cloud. */
+  const renameGroupValue = (kind: "projects" | "certs", from: string, to: string): void => {
+    const clean = to.trim().slice(0, 60);
+    if (clean === "" || clean === from) return;
+    const key = kind === "projects" ? "category" : "issuerEn";
+    const current = dbRef.current;
+    if (!current) return;
+    const targets = (current[kind] as unknown as Record<string, unknown>[]).filter(
+      (x) => (x[key] as string) === from,
+    );
+    if (targets.length === 0) return;
+    if (!window.confirm(`Rename "${from}" to "${clean}" on ${targets.length} items?${CLOUD ? " Cloud syncs too." : ""}`)) return;
+    patch((d) => {
+      for (const x of d[kind] as unknown as Record<string, unknown>[]) {
+        if ((x[key] as string) === from) x[key] = clean;
+      }
+    });
+    if (!CLOUD) return;
+    for (const t of targets) {
+      void remoteSave(kind, { ...t, [key]: clean }).catch((e: unknown) => {
+        syncFailed(e, "Renamed locally — ");
+      });
+    }
+  };
+
+  /** Rename a fixed-enum category's CONSOLE label (services/skills).
+   *  The site enum never changes — only this console's display names. */
+  const renameCatLabel = (section: "service" | "skill", value: string, label: string): void => {
+    const clean = label.trim().slice(0, 60);
+    if (clean === "") return;
+    const current = dbRef.current;
+    if (!current) return;
+    handleSettingsChange({
+      ...current.settings,
+      catLabels: { ...(current.settings.catLabels ?? {}), [`${section}:${value}`]: clean },
+    });
+  };
+
+  /** Safe project-category delete — moves items to a fallback instead of
+   *  wiping them (the inventory bulk-delete removes items permanently). */
+  const moveProjectCategory = (from: string, to: string): void => {
+    const current = dbRef.current;
+    if (!current) return;
+    const targets = current.projects.filter((p) => p.category === from);
+    if (targets.length === 0) return;
+    if (!window.confirm(`Delete category "${from}" but KEEP its ${targets.length} project(s)? They move to "${to === "" ? "General (uncategorized)" : to}".`)) return;
+    patch((d) => {
+      for (const p of d.projects) {
+        if (p.category === from) p.category = to;
+      }
+    });
+    if (!CLOUD) return;
+    for (const t of targets) {
+      void remoteSave("projects", { ...t, category: to }).catch((e: unknown) => {
+        syncFailed(e, "Moved locally — ");
+      });
+    }
+  };
+
   /** Busted preview URL — recomputed every render, so the Hard button's
    *  nonce instantly swaps the iframe to a cache-free document. */
   const previewSrc = preview === null ? "" : bustPreview(preview, previewNonce);
 
   return (
-    <div className="flex min-h-svh bg-[#0a0a0b] text-white">
+    <div className="relative isolate flex min-h-svh bg-[#081426] text-white">
+      <GizaBackdrop />
       {/* Sidebar */}
-      <aside className="fixed inset-x-0 top-0 z-[110] border-b border-white/10 bg-[#0a0a0b]/95 backdrop-blur-xl lg:inset-y-0 lg:right-auto lg:w-60 lg:border-r lg:border-b-0">
+      <aside className="fixed inset-x-0 top-0 z-[110] border-b border-white/10 bg-[#0a1526]/95 backdrop-blur-xl lg:inset-y-0 lg:right-auto lg:w-60 lg:border-r lg:border-b-0">
         <div className="group flex items-center gap-2.5 px-4 py-3 lg:px-5 lg:py-5">
           <span className="transition-all duration-500 group-hover:rotate-[-8deg] group-hover:drop-shadow-[0_0_14px_rgba(190,242,100,0.8)]">
             {workspaceLogo ? (
@@ -1565,31 +2097,38 @@ export default function Dashboard({
             const Icon = item.icon;
             const count = counts[item.id];
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setTab(item.id)}
-                aria-current={tab === item.id ? "page" : undefined}
-                className={cn(
-                  "flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
-                  tab === item.id
-                    ? "bg-[#ff3d00] font-bold text-[#1a0e05]"
-                    : "text-white/60 hover:bg-white/5 hover:text-white",
+              <Fragment key={item.id}>
+                {item.id === "services" && (
+                  <p className="mt-1 hidden shrink-0 px-3 font-mono text-[9px] tracking-[0.28em] text-white/30 uppercase lg:block">
+                    Supporting sections
+                  </p>
                 )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-                {count !== null && (
-                  <span
-                    className={cn(
-                      "ml-auto rounded-full px-2 font-mono text-[10px] tabular-nums",
-                      tab === item.id ? "bg-black/20" : "bg-white/10",
-                    )}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  aria-current={tab === item.id ? "page" : undefined}
+                  className={cn(
+                    "flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+                    tab === item.id
+                      ? "bg-[#ff3d00] font-bold text-[#1a0e05]"
+                      : "text-white/60 hover:bg-white/5 hover:text-white",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                  {count !== null && (
+                    <span
+                      className={cn(
+                        "ml-auto rounded-full px-2 font-mono text-[10px] tabular-nums",
+                        tab === item.id ? "bg-black/20" : "bg-white/10",
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              </Fragment>
             );
           })}
           <a
@@ -1627,15 +2166,62 @@ export default function Dashboard({
             Logout
           </button>
           {onSwitchAccount && (
-            <button
-              type="button"
-              onClick={onSwitchAccount}
-              title={workspaceName ? `Switch account (now in ${workspaceName})` : "Switch account"}
-              className="flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-white/55 transition-colors hover:bg-white/5 hover:text-white"
-            >
-              <Layers className="h-4 w-4" />
-              Accounts
-            </button>
+            <div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+              <p className="font-mono text-[9px] tracking-[0.24em] text-white/35 uppercase">
+                Switch console
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {(workspaces ?? []).map((ws) => {
+                  const active = ws.id === workspaceId;
+                  return (
+                    <button
+                      key={ws.id}
+                      type="button"
+                      onClick={() => {
+                        if (!active) onQuickOpen?.(ws.id);
+                      }}
+                      title={`${ws.name} — switch console`}
+                      aria-label={`Switch to ${ws.name}`}
+                      aria-current={active ? "true" : undefined}
+                      className="relative flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-xl border transition-all duration-200 hover:-translate-y-0.5"
+                      style={{
+                        borderColor: `${ws.theme}66`,
+                        backgroundColor: ws.logo !== "" ? "#ffffff" : `${ws.theme}14`,
+                        boxShadow: active
+                          ? `0 0 0 2px #0a0a0b, 0 0 0 4px ${ws.theme}, 0 0 18px ${ws.theme}88`
+                          : `0 0 10px ${ws.theme}33`,
+                      }}
+                    >
+                      {ws.logo !== "" ? (
+                        <span className="relative block h-full w-full p-1">
+                          <SmartImage src={ws.logo} alt="" fill fit="contain" sizes="40px" />
+                        </span>
+                      ) : (
+                        <span className="scale-[0.8] text-white">
+                          <Logo />
+                        </span>
+                      )}
+                      {ws.kind === "external" && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute right-0.5 bottom-0.5 h-1.5 w-1.5 rounded-full bg-sky-400"
+                          style={{ boxShadow: "0 0 6px rgba(56,189,248,0.9)" }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={onSwitchAccount}
+                  title={workspaceName ? `All dashboards (now in ${workspaceName})` : "All dashboards (hub)"}
+                  aria-label="All dashboards"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-dashed border-white/20 text-white/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/50 hover:text-white"
+                >
+                  <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           )}
         </nav>
       </aside>
@@ -1661,6 +2247,8 @@ export default function Dashboard({
               onRefreshNow={() => void doRevalidate()}
               onReset={() => setDb(resetDB())}
               onSettingsChange={handleSettingsChange}
+              motto={workspaceMotto ?? null}
+              isMain={isMainConsole !== false}
             />
           )}
           {tab === "services" && (
@@ -1674,6 +2262,7 @@ export default function Dashboard({
               onPreview={openPreview}
               onHardPreview={openHardPreview}
               refreshing={refreshing}
+              onRenameCat={(s, v, l) => renameCatLabel(s, v, l)}
             />
           )}
           {tab === "skills" && (
@@ -1687,6 +2276,7 @@ export default function Dashboard({
               onPreview={openPreview}
               onHardPreview={openHardPreview}
               refreshing={refreshing}
+              onRenameCat={(s, v, l) => renameCatLabel(s, v, l)}
             />
           )}
           {tab === "projects" && (
@@ -1701,6 +2291,8 @@ export default function Dashboard({
               onHardPreview={openHardPreview}
               refreshing={refreshing}
               likes={likeMap}
+              onRenameValue={(f, t) => renameGroupValue("projects", f, t)}
+              onSafeDelete={(f, t) => moveProjectCategory(f, t)}
             />
           )}
           {tab === "certs" && (
@@ -1714,6 +2306,7 @@ export default function Dashboard({
               onPreview={openPreview}
               onHardPreview={openHardPreview}
               refreshing={refreshing}
+              onRenameValue={(f, t) => renameGroupValue("certs", f, t)}
             />
           )}
           {tab === "settings" && (
@@ -1741,6 +2334,7 @@ export default function Dashboard({
         <ServiceEditor
           initial={editing.item}
           onClose={() => setEditing(null)}
+          labels={db.settings.catLabels}
           onSave={(item, keepOpen) => {
             patch((d) => {
               const i = d.services.findIndex((s) => s.id === item.id);
@@ -1756,6 +2350,7 @@ export default function Dashboard({
         <SkillEditor
           initial={editing.item}
           onClose={() => setEditing(null)}
+          labels={db.settings.catLabels}
           onSave={(item, keepOpen) => {
             patch((d) => {
               const i = d.skills.findIndex((s) => s.id === item.id);
@@ -1771,6 +2366,8 @@ export default function Dashboard({
         <ProjectEditor
           initial={editing.item}
           onClose={() => setEditing(null)}
+          suggestions={db.skills.map((s) => s.name)}
+          categories={[...new Set(db.projects.map((p) => p.category.trim()).filter((c) => c !== ""))].sort((a, b) => a.localeCompare(b))}
           onSave={(item, keepOpen) => {
             patch((d) => {
               const i = d.projects.findIndex((p) => p.id === item.id);
@@ -1786,6 +2383,7 @@ export default function Dashboard({
         <CertEditor
           initial={editing.item}
           onClose={() => setEditing(null)}
+          suggestions={db.skills.map((s) => s.name)}
           onSave={(item, keepOpen) => {
             patch((d) => {
               const i = d.certs.findIndex((c) => c.id === item.id);
@@ -1882,6 +2480,7 @@ export default function Dashboard({
           </div>
         </div>
       )}
+      <ToastStack />
     </div>
   );
 }
@@ -1933,8 +2532,19 @@ function AvailabilityPill({
 
 /* --------------------------------- home --------------------------------- */
 
-/** Rotating Quranic verse — the dashboard mirror of the site footer's daily verse. */
-function VerseRotator(): React.JSX.Element {
+/**
+ * Opening verse — every console speaks with its own voice:
+ * a hub-owned motto renders statically; the main console rotates the
+ * shared verses (mirror of the site footer's daily verse); any other
+ * console without a motto shows a setup hint instead of borrowed text.
+ */
+function VerseRotator({
+  motto,
+  isMain,
+}: {
+  motto: { ar: string; en: string; ref: string } | null;
+  isMain: boolean;
+}): React.JSX.Element {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const [paused, setPaused] = useState(false);
@@ -1952,6 +2562,43 @@ function VerseRotator(): React.JSX.Element {
       window.clearInterval(id);
     };
   }, [paused]);
+
+  if (motto) {
+    return (
+      <figure className="relative overflow-hidden rounded-2xl border border-[#d7fd44]/25 bg-gradient-to-br from-[#d7fd44]/[0.07] via-transparent to-[#ff3d00]/[0.07] p-6 text-center lg:col-span-3">
+        <Quote className="mx-auto h-5 w-5 text-[#d7fd44]" aria-hidden="true" />
+        <blockquote dir="rtl" lang="ar" className="mt-2 text-xl leading-loose text-white sm:text-2xl">
+          {motto.ar !== "" ? motto.ar : motto.en}
+        </blockquote>
+        {motto.ar !== "" && motto.en !== "" && (
+          <figcaption className="mt-2 text-xs leading-relaxed text-white/60 italic">
+            &ldquo;{motto.en}&rdquo;
+          </figcaption>
+        )}
+        {motto.ref !== "" && (
+          <p className="mt-2 font-mono text-[10px] tracking-[0.2em] text-white/40 uppercase">
+            {motto.ref}
+          </p>
+        )}
+        <p className="mt-2 font-mono text-[9px] tracking-[0.22em] text-[#d7fd44]/60 uppercase">
+          This console&apos;s opening verse
+        </p>
+      </figure>
+    );
+  }
+
+  if (!isMain) {
+    return (
+      <div className="relative overflow-hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center lg:col-span-3">
+        <BookOpen className="mx-auto h-5 w-5 text-white/30" aria-hidden="true" />
+        <p className="mt-2 text-sm font-bold text-white/70">No opening verse yet</p>
+        <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-white/45">
+          Give this console its own voice — set an opening verse from the hub
+          (edit this account) and it appears here instead of borrowed text.
+        </p>
+      </div>
+    );
+  }
 
   const v = VERSES[index] ?? VERSES[0]!;
 
@@ -2032,29 +2679,60 @@ function BirthdayCountdown(): React.JSX.Element {
   const dayNum = (n: number): string => (nowMs === null ? "––" : String(n));
 
   return (
-    <div className="relative mt-3 overflow-hidden rounded-2xl border border-amber-300/25 bg-gradient-to-br from-amber-300/[0.08] via-transparent to-rose-400/[0.08] p-6">
+    <div className="relative mt-3 overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-gradient-to-br from-[#d4af37]/[0.10] via-transparent to-rose-400/[0.08] p-6">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 60% 80% at 90% 10%, rgba(251,191,36,0.12), transparent 60%)",
+            "radial-gradient(ellipse 60% 80% at 90% 10%, rgba(251,191,36,0.14), transparent 60%), radial-gradient(ellipse 40% 60% at 5% 95%, rgba(212,175,55,0.10), transparent 60%)",
         }}
       />
+      {/* Magic shine sweep */}
+      <span aria-hidden="true" className="club-shine pointer-events-none absolute inset-y-0 left-0 w-1/2" />
       <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-rose-400 text-black shadow-[0_0_32px_rgba(251,191,36,0.45)]">
-          <Cake className="h-7 w-7" aria-hidden="true" />
+        <span className="relative shrink-0">
+          <span className="relative block h-16 w-16 overflow-hidden rounded-2xl border-2 border-[#d4af37]/70 shadow-[0_0_36px_rgba(212,175,55,0.55)]">
+            <Image
+              src="/images/profile/contact.jpg"
+              alt="Mohamed Abdallah"
+              width={64}
+              height={64}
+              className="h-full w-full object-cover"
+            />
+          </span>
+          <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#d4af37] text-[13px] shadow-[0_0_12px_rgba(212,175,55,0.9)]">
+            🎂
+          </span>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] tracking-[0.3em] text-amber-200/80 uppercase">
-            Birthday countdown · 24 October
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#f9edb0]/80 uppercase">
+            Birthday countdown · 24 October ♥
           </p>
           <p className="font-display mt-1 text-xl font-bold text-white sm:text-2xl">
             {isToday && nowMs !== null ? (
-              <>It&apos;s today — Mohamed turns {turning}!</>
+              <>It&apos;s today — Mohamed turns {turning}! 🎉</>
             ) : (
               <>Mohamed turns {turning} in…</>
             )}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              grantBirthdayPreview(15);
+              try {
+                window.open("/birthday", "_blank", "noopener,noreferrer");
+              } catch {
+                /* popup blocked */
+              }
+            }}
+            className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#d4af37] px-4 py-2 text-xs font-black text-[#2b2305] shadow-[0_10px_30px_-10px_rgba(212,175,55,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
+          >
+            <Gift className="h-3.5 w-3.5" aria-hidden="true" />
+            افتح هديتك · Open your gift
+          </button>
+          <p className="mt-1.5 font-mono text-[9px] tracking-[0.14em] text-white/35 uppercase">
+            Dashboard preview only — locked for visitors until Oct 24
           </p>
         </div>
         <div className="flex shrink-0 items-stretch gap-1.5" role="timer" aria-label="Time until birthday">
@@ -2094,6 +2772,8 @@ function HomeTab({
   onRefreshNow,
   onReset,
   onSettingsChange,
+  motto,
+  isMain,
 }: {
   db: AdminDB;
   visits: number;
@@ -2111,6 +2791,8 @@ function HomeTab({
   onRefreshNow: () => void;
   onReset: () => void;
   onSettingsChange: (next: AdminDB["settings"]) => void;
+  motto: { ar: string; en: string; ref: string } | null;
+  isMain: boolean;
 }): React.JSX.Element {
   const monitor = useSecurityMonitor(db);
   const dbBytes = useMemo(() => {
@@ -2218,8 +2900,138 @@ function HomeTab({
           </button>
         </div>
       )}
+      {totalItems === 0 && (
+        <div className="relative mb-4 overflow-hidden rounded-2xl border border-[#d7fd44]/30 bg-gradient-to-br from-[#d7fd44]/[0.07] via-transparent to-[#4ade80]/[0.06] p-6 text-center sm:p-8">
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#d7fd44] to-transparent"
+          />
+          <span className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d7fd44]/40 bg-[#d7fd44]/10 shadow-[0_0_30px_rgba(215,253,68,0.25)]">
+            <Sparkles className="h-6 w-6 text-[#d7fd44]" aria-hidden="true" />
+          </span>
+          <p className="relative mt-4 font-mono text-[10px] tracking-[0.3em] text-[#d7fd44]/80 uppercase">
+            Fresh console · Empty dashboard
+          </p>
+          <h3 className="font-display relative mt-2 text-2xl font-black tracking-tight sm:text-3xl">
+            Welcome to your new console
+          </h3>
+          <p className="relative mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/60">
+            This dashboard has no content yet — no services, skills, projects or
+            certificates. Everything you add here stays isolated in this account.
+          </p>
+          <div className="relative mt-5 grid grid-cols-2 gap-2 text-left sm:grid-cols-4">
+            {(
+              [
+                { id: "services" as Tab, label: "Add service", icon: Briefcase, color: "#38bdf8" },
+                { id: "skills" as Tab, label: "Add skill", icon: Cpu, color: "#d7fd44" },
+                { id: "projects" as Tab, label: "Add project", icon: FolderGit, color: "#ff3d00" },
+                { id: "certs" as Tab, label: "Add certificate", icon: Award, color: "#a78bfa" },
+              ]
+            ).map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onTab(a.id)}
+                className="group flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-black/30 px-3.5 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${a.color}1f`, color: a.color }}
+                >
+                  <a.icon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-bold text-white/80 group-hover:text-white">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Home quick-jump — long page, organized in one tap */}
+      <nav aria-label="Home sections" className="mb-4 flex flex-wrap gap-1.5">
+        {[
+          { id: "home-badges", label: "Badges" },
+          { id: "home-identity", label: "Identity" },
+          { id: "home-planner", label: "Planner" },
+          { id: "home-stats", label: "Stats" },
+          { id: "home-progress", label: "Progress" },
+          { id: "home-data", label: "Data" },
+          { id: "home-preview", label: "Preview" },
+        ].map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="cursor-pointer rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-white/55 uppercase transition-colors hover:border-[#d7fd44]/50 hover:text-[#d7fd44]"
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+      {/* Needs attention — thin spots across every section, one tap to fix */}
+      {(() => {
+        const thinServices = db.services.filter((s) => s.desc.trim() === "" || s.tags.length === 0);
+        const coverlessProjects = db.projects.filter((p) => p.image.trim() === "");
+        const unverifiedCerts = db.certs.filter((c) => c.verify.trim() === "");
+        const flatSkills = db.skills.filter((s) => s.detailEn.trim() === "" && s.detailFr.trim() === "");
+        const rows = [
+          { tab: "services" as Tab, label: "Services missing desc/tags", items: thinServices.map((s) => s.title || s.id), color: "#38bdf8", icon: Briefcase },
+          { tab: "projects" as Tab, label: "Projects without cover art", items: coverlessProjects.map((p) => p.title || p.id), color: "#ff3d00", icon: FolderGit },
+          { tab: "certs" as Tab, label: "Certificates without verify link", items: unverifiedCerts.map((c) => c.titleEn || c.id), color: "#a78bfa", icon: Award },
+          { tab: "skills" as Tab, label: "Skills without detail", items: flatSkills.map((s) => s.name || s.id), color: "#d7fd44", icon: Cpu },
+        ];
+        const total = rows.reduce((n, r) => n + r.items.length, 0);
+        if (total === 0) return null;
+        return (
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-400/[0.06] via-transparent to-transparent p-6">
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-amber-400 to-transparent"
+            />
+            <div className="relative flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.3em] text-amber-300/80 uppercase">
+                  Needs attention · {total} item{total === 1 ? "" : "s"}
+                </p>
+                <h3 className="font-display mt-1 text-2xl font-black tracking-tight">
+                  Polish these to shine
+                </h3>
+              </div>
+            </div>
+            <div className="relative mt-4 grid gap-2 sm:grid-cols-2">
+              {rows
+                .filter((r) => r.items.length > 0)
+                .map((r) => (
+                  <button
+                    key={r.tab}
+                    type="button"
+                    onClick={() => onTab(r.tab)}
+                    title={`Open ${r.tab}`}
+                    className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30"
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-black"
+                      style={{ backgroundColor: `${r.color}1f`, color: r.color }}
+                    >
+                      {r.items.length}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-white/85 group-hover:text-white">
+                        {r.label}
+                      </span>
+                      <span className="block truncate text-[11px] text-white/40">
+                        {r.items.slice(0, 3).join(" · ")}
+                        {r.items.length > 3 ? ` +${r.items.length - 3} more` : ""}
+                      </span>
+                    </span>
+                    <r.icon className="h-4 w-4 shrink-0 text-white/30 group-hover:text-white" aria-hidden="true" />
+                  </button>
+                ))}
+            </div>
+          </div>
+        );
+      })()}
       {/* Badges command — every site badge driven from here */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl border border-[#d7fd44]/25 bg-gradient-to-br from-[#d7fd44]/[0.06] via-transparent to-[#ff3d00]/[0.06] p-6">
+      <div id="home-badges" className="relative mb-4 scroll-mt-24 overflow-hidden rounded-2xl border border-[#d7fd44]/25 bg-gradient-to-br from-[#d7fd44]/[0.06] via-transparent to-[#ff3d00]/[0.06] p-6">
         <span
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#d7fd44] to-transparent"
@@ -2350,8 +3162,7 @@ function HomeTab({
                       alt=""
                       width={48}
                       height={20}
-                      className="block object-contain"
-                      style={{ width: "auto", height: "20px" }}
+                      className="block h-[20px] w-[48px] object-contain"
                     />
                   </span>
                   <p className="min-w-0 flex-1 truncate text-sm font-bold">{rail.label}</p>
@@ -2398,7 +3209,7 @@ function HomeTab({
         </div>
       </div>
       {/* Identity + verse */}
-      <div className="grid gap-3 lg:grid-cols-5">
+      <div id="home-identity" className="grid scroll-mt-24 gap-3 lg:grid-cols-5">
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-2">
           <span
             aria-hidden="true"
@@ -2448,13 +3259,29 @@ function HomeTab({
           </div>
         </div>
 
-        <VerseRotator />
+        <VerseRotator motto={motto} isMain={isMain} />
       </div>
 
       <BirthdayCountdown />
 
+      {/* Notifications — owner's bell: inbox + push + reminders engine */}
+      <div className="mt-4">
+        <NotificationsInbox />
+        <ReminderEngine />
+      </div>
+
+      {/* Day planner — year calendar + appointments + Suez prayer times */}
+      <h3 id="home-planner" className="font-display mt-8 scroll-mt-24 text-lg font-bold">Day planner</h3>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <YearCalendar />
+        <div className="flex flex-col gap-3">
+          <Appointments />
+          <PrayerTimes />
+        </div>
+      </div>
+
       {/* Quick counters */}
-      <h3 className="font-display mt-8 text-lg font-bold">Quick stats</h3>
+      <h3 id="home-stats" className="font-display mt-8 scroll-mt-24 text-lg font-bold">Quick stats</h3>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={Users} value={visits} label="Visitors" accent />
         <StatCard icon={Heart} value={likesTotal} label="Project likes" color="#fb7185" />
@@ -2463,7 +3290,7 @@ function HomeTab({
       </div>
 
       {/* Site progress per section */}
-      <h3 className="font-display mt-8 text-lg font-bold">Site progress</h3>
+      <h3 id="home-progress" className="font-display mt-8 scroll-mt-24 text-lg font-bold">Site progress</h3>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {sections.map((s) => {
           const vis = visibleOf(s.id);
@@ -2623,7 +3450,7 @@ function HomeTab({
       </div>
 
       {/* Database card */}
-      <h3 className="font-display mt-8 text-lg font-bold">Database</h3>
+      <h3 id="home-data" className="font-display mt-8 scroll-mt-24 text-lg font-bold">Database</h3>
       <div className="mt-3 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:flex-row sm:items-center">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/30">
           <HardDrive className="h-5 w-5 text-white/60" aria-hidden="true" />
@@ -2689,7 +3516,7 @@ function HomeTab({
       </div>
 
       {/* Live preview — every section, soft open or real hard rebuild */}
-      <div className="mt-8 flex flex-wrap items-baseline justify-between gap-2">
+      <div id="home-preview" className="mt-8 flex scroll-mt-24 flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-lg font-bold">Live preview</h3>
         <p className="font-mono text-[10px] tracking-[0.2em] text-white/40 uppercase">
           Eye opens · Hard rebuilds first, then opens
@@ -3063,8 +3890,10 @@ function ListShell({
 }
 
 /** Category inventory — every group at a glance: counts, live bar, and full
- *  control (filter · add inside · publish all · hide all · delete group).
- *  Shared by all four sections so classification works identically. */
+ *  control (filter · add inside · rename · publish all · hide all · delete
+ *  group) plus an inline "new category" creator when the section allows
+ *  free-form groups (projects, issuers). Shared by all four sections so
+ *  classification works identically. */
 function InventoryGrid<T extends string>({
   title,
   groups,
@@ -3072,6 +3901,9 @@ function InventoryGrid<T extends string>({
   onFilter,
   onAddIn,
   onBulk,
+  onRename,
+  onAddCategory,
+  allowSystemRename = true,
 }: {
   title: string;
   groups: { id: T; label: string; color: string; total: number; live: number; extra?: string }[];
@@ -3079,14 +3911,63 @@ function InventoryGrid<T extends string>({
   onFilter: (id: T | "all") => void;
   onAddIn: (id: T) => void;
   onBulk: (id: T, action: "delete" | "show" | "hide") => void;
+  /** Rename a group's display name (or value for free-form sections). */
+  onRename?: (id: T, label: string) => void;
+  /** Create a brand-new category (free-form sections only). */
+  onAddCategory?: (name: string) => void;
+  /** False hides the pencil on the "__none__" catch-all group. */
+  allowSystemRename?: boolean;
 }): React.JSX.Element | null {
-  if (groups.length === 0) return null;
+  const [renaming, setRenaming] = useState<T | null>(null);
+  const [draft, setDraft] = useState("");
+  const [newCat, setNewCat] = useState("");
+  if (groups.length === 0 && !onAddCategory) return null;
+  const commitRename = (id: T): void => {
+    const clean = draft.trim().slice(0, 60);
+    if (clean !== "" && onRename) onRename(id, clean);
+    setRenaming(null);
+    setDraft("");
+  };
+  const commitAdd = (): void => {
+    const clean = newCat.trim().slice(0, 60);
+    if (clean === "" || !onAddCategory) return;
+    onAddCategory(clean);
+    setNewCat("");
+  };
   return (
     <div className="relative mt-5">
-      <p className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-white/50 uppercase">
-        <Layers className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
-        {title} — inventory
-      </p>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-white/50 uppercase">
+          <Layers className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
+          {title} — inventory
+        </p>
+        {onAddCategory && (
+          <span className="ml-auto flex items-center gap-1.5">
+            <input
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value.slice(0, 60))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitAdd();
+                }
+              }}
+              placeholder="New category…"
+              aria-label="New category name"
+              maxLength={60}
+              className="w-36 rounded-lg border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/40"
+            />
+            <button
+              type="button"
+              onClick={commitAdd}
+              title="Create category"
+              className="cursor-pointer rounded-lg border border-[#d7fd44]/40 bg-[#d7fd44]/10 px-2.5 py-1.5 font-mono text-[10px] font-black tracking-[0.08em] text-[#d7fd44] uppercase transition-colors hover:bg-[#d7fd44]/20"
+            >
+              + New
+            </button>
+          </span>
+        )}
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {groups.map((g) => {
           const isActive = active === g.id;
@@ -3107,14 +3988,69 @@ function InventoryGrid<T extends string>({
                   style={{ backgroundColor: g.color, boxShadow: `0 0 10px ${g.color}` }}
                   aria-hidden="true"
                 />
-                <button
-                  type="button"
-                  onClick={() => onFilter(isActive ? "all" : g.id)}
-                  title={isActive ? "Show all" : `Filter to ${g.label}`}
-                  className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm font-bold transition-colors hover:text-white"
-                >
-                  {g.label}
-                </button>
+                {renaming === g.id ? (
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <input
+                      value={draft}
+                      autoFocus
+                      onChange={(e) => setDraft(e.target.value.slice(0, 60))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitRename(g.id);
+                        } else if (e.key === "Escape") {
+                          setRenaming(null);
+                          setDraft("");
+                        }
+                      }}
+                      aria-label={`Rename ${g.label}`}
+                      maxLength={60}
+                      className="min-w-0 flex-1 rounded-lg border border-white/30 bg-black/50 px-2 py-1 text-sm font-bold text-white outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => commitRename(g.id)}
+                      aria-label="Save name"
+                      className="shrink-0 cursor-pointer rounded-lg border border-emerald-400/50 bg-emerald-400/10 p-1.5 text-emerald-300 hover:bg-emerald-400/20"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenaming(null);
+                        setDraft("");
+                      }}
+                      aria-label="Cancel rename"
+                      className="shrink-0 cursor-pointer rounded-lg border border-white/15 p-1.5 text-white/50 hover:text-white"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onFilter(isActive ? "all" : g.id)}
+                    title={isActive ? "Show all" : `Filter to ${g.label}`}
+                    className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm font-bold transition-colors hover:text-white"
+                  >
+                    {g.label}
+                  </button>
+                )}
+                {onRename && renaming !== g.id && (allowSystemRename || g.id !== "__none__") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenaming(g.id);
+                      setDraft(g.label);
+                    }}
+                    title={`Rename ${g.label}`}
+                    aria-label={`Rename ${g.label}`}
+                    className="shrink-0 cursor-pointer rounded-lg border border-transparent p-1.5 text-white/30 transition-colors hover:border-white/25 hover:text-white"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )}
                 {g.extra && (
                   <span className="shrink-0 font-mono text-[10px] text-white/40">{g.extra}</span>
                 )}
@@ -3260,6 +4196,7 @@ function ServicesTab({
   onPreview,
   onHardPreview,
   refreshing,
+  onRenameCat,
 }: {
   db: AdminDB;
   remove: (id: string) => void;
@@ -3270,6 +4207,7 @@ function ServicesTab({
   onPreview: (href: string) => void;
   onHardPreview: (href: string) => void;
   refreshing: boolean;
+  onRenameCat: (section: "service" | "skill", value: string, label: string) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<ServiceCategory | "all">("all");
@@ -3297,7 +4235,7 @@ function ServicesTab({
     const items = db.services.filter((s) => s.category === c);
     return {
       id: c,
-      label: CAT_LABEL[c],
+      label: catDisplayLabel(db.settings.catLabels, "service", c, CAT_LABEL[c]),
       color: CAT_STYLE[c].bg,
       total: items.length,
       live: items.filter((s) => s.visible).length,
@@ -3380,6 +4318,7 @@ function ServicesTab({
           onBulk={(id, action) =>
             onBulk((x) => (x as unknown as AdminService).category === id, action)
           }
+          onRename={(id, label) => onRenameCat("service", id, label)}
         />
       }
     >
@@ -3433,7 +4372,7 @@ function ServicesTab({
                     className="rounded-full border px-3 py-1 font-mono text-[10px] font-black tracking-[0.16em] uppercase"
                     style={{ borderColor: `${cat.bg}80`, backgroundColor: `${cat.bg}1a`, color: cat.bg }}
                   >
-                    {CAT_LABEL[s.category]}
+                    {catDisplayLabel(db.settings.catLabels, "service", s.category, CAT_LABEL[s.category])}
                   </span>
                   <LiveBadge visible={s.visible} />
                   <span className="font-mono text-[10px] text-white/40 tabular-nums">
@@ -3531,6 +4470,7 @@ function SkillsTab({
   onPreview,
   onHardPreview,
   refreshing,
+  onRenameCat,
 }: {
   db: AdminDB;
   remove: (id: string) => void;
@@ -3541,6 +4481,7 @@ function SkillsTab({
   onPreview: (href: string) => void;
   onHardPreview: (href: string) => void;
   refreshing: boolean;
+  onRenameCat: (section: "service" | "skill", value: string, label: string) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<AdminSkill["cat"] | "all">("all");
@@ -3566,7 +4507,7 @@ function SkillsTab({
       items.length === 0 ? 0 : Math.round(items.reduce((n, s) => n + s.level, 0) / items.length);
     return {
       id: c,
-      label: SKILL_CAT_META[c].label,
+      label: catDisplayLabel(db.settings.catLabels, "skill", c, SKILL_CAT_META[c].label),
       color: SKILL_CAT_META[c].color,
       total: items.length,
       live: items.filter((s) => s.visible).length,
@@ -3644,6 +4585,7 @@ function SkillsTab({
           onBulk={(id, action) =>
             onBulk((x) => (x as unknown as AdminSkill).cat === id, action)
           }
+          onRename={(id, label) => onRenameCat("skill", id, label)}
         />
       }
     >
@@ -3704,7 +4646,7 @@ function SkillsTab({
                     {levelTag(s.level)} · {s.level}
                   </span>
                   <span className="rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.12em] uppercase" style={{ borderColor: `${catMeta.color}55`, color: catMeta.color }}>
-                    {catMeta.label}
+                    {catDisplayLabel(db.settings.catLabels, "skill", s.cat, catMeta.label)}
                   </span>
                   <span className="flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[10px] text-white/60 uppercase">
                     <ProofIcon className="h-3 w-3 text-[#ff3d00]" aria-hidden="true" />
@@ -3766,6 +4708,8 @@ function ProjectsTab({
   onHardPreview,
   refreshing,
   likes,
+  onRenameValue,
+  onSafeDelete,
 }: {
   db: AdminDB;
   remove: (id: string) => void;
@@ -3777,11 +4721,13 @@ function ProjectsTab({
   onHardPreview: (href: string) => void;
   refreshing: boolean;
   likes: Record<string, number>;
+  onRenameValue: (from: string, to: string) => void;
+  onSafeDelete: (from: string, to: string) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | "completed" | "in-progress">("all");
   const [pcat, setPcat] = useState<string>("all");
-  const [sort, setSort] = useState<"curated" | "newest" | "az">("curated");
+  const [sort, setSort] = useState<"curated" | "newest" | "az" | "loved">("curated");
   const q = query.trim().toLowerCase();
   const cats = useMemo(() => {
     const seen: string[] = [];
@@ -3804,15 +4750,42 @@ function ProjectsTab({
         p.tech.some((t) => t.toLowerCase().includes(q))),
   );
   const yearNum = (y: string): number => Number.parseInt(y, 10) || 0;
+  const loveOf = (p: AdminProject): number => likes[p.github || p.title] ?? 0;
   const sorted = [...filtered].sort((a, b) =>
     sort === "newest"
       ? yearNum(b.year) - yearNum(a.year)
       : sort === "az"
         ? a.title.localeCompare(b.title)
-        : 0,
+        : sort === "loved"
+          ? loveOf(b) - loveOf(a)
+          : 0,
   );
   const live = db.projects.filter((p) => p.visible).length;
   const oss = db.projects.filter((p) => p.opensource).length;
+  const blankProject = (category: string): AdminProject => ({
+    id: uid("proj"),
+    title: "",
+    titleFr: "",
+    desc: "",
+    descFr: "",
+    tech: [],
+    status: "in-progress",
+    opensource: false,
+    category,
+    github: "",
+    period: "",
+    year: String(new Date().getFullYear()),
+    demo: "",
+    image: "",
+    roleEn: "",
+    roleFr: "",
+    timelineEn: "",
+    timelineFr: "",
+    briefEn: [],
+    briefFr: [],
+    sponsored: false,
+    visible: true,
+  });
   const PALETTE = ["#ff3d00", "#38bdf8", "#a78bfa", "#fbbf24", "#34d399", "#fb7185"];
   const groups = [
     ...cats.map((c, i) => {
@@ -3863,6 +4836,7 @@ function ProjectsTab({
                 { id: "curated", label: "Curated" },
                 { id: "newest", label: "Newest" },
                 { id: "az", label: "Title A–Z" },
+                { id: "loved", label: "Most loved" },
               ]}
             />
           </div>
@@ -3889,41 +4863,33 @@ function ProjectsTab({
         </>
       }
       inventory={
+        <>
         <InventoryGrid
           title="Categories"
           groups={groups}
           active={pcat}
           onFilter={setPcat}
-          onAddIn={(id) =>
-            onEdit({
-              id: uid("proj"),
-              title: "",
-              titleFr: "",
-              desc: "",
-              descFr: "",
-              tech: [],
-              status: "in-progress",
-              opensource: false,
-              category: id === "__none__" ? "" : id,
-              github: "",
-              period: "",
-              year: String(new Date().getFullYear()),
-              demo: "",
-              image: "",
-              roleEn: "",
-              roleFr: "",
-              timelineEn: "",
-              timelineFr: "",
-              briefEn: [],
-              briefFr: [],
-              sponsored: false,
-              visible: true,
-            })
-          }
+          onAddIn={(id) => onEdit(blankProject(id === "__none__" ? "" : id))}
           onBulk={(id, action) =>
             onBulk((x) => inGroup(x as unknown as AdminProject, id), action)
           }
+          onRename={(id, label) => {
+            if (id !== "__none__") onRenameValue(id, label);
+          }}
+          onAddCategory={(name) => onEdit(blankProject(name))}
         />
+        <div className="mt-3">
+          <CategoryManager
+            title="Safe category cleanup"
+            hint="Delete a category WITHOUT losing projects — items move to a fallback"
+            categories={cats.map((c) => ({ name: c, count: db.projects.filter((p) => p.category === c).length }))}
+            accent="#ff3d00"
+            onRename={(a, b) => onRenameValue(a, b)}
+            onDelete={(name, moveTo) => onSafeDelete(name, moveTo)}
+            onAdd={(name) => onEdit(blankProject(name))}
+          />
+        </div>
+        </>
       }
     >
       {sorted.map((p) => (
@@ -4036,6 +5002,135 @@ function ProjectsTab({
 
 /* ---------------------------------- certs --------------------------------- */
 
+/** Credential freshness from the year stamp — honest age, never a fake expiry. */
+function certFreshness(year: string): { label: string; cls: string } | null {
+  const m = year.match(/(19|20)\d{2}/);
+  if (!m) return null;
+  const age = new Date().getFullYear() - Number(m[0]);
+  if (age <= 1)
+    return {
+      label: `${m[0]} · Fresh`,
+      cls: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+    };
+  if (age <= 3)
+    return {
+      label: `${m[0]} · ${age}y ago`,
+      cls: "border-sky-400/40 bg-sky-400/10 text-sky-300",
+    };
+  return {
+    label: `${m[0]} · Vintage`,
+    cls: "border-[#d4af37]/40 bg-[#d4af37]/10 text-[#e9ce7a]",
+  };
+}
+
+/** Journey span — first to latest credential year, e.g. 2019 → 2026. */
+function certYearSpan(certs: AdminCert[]): string | null {
+  const years = certs
+    .map((c) => c.year.match(/(19|20)\d{2}/)?.[0])
+    .filter((y): y is string => !!y)
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (years.length === 0) return null;
+  const first = years[0]!;
+  const last = years[years.length - 1]!;
+  return first === last ? `${first} · 1 yr of proof` : `${first} → ${last} · ${last - first + 1} yrs of proof`;
+}
+
+/**
+ * Journey timeline — the career path in gold: credentials grouped by year on
+ * a glowing rail, newest first. Compact rows jump straight to the editor;
+ * the eye flips visibility without leaving the timeline.
+ */
+function JourneyTimeline({
+  groups,
+  onEdit,
+  onToggle,
+}: {
+  groups: { year: string; items: AdminCert[] }[];
+  onEdit: (item: AdminCert) => void;
+  onToggle: (id: string) => void;
+}): React.JSX.Element {
+  if (groups.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-white/15 p-4 text-center text-sm text-white/40">
+        No credentials on this journey yet.
+      </p>
+    );
+  }
+  return (
+    <ol className="relative ml-2 border-l-2 border-[#d4af37]/40 pl-6">
+      {groups.map((g) => (
+        <li key={g.year} className="relative pb-7 last:pb-1">
+          <span
+            aria-hidden="true"
+            className="absolute top-1 -left-[33px] h-3.5 w-3.5 rounded-full border-2 border-[#d4af37] bg-[#081426] shadow-[0_0_14px_rgba(212,175,55,0.8)]"
+          />
+          <p className="font-mono text-sm font-black tracking-[0.3em] text-[#e9ce7a]">
+            {g.year}
+            <span className="ml-2 text-[10px] font-bold text-white/35">
+              {g.items.length} credential{g.items.length === 1 ? "" : "s"}
+            </span>
+          </p>
+          <ul className="mt-3 space-y-2">
+            {g.items.map((c) => (
+              <li
+                key={c.id}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl border bg-black/30 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5",
+                  c.visible
+                    ? "border-white/10 hover:border-[#d4af37]/50"
+                    : "border-dashed border-white/15 opacity-60",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => onEdit(c)}
+                  title={`Edit ${c.titleEn || c.id}`}
+                  className="min-w-0 flex-1 cursor-pointer text-left"
+                >
+                  <span className="block truncate text-sm font-bold text-white/90 group-hover:text-white">
+                    {c.titleEn || "(untitled)"}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-white/40">
+                    {c.issuerEn || "Unknown issuer"}
+                    {c.verify ? " · verified" : " · no verify link"}
+                  </span>
+                </button>
+                {c.verify ? (
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                ) : (
+                  <span className="h-4 w-4 shrink-0 rounded-full border border-dashed border-white/25" aria-hidden="true" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => onToggle(c.id)}
+                  title={c.visible ? "Hide from site" : "Publish to site"}
+                  aria-label={c.visible ? `Hide ${c.titleEn}` : `Publish ${c.titleEn}`}
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 text-white/50 transition-colors hover:border-[#d4af37]/60 hover:text-[#e9ce7a]"
+                >
+                  {c.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Freshness chip — credential age at a glance (Fresh / N yrs ago / Vintage). */
+function FreshChip({ year }: { year: string }): React.JSX.Element | null {
+  const f = certFreshness(year);
+  if (!f) return null;
+  return (
+    <span className={`flex items-center gap-1 rounded-lg border px-2 py-1 ${f.cls}`}>
+      <Hourglass className="h-3 w-3" aria-hidden="true" />
+      {f.label}
+    </span>
+  );
+}
+
 function CertsTab({
   db,
   remove,
@@ -4046,6 +5141,7 @@ function CertsTab({
   onPreview,
   onHardPreview,
   refreshing,
+  onRenameValue,
 }: {
   db: AdminDB;
   remove: (id: string) => void;
@@ -4056,10 +5152,12 @@ function CertsTab({
   onPreview: (href: string) => void;
   onHardPreview: (href: string) => void;
   refreshing: boolean;
+  onRenameValue: (from: string, to: string) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState<string>("all");
-  const [sort, setSort] = useState<"newest" | "issuer">("newest");
+  const [sort, setSort] = useState<"newest" | "oldest" | "issuer">("newest");
+  const [view, setView] = useState<"cards" | "journey">("cards");
   const q = query.trim().toLowerCase();
   const issuers = useMemo(() => {
     const seen: string[] = [];
@@ -4085,14 +5183,45 @@ function CertsTab({
   const sorted = [...filtered].sort((a, b) =>
     sort === "newest"
       ? yearNum(b.year) - yearNum(a.year)
-      : a.issuerEn.localeCompare(b.issuerEn),
+      : sort === "oldest"
+        ? yearNum(a.year) - yearNum(b.year)
+        : a.issuerEn.localeCompare(b.issuerEn),
   );
   const live = db.certs.filter((c) => c.visible).length;
+  const journeySpan = certYearSpan(db.certs);
+  /** Golden path — filtered certs grouped by year, newest year first. */
+  const journeyGroups = useMemo(() => {
+    const byYear = new Map<string, AdminCert[]>();
+    for (const c of sorted) {
+      const y = c.year.match(/(19|20)\d{2}/)?.[0] ?? "Undated";
+      const list = byYear.get(y) ?? [];
+      list.push(c);
+      byYear.set(y, list);
+    }
+    return [...byYear.entries()]
+      .map(([year, items]) => ({ year, items }))
+      .sort((a, b) => (a.year === "Undated" ? 1 : b.year === "Undated" ? -1 : Number(b.year) - Number(a.year)));
+  }, [sorted]);
   const unverified = db.certs.filter((c) => !c.verify).length;
   const verifiedPct =
     db.certs.length === 0
       ? 0
       : Math.round(((db.certs.length - unverified) / db.certs.length) * 100);
+  const blankCert = (issuer: string): AdminCert => ({
+    id: uid("cert"),
+    titleEn: "",
+    titleFr: "",
+    issuerEn: issuer,
+    issuerFr: "",
+    year: String(new Date().getFullYear()),
+    months: 6,
+    code: "",
+    skills: [],
+    image: "",
+    verify: "",
+    verifyLogo: "",
+    visible: true,
+  });
   const PALETTE = ["#a78bfa", "#38bdf8", "#fbbf24", "#34d399", "#fb7185", "#ff3d00"];
   const groups = [
     ...issuers.map((name, i) => {
@@ -4143,11 +5272,46 @@ function CertsTab({
               onChange={(v) => setSort(v as typeof sort)}
               options={[
                 { id: "newest", label: "Newest" },
+                { id: "oldest", label: "Oldest" },
                 { id: "issuer", label: "Issuer A–Z" },
               ]}
             />
+            <div className="flex rounded-xl border border-white/15 bg-black/40 p-1" role="group" aria-label="Certificates view">
+              <button
+                type="button"
+                onClick={() => setView("cards")}
+                aria-pressed={view === "cards"}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 font-mono text-[10px] font-black tracking-[0.14em] uppercase transition-all",
+                  view === "cards" ? "bg-[#a78bfa] text-black" : "text-white/40 hover:text-white",
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+                Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("journey")}
+                aria-pressed={view === "journey"}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 font-mono text-[10px] font-black tracking-[0.14em] uppercase transition-all",
+                  view === "journey"
+                    ? "bg-[#d4af37] text-black shadow-[0_0_18px_rgba(212,175,55,0.5)]"
+                    : "text-white/40 hover:text-white",
+                )}
+              >
+                <Route className="h-3.5 w-3.5" aria-hidden="true" />
+                Journey
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {journeySpan && (
+              <span className="flex items-center gap-1.5 rounded-full border border-[#d4af37]/40 bg-[#d4af37]/10 px-3 py-1.5 font-mono text-[10px] font-bold text-[#e9ce7a] uppercase">
+                <Sparkles className="h-3 w-3" aria-hidden="true" />
+                {journeySpan}
+              </span>
+            )}
             {unverified > 0 && (
               <span className="flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 font-mono text-[10px] font-bold text-amber-300 uppercase">
                 {unverified} without verify link
@@ -4180,29 +5344,21 @@ function CertsTab({
           groups={groups}
           active={issuer}
           onFilter={setIssuer}
-          onAddIn={(id) =>
-            onEdit({
-              id: uid("cert"),
-              titleEn: "",
-              titleFr: "",
-              issuerEn: id === "__none__" ? "" : id,
-              issuerFr: "",
-              year: String(new Date().getFullYear()),
-              months: 6,
-              code: "",
-              skills: [],
-              image: "",
-              verify: "",
-              visible: true,
-            })
-          }
+          onAddIn={(id) => onEdit(blankCert(id === "__none__" ? "" : id))}
           onBulk={(id, action) =>
             onBulk((x) => inGroup(x as unknown as AdminCert, id), action)
           }
+          onRename={(id, label) => {
+            if (id !== "__none__") onRenameValue(id, label);
+          }}
+          onAddCategory={(name) => onEdit(blankCert(name))}
         />
       }
     >
-      {sorted.map((c) => (
+      {view === "journey" ? (
+        <JourneyTimeline groups={journeyGroups} onEdit={onEdit} onToggle={onToggle} />
+      ) : (
+        sorted.map((c) => (
         <div
           key={c.id}
           className={cn(
@@ -4237,6 +5393,7 @@ function CertsTab({
               <p className="mt-0.5 truncate text-sm text-white/45">{c.titleFr}</p>
               <p className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-[0.12em] text-white/45 uppercase">
                 <span className="rounded-lg bg-white/[0.05] px-2 py-1">{c.issuerEn} · {c.year}</span>
+                <FreshChip year={c.year} />
                 <span className="flex items-center gap-1 rounded-lg bg-white/[0.05] px-2 py-1">
                   <Calendar className="h-3 w-3" />
                   {c.months} mo
@@ -4265,7 +5422,13 @@ function CertsTab({
                   rel="noreferrer"
                   className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 font-mono text-[10px] font-bold text-emerald-300 uppercase transition-colors hover:bg-emerald-400/20"
                 >
-                  <BadgeCheck className="h-3.5 w-3.5" />
+                  {c.verifyLogo !== "" ? (
+                    <span className="relative block h-4 w-4 shrink-0 overflow-hidden rounded bg-white">
+                      <SmartImage src={c.verifyLogo} alt="" fill fit="contain" sizes="16px" />
+                    </span>
+                  ) : (
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                  )}
                   Verify credential
                 </a>
               ) : (
@@ -4281,7 +5444,7 @@ function CertsTab({
             />
           </div>
         </div>
-      ))}
+      )))}
     </ListShell>
   );
 }
@@ -4364,17 +5527,19 @@ function SettingsTab({
 
   const doExport = (): void => {
     try {
+      const name = `budi-admin-backup-${new Date().toISOString().slice(0, 10)}.json`;
       const blob = new Blob([exportJSON(db)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `budi-admin-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = name;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify("ok", "Backup exported", name);
     } catch {
-      window.alert("Export failed in this browser.");
+      notify("err", "Export failed in this browser.");
     }
   };
 
@@ -4384,15 +5549,16 @@ function SettingsTab({
     reader.onload = (): void => {
       const next = importJSON(String(reader.result ?? ""));
       if (!next) {
-        window.alert("Invalid backup file — import aborted, nothing changed.");
+        notify("err", "Invalid backup file", "Import aborted, nothing changed.");
         return;
       }
       if (!window.confirm(`Restore backup? ${next.skills.length} skills · ${next.services.length} services · ${next.projects.length} projects · ${next.certs.length} certs.`)) return;
       saveDB(next);
       onImport(next);
+      notify("ok", "Backup restored", "Dashboard now shows the imported data.");
     };
     reader.onerror = (): void => {
-      window.alert("Could not read that file.");
+      notify("err", "Could not read that file.");
     };
     reader.readAsText(file);
     if (fileRef.current) fileRef.current.value = "";
@@ -4430,8 +5596,28 @@ function SettingsTab({
         </span>
       </div>
 
+      {/* Settings quick-jump — long page, organized in one tap */}
+      <nav aria-label="Settings sections" className="mt-4 flex flex-wrap gap-1.5">
+        {[
+          { id: "set-work", label: "Work" },
+          { id: "set-identity", label: "Identity + Images" },
+          { id: "set-rails", label: "Payments" },
+          { id: "set-seals", label: "Seals" },
+          { id: "set-data", label: "Backup" },
+        ].map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="cursor-pointer rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-white/55 uppercase transition-colors hover:border-[#d7fd44]/50 hover:text-[#d7fd44]"
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+
       {/* Availability command — THE one switch for every badge on the site */}
-      <div className="relative mt-5 overflow-hidden rounded-2xl border border-[#d7fd44]/25 bg-gradient-to-br from-[#d7fd44]/[0.06] via-transparent to-[#ff3d00]/[0.06] p-6">
+      <div id="set-work" className="relative mt-5 scroll-mt-24 overflow-hidden rounded-2xl border border-[#d7fd44]/25 bg-gradient-to-br from-[#d7fd44]/[0.06] via-transparent to-[#ff3d00]/[0.06] p-6">
         <span
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[#d7fd44] to-transparent"
@@ -4602,7 +5788,8 @@ function SettingsTab({
           </p>
         </div>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <DeployCard />
+      <div id="set-identity" className="mt-5 grid scroll-mt-24 gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-5">
           <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-white/50 uppercase">
             <Globe className="h-3.5 w-3.5 text-[#38bdf8]" aria-hidden="true" />
@@ -4646,7 +5833,7 @@ function SettingsTab({
         </div>
       </div>
       {/* Payment rails — each rail independent, site is read-only */}
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      <div id="set-rails" className="mt-4 scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
         <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-white/50 uppercase">
           <BadgeCheck className="h-3.5 w-3.5 text-[#25d366]" aria-hidden="true" />
           Payment rails · independent — active green · soon amber · off locked (never hidden)
@@ -4745,7 +5932,7 @@ function SettingsTab({
         </div>
       </div>
       {/* Verification seals — fixed BUDI seal + your own extra badges */}
-      <div className="mt-4 rounded-2xl border border-sky-400/20 bg-sky-400/[0.03] p-6">
+      <div id="set-seals" className="mt-4 scroll-mt-24 rounded-2xl border border-sky-400/20 bg-sky-400/[0.03] p-6">
         <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-sky-300/80 uppercase">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           Verification · fixed site seal + extra seals
@@ -4854,7 +6041,7 @@ function SettingsTab({
           )}
         </div>
       </div>
-      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div id="set-data" className="mt-4 scroll-mt-24 rounded-xl border border-white/10 bg-white/[0.03] p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.24em] text-white/50 uppercase">
             <Database className="h-3.5 w-3.5 text-[#a78bfa]" aria-hidden="true" />
@@ -4944,7 +6131,7 @@ function SettingsTab({
                 } catch {
                   /* ignore */
                 }
-                window.alert("Likes cleared on this browser.");
+                notify("ok", "Likes cleared on this browser.");
               }}
               className="cursor-pointer rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white/70 transition-colors hover:border-red-500 hover:text-red-400"
             >
@@ -4958,7 +6145,7 @@ function SettingsTab({
                 } catch {
                   /* ignore */
                 }
-                window.alert("Skill likes cleared on this browser.");
+                notify("ok", "Skill likes cleared on this browser.");
               }}
               className="cursor-pointer rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white/70 transition-colors hover:border-red-500 hover:text-red-400"
             >
@@ -4984,10 +6171,12 @@ function ServiceEditor({
   initial,
   onClose,
   onSave,
+  labels,
 }: {
   initial: AdminService | null;
   onClose: () => void;
   onSave: (item: AdminService, keepOpen?: boolean) => void;
+  labels?: Record<string, string>;
 }): React.JSX.Element {
   const [form, setForm] = useState<AdminService>(
     initial ?? {
@@ -5095,7 +6284,7 @@ function ServiceEditor({
               style={active ? { backgroundColor: `${meta.bg}22`, borderColor: `${meta.bg}88`, boxShadow: `0 0 20px ${meta.bg}44` } : undefined}
             >
               <Icon className="h-5 w-5" style={{ color: active ? meta.bg : "rgba(255,255,255,0.5)" }} aria-hidden="true" />
-              <span className={cn("font-mono text-[10px] font-black tracking-[0.12em] uppercase", active ? "text-white" : "text-white/50")}>{CAT_LABEL[c]}</span>
+              <span className={cn("font-mono text-[10px] font-black tracking-[0.12em] uppercase", active ? "text-white" : "text-white/50")}>{catDisplayLabel(labels, "service", c, CAT_LABEL[c])}</span>
             </button>
           );
         })}
@@ -5112,10 +6301,43 @@ function ServiceEditor({
           iconImage={form.iconImage}
         />
       )}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <TranslateEnFr
+          accent={catAccent}
+          pairs={[
+            { en: form.title, fr: form.titleFr, apply: (v) => set("titleFr", v as string) },
+            { en: form.desc, fr: form.descFr, apply: (v) => set("descFr", v as string) },
+            { en: form.bestForEn, fr: form.bestForFr, apply: (v) => set("bestForFr", v as string) },
+            { en: form.timelineEn, fr: form.timelineFr, apply: (v) => set("timelineFr", v as string) },
+            { en: form.points, fr: form.pointsFr, apply: (v) => set("pointsFr", v as string[]) },
+          ]}
+        />
+        <SuggestCopy
+          category={form.category}
+          isEmpty={form.title.trim() === "" && form.desc.trim() === ""}
+          accent={catAccent}
+          onApply={(s) =>
+            setForm((f) => ({
+              ...f,
+              title: f.title.trim() === "" ? s.title : f.title,
+              titleFr: f.titleFr.trim() === "" ? s.titleFr : f.titleFr,
+              desc: f.desc.trim() === "" ? s.desc : f.desc,
+              descFr: f.descFr.trim() === "" ? s.descFr : f.descFr,
+              tags: f.tags.length === 0 ? [...s.tags] : f.tags,
+              points: f.points.length === 0 ? [...s.points] : f.points,
+              pointsFr: f.pointsFr.length === 0 ? [...s.pointsFr] : f.pointsFr,
+              bestForEn: f.bestForEn.trim() === "" ? s.bestForEn : f.bestForEn,
+              bestForFr: f.bestForFr.trim() === "" ? s.bestForFr : f.bestForFr,
+              timelineEn: f.timelineEn.trim() === "" ? s.timelineEn : f.timelineEn,
+              timelineFr: f.timelineFr.trim() === "" ? s.timelineFr : f.timelineFr,
+            }))
+          }
+        />
+      </div>
       <div className="mb-4">
         <Field
-          label="Icon — library code or external link"
-          hint={form.icon !== "" ? `library: ${form.icon}` : form.iconImage !== "" ? "custom image" : "category default"}
+          label="Icon — tech brand mark or image link"
+          hint={form.icon !== "" ? `legacy library: ${form.icon}` : form.iconImage !== "" ? "brand mark" : "category default"}
         >
           <div className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-black/25 p-3">
             <div className="flex items-center gap-3">
@@ -5138,30 +6360,33 @@ function ServiceEditor({
               </span>
               <p className="min-w-0 flex-1 text-xs leading-relaxed text-white/50">
                 {form.icon !== ""
-                  ? "Library icon wins — it renders on the site card."
+                  ? "Legacy library icon still wins — clear it to use the brand mark."
                   : form.iconImage !== ""
-                    ? "Custom image renders on the site card."
-                    : "Empty = the category icon. Pick a library code or paste an image link."}
+                    ? "Brand mark renders on the site card."
+                    : "Empty = the category icon. Pick a brand mark or paste an image link."}
               </p>
               {(form.icon !== "" || form.iconImage !== "") && (
                 <button
                   type="button"
                   onClick={() => {
+                    if (!window.confirm("Delete the service icon? The card falls back to the category icon.")) return;
                     set("icon", "");
                     set("iconImage", "");
                   }}
-                  className="shrink-0 cursor-pointer font-mono text-[9px] tracking-[0.08em] text-white/30 uppercase transition-colors hover:text-red-400"
+                  title="Delete icon"
+                  className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-mono text-[9px] font-black tracking-[0.08em] text-red-300 uppercase transition-all hover:bg-red-500/20"
                 >
-                  Reset
+                  <Trash2 className="h-3 w-3" aria-hidden="true" />
+                  Delete icon
                 </button>
               )}
             </div>
-            <LibIconPicker
-              value={form.icon}
+            <TechLogoPicker
+              value={form.iconImage}
               accent={catAccent}
-              onPick={(name) => {
-                set("icon", name);
-                if (name !== "") set("iconImage", "");
+              onPick={(logo) => {
+                set("iconImage", logo);
+                if (logo !== "") set("icon", "");
               }}
             />
             <div className="relative">
@@ -5277,10 +6502,12 @@ function SkillEditor({
   initial,
   onClose,
   onSave,
+  labels,
 }: {
   initial: AdminSkill | null;
   onClose: () => void;
   onSave: (item: AdminSkill, keepOpen?: boolean) => void;
+  labels?: Record<string, string>;
 }): React.JSX.Element {
   const [form, setForm] = useState<AdminSkill>(
     initial ?? {
@@ -5375,6 +6602,12 @@ function SkillEditor({
         <Field label="Skill name" hint={`${form.name.length}/40`}>
           <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Redis, Docker, Supabase…" className={inputCls} maxLength={40} />
         </Field>
+        <TranslateEnFr
+          accent={levelColor}
+          pairs={[
+            { en: form.detailEn, fr: form.detailFr, apply: (v) => set("detailFr", v as string) },
+          ]}
+        />
         <div>
           <span className="mb-1.5 block font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">Category — where it lives on the site</span>
           <div className="grid grid-cols-3 gap-2">
@@ -5394,7 +6627,7 @@ function SkillEditor({
                   style={active ? { borderColor: `${meta.color}88`, backgroundColor: `${meta.color}1a`, boxShadow: `0 0 20px ${meta.color}44` } : undefined}
                 >
                   <span className="mx-auto block h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
-                  <span className={cn("mt-1.5 block text-xs font-black", active ? "text-white" : "text-white/55")}>{meta.label}</span>
+                  <span className={cn("mt-1.5 block text-xs font-black", active ? "text-white" : "text-white/55")}>{catDisplayLabel(labels, "skill", c, meta.label)}</span>
                 </button>
               );
             })}
@@ -5437,64 +6670,46 @@ function SkillEditor({
         <div>
           <span className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">
-              Library code — lucide icon, wins over the image
+              Tech logo — real brand mark
             </span>
-            {form.icon !== "" && (
+            {form.logo !== "" && (
               <button
                 type="button"
-                onClick={() => set("icon", "")}
-                className="cursor-pointer font-mono text-[9px] tracking-[0.08em] text-white/30 uppercase transition-colors hover:text-red-400"
+                onClick={() => {
+                  if (!window.confirm("Delete the skill logo? The card falls back to its letter mark.")) return;
+                  set("logo", "");
+                }}
+                title="Delete logo"
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-mono text-[9px] font-black tracking-[0.08em] text-red-300 uppercase transition-all hover:bg-red-500/20"
               >
-                Clear
+                <Trash2 className="h-3 w-3" aria-hidden="true" />
+                Delete logo
               </button>
             )}
           </span>
-          <LibIconPicker
-            value={form.icon}
-            accent={catColor}
-            onPick={(name) => {
-              set("icon", name);
-              if (name !== "") set("logo", "");
-            }}
-          />
+          <TechLogoPicker value={form.logo} accent={catColor} onPick={(logo) => set("logo", logo)} />
           {form.icon !== "" && (
-            <p className="mt-1.5 font-mono text-[9px] tracking-[0.08em] text-emerald-300/70 uppercase">
-              ✓ Library: {form.icon} — renders on the site card instead of the image
+            <p className="mt-1.5 flex items-center justify-between gap-2 font-mono text-[9px] tracking-[0.08em] text-amber-300/80 uppercase">
+              <span>Legacy library icon “{form.icon}” still wins on the site card</span>
+              <button
+                type="button"
+                onClick={() => set("icon", "")}
+                className="shrink-0 cursor-pointer underline underline-offset-2 hover:text-red-300"
+              >
+                Drop it
+              </button>
             </p>
           )}
         </div>
-        <Field label="Logo image — presets or external link" hint="SVG path or https URL">
-          <div className="grid grid-cols-6 gap-2 rounded-xl border border-white/10 bg-black/25 p-3">
-            {LOGO_PRESETS.map((src) => (
-              <button
-                key={src}
-                type="button"
-                onClick={() => {
-                  set("logo", form.logo === src ? "" : src);
-                  if (form.logo !== src) set("icon", "");
-                }}
-                aria-label={src}
-                title={src.split("/").pop()}
-                className={cn(
-                  "flex h-12 cursor-pointer items-center justify-center rounded-xl border transition-all duration-200 hover:-translate-y-0.5",
-                  form.logo === src
-                    ? "border-[#ff3d00] bg-[#ff3d00]/12 shadow-[0_0_16px_rgba(255,61,0,0.45)]"
-                    : "border-white/10 bg-white/[0.04] hover:border-white/30",
-                )}
-              >
-                <Image src={src} alt="" width={26} height={26} className="block h-6 w-6" />
-              </button>
-            ))}
-          </div>
+        <Field label="Custom logo link" hint="SVG path or https URL">
           <input
             value={form.logo}
             onChange={(e) => {
               set("logo", e.target.value);
-              if (e.target.value.trim() !== "") set("icon", "");
             }}
             placeholder="/icons/tech/custom.svg or https://…"
             dir="ltr"
-            className={cn(inputCls, "mt-2")}
+            className={inputCls}
             maxLength={160}
           />
         </Field>
@@ -5534,10 +6749,16 @@ function ProjectEditor({
   initial,
   onClose,
   onSave,
+  suggestions,
+  categories,
 }: {
   initial: AdminProject | null;
   onClose: () => void;
   onSave: (item: AdminProject, keepOpen?: boolean) => void;
+  /** This account's skill names — offered first in the stack picker. */
+  suggestions?: string[];
+  /** Existing project categories — category field suggests, never forces. */
+  categories?: string[];
 }): React.JSX.Element {
   const [form, setForm] = useState<AdminProject>(
     initial ?? {
@@ -5637,8 +6858,20 @@ function ProjectEditor({
         <Field label="Title (FR)">
           <input value={form.titleFr} onChange={(e) => set("titleFr", e.target.value)} className={inputCls} maxLength={80} />
         </Field>
-        <Field label="Category">
-          <input value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="SaaS / Dashboard…" className={inputCls} maxLength={40} />
+        <Field label="Category — pick or type new">
+          <input
+            value={form.category}
+            onChange={(e) => set("category", e.target.value)}
+            placeholder="SaaS / Dashboard…"
+            className={inputCls}
+            maxLength={40}
+            list="proj-cat-list"
+          />
+          <datalist id="proj-cat-list">
+            {(categories ?? []).map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </Field>
         <div className="sm:col-span-2">
           <Field label="Description">
@@ -5650,9 +6883,29 @@ function ProjectEditor({
             <textarea value={form.descFr} onChange={(e) => set("descFr", e.target.value)} rows={2} className={inputCls} maxLength={400} />
           </Field>
         </div>
-        <Field label="Tech (comma separated)">
-          <input value={form.tech.join(", ")} onChange={(e) => set("tech", lines(e.target.value.replace(/,/g, "\n")))} placeholder="React, Next.js, …" className={inputCls} />
-        </Field>
+        <div className="sm:col-span-2">
+          <TranslateEnFr
+            accent="#ff3d00"
+            pairs={[
+              { en: form.title, fr: form.titleFr, apply: (v) => set("titleFr", v as string) },
+              { en: form.desc, fr: form.descFr, apply: (v) => set("descFr", v as string) },
+              { en: form.roleEn, fr: form.roleFr, apply: (v) => set("roleFr", v as string) },
+              { en: form.timelineEn, fr: form.timelineFr, apply: (v) => set("timelineFr", v as string) },
+              { en: form.briefEn, fr: form.briefFr, apply: (v) => set("briefFr", v as string[]) },
+            ]}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Tech stack — pick, don't type" hint={`${form.tech.length}/14`}>
+            <TechPicker
+              selected={form.tech}
+              onChange={(t) => set("tech", t)}
+              suggestions={suggestions}
+              max={14}
+              accent="#ff3d00"
+            />
+          </Field>
+        </div>
         <Field label="Year">
           <input value={form.year} onChange={(e) => set("year", e.target.value)} className={inputCls} maxLength={9} />
         </Field>
@@ -5739,10 +6992,13 @@ function CertEditor({
   initial,
   onClose,
   onSave,
+  suggestions,
 }: {
   initial: AdminCert | null;
   onClose: () => void;
   onSave: (item: AdminCert, keepOpen?: boolean) => void;
+  /** This account's skill names — offered first in the skills picker. */
+  suggestions?: string[];
 }): React.JSX.Element {
   const [form, setForm] = useState<AdminCert>(
     initial ?? {
@@ -5757,6 +7013,7 @@ function CertEditor({
       skills: [],
       image: "",
       verify: "",
+      verifyLogo: "",
       visible: true,
     },
   );
@@ -5794,6 +7051,7 @@ function CertEditor({
       skills: [],
       image: "",
       verify: "",
+      verifyLogo: "",
       visible: true,
     });
     setErrors([]);
@@ -5822,6 +7080,15 @@ function CertEditor({
         <Field label="Issuer (FR)">
           <input value={form.issuerFr} onChange={(e) => set("issuerFr", e.target.value)} className={inputCls} maxLength={60} />
         </Field>
+        <div className="sm:col-span-2">
+          <TranslateEnFr
+            accent="#a78bfa"
+            pairs={[
+              { en: form.titleEn, fr: form.titleFr, apply: (v) => set("titleFr", v as string) },
+              { en: form.issuerEn, fr: form.issuerFr, apply: (v) => set("issuerFr", v as string) },
+            ]}
+          />
+        </div>
         <Field label="Year">
           <input value={form.year} onChange={(e) => set("year", e.target.value)} className={inputCls} maxLength={9} />
         </Field>
@@ -5838,12 +7105,27 @@ function CertEditor({
         <Field label="Credential ID">
           <input value={form.code} onChange={(e) => set("code", e.target.value)} className={inputCls} maxLength={40} />
         </Field>
-        <Field label="Skills (comma separated)">
-          <input value={form.skills.join(", ")} onChange={(e) => set("skills", e.target.value.split(",").map((x) => x.trim()).filter(Boolean))} className={inputCls} />
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Skills — pick, don't type" hint={`${form.skills.length}/10`}>
+            <TechPicker
+              selected={form.skills}
+              onChange={(t) => set("skills", t)}
+              suggestions={suggestions}
+              max={10}
+              accent="#a78bfa"
+            />
+          </Field>
+        </div>
         <Field label="Verify URL (empty = soon)">
           <input value={form.verify} onChange={(e) => set("verify", e.target.value)} dir="ltr" className={inputCls} maxLength={200} />
         </Field>
+        <ImageUploadField
+          label="Verified logo — issuer mark"
+          hint="shown beside the verify link"
+          value={form.verifyLogo}
+          onChange={(v) => set("verifyLogo", v)}
+          pastePlaceholder="/images/certificates/issuers/… or https://…"
+        />
         <div className="flex items-center">
           <Toggle checked={form.visible} onChange={(v) => set("visible", v)} label={form.visible ? "LIVE — shows on the site" : "HIDDEN — draft only"} desc="REAL sync: saving publishes (or hides) this credential live." />
         </div>

@@ -32,6 +32,8 @@ pnpm-debug.log*
 *.key
 *.p12
 *.pfx
+*.jks
+*.keystore
 
 # tests + coverage (regenerated)
 coverage/
@@ -43,6 +45,11 @@ blob-report/
 # bundler / turbo cache
 .turbo/
 .parcel-cache/
+.swc/
+
+# AI agent scratch (never push local agent workspaces)
+.claude/
+.agent/
 
 # supabase local dev artifacts (cloud schema in supabase/*.sql stays tracked)
 supabase/.branches/
@@ -50,7 +57,10 @@ supabase/.temp/
 
 # misc
 .DS_Store
-*.pem
+*.orig
+*.rej
+*.swp
+*~
 
 # ide
 .idea/

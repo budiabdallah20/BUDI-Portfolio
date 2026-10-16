@@ -11,6 +11,11 @@
 --  3) RLS (site reads visible rows, writes via dashboard service_role)
 --  4) RPCs: increment_visit / increment_like / decrement_like
 --  5) seeds settings id='site' + backfills NULLs on existing rows
+--  6) INSTANT contract: updated_at auto-touch trigger on every UPDATE
+--     (dashboard writes repaint open tabs in ~1-2s via content-hash),
+--     created_at audit column + hot-path indexes (visible, updated_at)
+--  8) notifications + push_subscriptions (owner inbox + Web Push devices —
+--     RLS locked, service_role API proxies only, never realtime)
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ── 1) tables (new DBs) ──────────────────────────────────────────────
@@ -86,6 +91,7 @@ create table if not exists certs (
   skills text[] default '{}',
   image text default '',
   verify text default '',
+  "verifyLogo" text default '',
   visible boolean default true,
   updated_at timestamptz default now()
 );
@@ -114,6 +120,7 @@ create table if not exists settings (
   "instapayAt" text default '',
   "siteVerified" boolean default true,
   "verificationBadges" jsonb default '[]'::jsonb,
+  "catLabels" jsonb default '{}'::jsonb,
   updated_at timestamptz default now()
 );
 
@@ -125,6 +132,26 @@ create table if not exists visits (
 create table if not exists likes (
   id text primary key,
   count int default 0
+);
+
+-- Owner inbox (dashboard bell + ReminderEngine + site-error beacon).
+-- No public reads: written/read ONLY via service_role API proxies.
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  type text default 'info',
+  title text default '',
+  body text default '',
+  url text default '/admin',
+  read boolean default false,
+  created_at timestamptz default now()
+);
+
+-- Owner devices for Web Push (VAPID). Secrets by nature: service_role only.
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  p256dh text default '',
+  auth text default '',
+  created_at timestamptz default now()
 );
 
 -- ── 2) migration (existing DBs: CREATE IF NOT EXISTS won't add
@@ -188,6 +215,7 @@ alter table certs add column if not exists code text default '';
 alter table certs add column if not exists skills text[] default '{}';
 alter table certs add column if not exists image text default '';
 alter table certs add column if not exists verify text default '';
+alter table certs add column if not exists "verifyLogo" text default '';
 alter table certs add column if not exists visible boolean default true;
 alter table certs add column if not exists updated_at timestamptz default now();
 
@@ -213,6 +241,7 @@ alter table settings add column if not exists "instapayHandle" text default '';
 alter table settings add column if not exists "instapayAt" text default '';
 alter table settings add column if not exists "siteVerified" boolean default true;
 alter table settings add column if not exists "verificationBadges" jsonb default '[]'::jsonb;
+alter table settings add column if not exists "catLabels" jsonb default '{}'::jsonb;
 alter table settings add column if not exists updated_at timestamptz default now();
 
 -- ── 3) RLS ───────────────────────────────────────────────────────────
@@ -223,6 +252,8 @@ alter table certs enable row level security;
 alter table settings enable row level security;
 alter table visits enable row level security;
 alter table likes enable row level security;
+alter table notifications enable row level security;
+alter table push_subscriptions enable row level security;
 
 drop policy if exists "public read visible" on services;
 create policy "public read visible" on services for select using (visible = true);
@@ -240,6 +271,11 @@ drop policy if exists "public read visits" on visits;
 create policy "public read visits" on visits for select using (true);
 drop policy if exists "public read likes" on likes;
 create policy "public read likes" on likes for select using (true);
+
+-- notifications + push_subscriptions: RLS ON with ZERO public policies.
+-- anon/authenticated get nothing (not even SELECT); every access flows
+-- through service_role route handlers. Never add them to realtime either —
+-- anon clients could snoop inbox titles off the publication.
 
 -- ── 4) RPCs ──────────────────────────────────────────────────────────
 create or replace function increment_visit(p_id text)
@@ -275,9 +311,13 @@ begin
   return v;
 end; $$;
 
-grant execute on function increment_visit(text) to anon, authenticated;
-grant execute on function increment_like(text) to anon, authenticated;
-grant execute on function decrement_like(text) to anon, authenticated;
+-- Counters are written ONLY through the rate-limited API proxies
+-- (/api/engagement/*, service_role). Direct RPC calls with the public anon
+-- key are revoked, so bots can't bypass throttling, race counts, or bloat
+-- the tables with minted ids. Reads stay public (SELECT policies above).
+revoke execute on function increment_visit(text) from anon, authenticated;
+revoke execute on function increment_like(text) from anon, authenticated;
+revoke execute on function decrement_like(text) from anon, authenticated;
 
 -- ── 5) seed + backfill NULLs (the fix for ERROR 42703) ───────────────
 insert into settings (id, "siteName", tagline, "contactEmail", "workStatus", "vodafoneState", "taptapState", "instapayState", "siteVerified", "verificationBadges")
@@ -286,6 +326,7 @@ on conflict (id) do nothing;
 
 update settings set "siteVerified" = true where id = 'site' and "siteVerified" is null;
 update settings set "verificationBadges" = '[]'::jsonb where id = 'site' and "verificationBadges" is null;
+update settings set "catLabels" = '{}'::jsonb where id = 'site' and "catLabels" is null;
 update settings set "contactEmail" = 'budiabdallah922@gmail.com' where id = 'site' and ("contactEmail" is null or "contactEmail" = '');
 update settings set "heroImage" = '/images/general/hero.jpg' where id = 'site' and "heroImage" is null;
 update settings set "aboutImage" = '/images/general/about2.jpg' where id = 'site' and "aboutImage" is null;
@@ -294,3 +335,90 @@ update settings set "vodafoneNumber" = '01065228072' where id = 'site' and "voda
 update settings set "taptapState" = 'active' where id = 'site' and "taptapState" is null;
 update settings set "instapayState" = 'soon' where id = 'site' and "instapayState" is null;
 update projects set sponsored = false where sponsored is null;
+
+-- ── 6) INSTANT contract — updated_at auto-touch (re-run safe) ─────────
+-- Why: the live site detects dashboard edits via max(updated_at) in
+-- /api/content-hash. Without a trigger, an UPDATE that doesn't touch
+-- updated_at leaves the fingerprint frozen and open tabs never rebuild.
+-- The API also stamps updated_at=now() (_db.ts) — this trigger is the
+-- server-side guarantee no write can bypass.
+create or replace function touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  NEW.updated_at = now();
+  return NEW;
+end; $$;
+
+drop trigger if exists trg_touch_updated_at on services;
+create trigger trg_touch_updated_at before insert or update on services
+  for each row execute function touch_updated_at();
+drop trigger if exists trg_touch_updated_at on skills;
+create trigger trg_touch_updated_at before insert or update on skills
+  for each row execute function touch_updated_at();
+drop trigger if exists trg_touch_updated_at on projects;
+create trigger trg_touch_updated_at before insert or update on projects
+  for each row execute function touch_updated_at();
+drop trigger if exists trg_touch_updated_at on certs;
+create trigger trg_touch_updated_at before insert or update on certs
+  for each row execute function touch_updated_at();
+drop trigger if exists trg_touch_updated_at on settings;
+create trigger trg_touch_updated_at before insert or update on settings
+  for each row execute function touch_updated_at();
+
+-- ── 7) audit column + hot-path indexes (re-run safe) ─────────────────
+alter table services add column if not exists created_at timestamptz default now();
+alter table skills add column if not exists created_at timestamptz default now();
+alter table projects add column if not exists created_at timestamptz default now();
+alter table certs add column if not exists created_at timestamptz default now();
+alter table settings add column if not exists created_at timestamptz default now();
+
+update services set created_at = coalesce(created_at, updated_at, now()) where created_at is null;
+update skills set created_at = coalesce(created_at, updated_at, now()) where created_at is null;
+update projects set created_at = coalesce(created_at, updated_at, now()) where created_at is null;
+update certs set created_at = coalesce(created_at, updated_at, now()) where created_at is null;
+update settings set created_at = coalesce(created_at, updated_at, now()) where created_at is null;
+
+update services set updated_at = now() where updated_at is null;
+update skills set updated_at = now() where updated_at is null;
+update projects set updated_at = now() where updated_at is null;
+update certs set updated_at = now() where updated_at is null;
+update settings set updated_at = now() where updated_at is null;
+
+create index if not exists idx_services_visible on services (visible);
+create index if not exists idx_services_updated on services (updated_at desc);
+create index if not exists idx_skills_visible on skills (visible);
+create index if not exists idx_skills_updated on skills (updated_at desc);
+create index if not exists idx_projects_visible on projects (visible);
+create index if not exists idx_projects_updated on projects (updated_at desc);
+create index if not exists idx_certs_visible on certs (visible);
+create index if not exists idx_certs_updated on certs (updated_at desc);
+create index if not exists idx_settings_updated on settings (updated_at desc);
+
+-- ── 8) notifications inbox + push subscriptions (re-run safe) ──────────
+-- Owner-only: RLS enabled with NO public policies — every read/write goes
+-- through server routes with the service_role key (admin-guarded reads,
+-- throttled internal writes for visits/errors).
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  type text not null default 'info'
+    check (type in ('visit', 'error', 'prayer', 'birthday', 'appointment', 'info')),
+  title text not null default '',
+  body text not null default '',
+  url text not null default '/admin',
+  read boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  p256dh text not null default '',
+  auth text not null default '',
+  created_at timestamptz default now()
+);
+
+alter table notifications enable row level security;
+alter table push_subscriptions enable row level security;
+
+create index if not exists idx_notifications_created on notifications (created_at desc);
+create index if not exists idx_notifications_type_created on notifications (type, created_at desc);
+create index if not exists idx_notifications_unread on notifications (read, created_at desc) where read = false;

@@ -1,16 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
-import { ArrowUpRight, Check, ChevronDown, ExternalLink, FolderGit, Heart, Link2, Plus, Search } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Download, Expand, ExternalLink, FolderGit, Heart, Link2, Plus, Search } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import GlassModal from "@/components/GlassModal";
 import { SponsoredBadge } from "@/components/Badges";
 import { techLogo } from "@/data/techLogos";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { supabaseBrowser } from "@/lib/supabase/client";
 import SmartImage from "@/components/SmartImage";
 import type { AdminProject } from "@/components/admin/store";
 import { siteLikesKey } from "@/components/admin/store";
@@ -24,9 +23,9 @@ const PAGE_SIZE = 6;
 
 /** Cover art per project — swap any file in public/images/projects/ to reskin. */
 const COVERS: Record<string, string> = {
-  kayan: "/images/projects/elearning.svg",
+  kayan: "/images/projects/zaker-logo.svg",
   massar: "/images/projects/analytics.svg",
-  "budi-s-": "/images/projects/portfolio.svg",
+  "budi-s-": "/images/projects/budi-portfolio-logo.svg",
 };
 
 /** Plain-language role of each technology — shown as tooltips on tech chips. */
@@ -149,6 +148,8 @@ export default function Projects({
   const [briefKey, setBriefKey] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  /** In-flight votes per project key — the spam shield for toggleLike. */
+  const pendingLikes = useRef<Set<string>>(new Set());
 
   const fr = lang === "fr";
 
@@ -179,6 +180,8 @@ export default function Projects({
     return t.projects.items.map((p) => ({ ...p, demo: null as string | null, image: "", briefEn: [] as string[], briefFr: [] as string[], role: "", timeline: "", sponsored: false as boolean }));
   }, [remote, fr, t]);
   const [detailKey, setDetailKey] = useState<string | null>(null);
+  /** Image-only lightbox — cover preview + download, no dossier. */
+  const [imgPreview, setImgPreview] = useState<{ src: string; title: string } | null>(null);
   const detailItem = detailKey === null ? null : list.find((p) => (p.github || p.title) === detailKey) ?? null;
   const likeWord = fr ? "j'aime" : "likes";
   const likeAria = fr ? "Aimer ce projet" : "Like this project";
@@ -207,6 +210,10 @@ export default function Projects({
 
   const toggleLike = (key: string): void => {
     if (!likesEnabled) return;
+    // Spam shield: one in-flight vote per project + 600ms cooldown.
+    // Rapid taps are IGNORED locally (no RPC storm) — the heart never lies.
+    if (pendingLikes.current.has(key)) return;
+    pendingLikes.current.add(key);
     const loving = !liked[key];
     // Pure updater (StrictMode-safe) — persistence happens after, outside.
     setLiked((prev) => {
@@ -223,14 +230,21 @@ export default function Projects({
     } catch {
       /* storage blocked — like still counts this session */
     }
-    // Fire-and-forget shared counter (works offline: heart stays local).
-    const rpc = loving ? "increment_like" : "decrement_like";
+    // Rate-limited server proxy (works offline: heart stays local).
     void (async (): Promise<void> => {
       try {
-        const res = await supabaseBrowser().rpc(rpc, { p_id: key });
-        if (res.error) throw res.error;
+        const res = await fetch("/api/engagement/like", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, action: loving ? "like" : "unlike" }),
+        });
+        if (!res.ok) throw new Error(`like ${res.status}`);
       } catch {
-        /* unreachable — local heart is the fallback */
+        /* unreachable or throttled (429) — local heart is the fallback */
+      } finally {
+        window.setTimeout(() => {
+          pendingLikes.current.delete(key);
+        }, 600);
       }
     })();
   };
@@ -531,6 +545,17 @@ export default function Projects({
                   className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"
                 />
                 <div aria-hidden="true" className="bg-blueprint absolute inset-0 opacity-70" />
+                {cover && (
+                  <button
+                    type="button"
+                    onClick={() => setImgPreview({ src: cover as string, title: item.title })}
+                    aria-label={fr ? `Aperçu de l'image — ${item.title}` : `Preview image — ${item.title}`}
+                    title={fr ? "Aperçu de l'image" : "Preview image"}
+                    className="absolute right-4 bottom-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/55 text-white/80 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-[#d4af37]/60 hover:text-[#e9ce7a]"
+                  >
+                    <Expand className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
                 <div className="relative flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-accent/50 bg-accent px-3 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-accent-foreground uppercase">
                     {spotlightLabel}
@@ -798,6 +823,17 @@ export default function Projects({
                           </span>
                           <span className="flex items-center gap-1.5">
                             {item.sponsored && <SponsoredBadge lang={lang} />}
+                            {cover && (
+                              <button
+                                type="button"
+                                onClick={() => setImgPreview({ src: cover as string, title: item.title })}
+                                aria-label={fr ? `Aperçu de l'image — ${item.title}` : `Preview image — ${item.title}`}
+                                title={fr ? "Aperçu de l'image" : "Preview image"}
+                                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-[#d4af37]/60 hover:text-[#e9ce7a]"
+                              >
+                                <Expand className="h-3 w-3" aria-hidden="true" />
+                              </button>
+                            )}
                             <span className="rounded-full border border-white/10 bg-black/40 px-2 py-0.5 font-mono text-[9px] tracking-[0.14em] text-white/70 uppercase backdrop-blur-md tabular-nums">
                               {item.year}
                             </span>
@@ -1063,8 +1099,19 @@ export default function Projects({
                         </span>
                       )}
                     </span>
-                    <span className="absolute right-3 bottom-3 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 font-mono text-[10px] tracking-[0.16em] text-white/85 uppercase backdrop-blur-md tabular-nums">
-                      {detailItem.year} · {detailItem.period}
+                    <span className="absolute right-3 bottom-3 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setImgPreview({ src: dCover, title: detailItem.title })}
+                        aria-label={fr ? `Aperçu de l'image — ${detailItem.title}` : `Preview image — ${detailItem.title}`}
+                        title={fr ? "Aperçu de l'image" : "Preview image"}
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-[#d4af37]/60 hover:text-[#e9ce7a]"
+                      >
+                        <Expand className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                      <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 font-mono text-[10px] tracking-[0.16em] text-white/85 uppercase backdrop-blur-md tabular-nums">
+                        {detailItem.year} · {detailItem.period}
+                      </span>
                     </span>
                   </span>
                 )}
@@ -1220,6 +1267,33 @@ export default function Projects({
               </div>
             );
           })()}
+      </GlassModal>
+
+      {/* Image-only lightbox — cover preview + download */}
+      <GlassModal
+        open={imgPreview !== null}
+        onClose={() => setImgPreview(null)}
+        label={imgPreview?.title ?? (fr ? "Aperçu de l'image" : "Image preview")}
+        accent="#d4af37"
+      >
+        {imgPreview !== null && (
+          <div>
+            <span className="relative block aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+              <SmartImage src={imgPreview.src} alt={imgPreview.title} fill fit="contain" sizes="(max-width: 768px) 100vw, 800px" className="object-contain" />
+            </span>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{imgPreview.title}</p>
+              <a
+                href={imgPreview.src}
+                download={imgPreview.src.split("/").pop() ?? "cover"}
+                className="flex items-center gap-1.5 rounded-xl bg-[#d4af37] px-4 py-2.5 text-xs font-black text-[#2b2305] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                {fr ? "Télécharger" : "Download"}
+              </a>
+            </div>
+          </div>
+        )}
       </GlassModal>
     </section>
   );

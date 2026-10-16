@@ -55,10 +55,9 @@ function readFileAsDataURL(file: File): Promise<string> {
 }
 
 /**
- * BUDI OS hub — pick one of up to 100 dashboard accounts.
- * Builtin BUDI Portfolio opens the full console; external accounts
- * open their linked dashboard URL (their data lives in their own DB —
- * the hub only keeps the login ledger).
+ * Control-center hub — pick one of saved dashboards.
+ * Builtin BUDI Portfolio opens the full console; external dashboards
+ * open their linked dashboard URL.
  */
 export default function WorkspaceHub({
   list,
@@ -76,9 +75,11 @@ export default function WorkspaceHub({
   const [name, setName] = useState("");
   const [tagline, setTagline] = useState("");
   const [theme, setTheme] = useState("#ff3d00");
-  const [pin, setPin] = useState("");
   const [kind, setKind] = useState<"builtin" | "external">("builtin");
   const [dashboardUrl, setDashboardUrl] = useState("");
+  const [mottoAr, setMottoAr] = useState("");
+  const [mottoEn, setMottoEn] = useState("");
+  const [mottoRef, setMottoRef] = useState("");
   const [logo, setLogo] = useState("");
   const [logoErr, setLogoErr] = useState<string | null>(null);
   const [formErr, setFormErr] = useState<string | null>(null);
@@ -99,9 +100,11 @@ export default function WorkspaceHub({
       setName("");
       setTagline("");
       setTheme("#ff3d00");
-      setPin("");
       setKind("builtin");
       setDashboardUrl("");
+      setMottoAr("");
+      setMottoEn("");
+      setMottoRef("");
       setLogo("");
     } else {
       const ws = list.find((w) => w.id === m.id);
@@ -109,9 +112,11 @@ export default function WorkspaceHub({
       setName(ws.name);
       setTagline(ws.tagline);
       setTheme(ws.theme);
-      setPin(ws.pin);
       setKind(ws.kind);
       setDashboardUrl(ws.dashboardUrl);
+      setMottoAr(ws.mottoAr);
+      setMottoEn(ws.mottoEn);
+      setMottoRef(ws.mottoRef);
       setLogo(ws.logo);
     }
     setModal(m);
@@ -120,10 +125,6 @@ export default function WorkspaceHub({
   const submit = (): void => {
     if (name.trim() === "") {
       setFormErr("Name is required.");
-      return;
-    }
-    if (pin !== "" && !/^\d{4}$/.test(pin)) {
-      setFormErr("PIN must be exactly 4 digits (or empty = 2909).");
       return;
     }
     if (kind === "external") {
@@ -138,7 +139,9 @@ export default function WorkspaceHub({
         tagline: tagline.trim(),
         logo: logo.trim(),
         theme,
-        pin: pin === "" ? "2909" : pin,
+        mottoAr: mottoAr.trim(),
+        mottoEn: mottoEn.trim(),
+        mottoRef: mottoRef.trim(),
         kind,
         dashboardUrl: dashboardUrl.trim(),
       });
@@ -153,9 +156,9 @@ export default function WorkspaceHub({
         tagline: tagline.trim(),
         logo: logo.trim(),
         theme,
-        // Main console PIN lives on the server (/api/admin/verify) —
-        // the hub never rewrites it, so the gate can't desync.
-        pin: isBuiltin ? ws.pin : pin === "" ? "2909" : pin,
+        mottoAr: mottoAr.trim().slice(0, 300),
+        mottoEn: mottoEn.trim().slice(0, 300),
+        mottoRef: mottoRef.trim().slice(0, 80),
         kind: isBuiltin ? "builtin" : kind,
         dashboardUrl: dashboardUrl.trim(),
       };
@@ -195,21 +198,21 @@ export default function WorkspaceHub({
             BUDI <span className="text-accent">OS</span>
           </h1>
           <p className="mt-1 font-mono text-[10px] tracking-[0.3em] text-white/40 uppercase">
-            مركز قيادة المشاريع · {list.length}/100 workspaces
+            Mission control · {list.length}/100 dashboards
           </p>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/55">
-            One app, every dashboard — pick an account to open its own console, loader and PIN.
+            One app, every dashboard — pick a dashboard to open its own console.
           </p>
         </div>
 
         <div className="mx-auto mt-8 flex w-full max-w-2xl items-center gap-2">
           <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition-colors focus-within:border-[#ff3d00]/60">
             <Search className="h-4 w-4 shrink-0 text-white/35" aria-hidden="true" />
-            <span className="sr-only">Search workspaces</span>
+            <span className="sr-only">Search dashboards</span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search accounts… (Kayan, Massar…)"
+              placeholder="Search dashboards… (Kayan, Massar…)"
               className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/25"
             />
             {query !== "" && (
@@ -229,13 +232,13 @@ export default function WorkspaceHub({
             className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[#ff3d00] px-4 py-3 text-sm font-black text-[#1a0e05] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-12px_rgba(255,61,0,0.8)]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Add account</span>
+            <span className="hidden sm:inline">Add dashboard</span>
           </button>
         </div>
 
         {filtered.length === 0 ? (
           <p className="mx-auto mt-10 max-w-md rounded-2xl border border-dashed border-white/15 p-8 text-center text-sm text-white/45">
-            No account matches — try another word, or add it.
+            No dashboard matches — try another word, or add it.
           </p>
         ) : (
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -245,7 +248,6 @@ export default function WorkspaceHub({
                 <article
                   key={ws.id}
                   className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/25"
-                  style={{ boxShadow: `0 0 0 rgba(0,0,0,0)` }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.boxShadow = `0 20px 60px -24px ${ws.theme}66`;
                     e.currentTarget.style.borderColor = `${ws.theme}66`;
@@ -323,14 +325,14 @@ export default function WorkspaceHub({
                       className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-black transition-all hover:-translate-y-0.5 hover:brightness-110"
                       style={{ backgroundColor: ws.theme, color: "#0a0a0b" }}
                     >
-                      دخول · Enter
+                      Enter
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
                       onClick={() => openModal({ mode: "edit", id: ws.id })}
                       aria-label={`Edit ${ws.name}`}
-                      title="Edit account"
+                      title="Edit dashboard"
                       className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border border-white/10 text-white/50 transition-colors hover:border-white/30 hover:text-white"
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -344,7 +346,7 @@ export default function WorkspaceHub({
                           }
                         }}
                         aria-label={`Delete ${ws.name}`}
-                        title="Delete account"
+                        title="Delete dashboard"
                         className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border border-white/10 text-white/50 transition-colors hover:border-red-500/60 hover:text-red-400"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -364,18 +366,18 @@ export default function WorkspaceHub({
               onClick={onExitLast}
               className="cursor-pointer font-mono text-[10px] tracking-[0.2em] text-white/30 uppercase hover:text-white/60"
             >
-              Forget last-opened account
+              Forget last-opened dashboard
             </button>
           </p>
         )}
       </div>
 
-      {/* Add / edit account */}
+      {/* Add / edit dashboard */}
       {modal !== null && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={modal.mode === "add" ? "Add account" : "Edit account"}
+          aria-label={modal.mode === "add" ? "Add dashboard" : "Edit dashboard"}
           onClick={() => setModal(null)}
           className="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-md"
         >
@@ -392,10 +394,10 @@ export default function WorkspaceHub({
               </span>
               <div>
                 <h3 className="font-display text-xl font-black">
-                  {modal.mode === "add" ? "New dashboard account" : "Edit account"}
+                  {modal.mode === "add" ? "New dashboard" : "Edit dashboard"}
                 </h3>
                 <p className="font-mono text-[10px] tracking-[0.18em] text-white/40 uppercase">
-                  Meta + login record only — project data stays in its own DB
+                  Meta only — project data stays in its own DB
                 </p>
               </div>
             </div>
@@ -426,52 +428,62 @@ export default function WorkspaceHub({
                   className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#ff3d00]"
                 />
               </label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">
-                    PIN (4 digits)
-                    {modal.mode === "edit" &&
-                      list.find((w) => w.id === modal.id)?.id === builtinWorkspace().id &&
-                      " · server-owned"}
-                  </span>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">
+                  Opening verse — this dashboard&apos;s own voice
+                </p>
+                <div className="grid gap-2">
                   <input
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    placeholder="2909"
-                    dir="ltr"
-                    inputMode="numeric"
-                    maxLength={4}
-                    disabled={modal.mode === "edit" && list.find((w) => w.id === modal.id)?.id === builtinWorkspace().id}
-                    className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 font-mono text-sm tracking-[0.3em] text-white outline-none placeholder:text-white/25 focus:border-[#ff3d00] disabled:opacity-50"
+                    value={mottoAr}
+                    onChange={(e) => setMottoAr(e.target.value)}
+                    placeholder="Opening line (AR) — empty = shared rotation / setup hint"
+                    dir="rtl"
+                    lang="ar"
+                    maxLength={300}
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#ff3d00]"
                   />
-                </label>
-                <div>
-                  <span className="mb-1.5 block font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">
-                    Theme
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {THEME_PRESETS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setTheme(c)}
-                        aria-label={`Theme ${c}`}
-                        aria-pressed={theme === c}
-                        className={cn(
-                          "h-9 w-9 cursor-pointer rounded-lg border transition-transform hover:scale-110",
-                          theme === c ? "border-white" : "border-transparent",
-                        )}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                    <input
-                      type="color"
-                      value={theme}
-                      onChange={(e) => setTheme(e.target.value)}
-                      aria-label="Custom theme color"
-                      className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent"
+                  <input
+                    value={mottoEn}
+                    onChange={(e) => setMottoEn(e.target.value)}
+                    placeholder="Opening line (EN)"
+                    maxLength={300}
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-[#ff3d00]"
+                  />
+                  <input
+                    value={mottoRef}
+                    onChange={(e) => setMottoRef(e.target.value)}
+                    placeholder="Source — e.g. Quran 39:9"
+                    maxLength={80}
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 font-mono text-xs text-white outline-none placeholder:text-white/25 focus:border-[#ff3d00]"
+                  />
+                </div>
+              </div>
+              <div>
+                <span className="mb-1.5 block font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">
+                  Theme
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {THEME_PRESETS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setTheme(c)}
+                      aria-label={`Theme ${c}`}
+                      aria-pressed={theme === c}
+                      className={cn(
+                        "h-9 w-9 cursor-pointer rounded-lg border transition-transform hover:scale-110",
+                        theme === c ? "border-white" : "border-transparent",
+                      )}
+                      style={{ backgroundColor: c }}
                     />
-                  </div>
+                  ))}
+                  <input
+                    type="color"
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                    aria-label="Custom theme color"
+                    className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent"
+                  />
                 </div>
               </div>
               <div className="flex gap-2 rounded-xl border border-white/10 bg-black/30 p-1">
@@ -572,7 +584,7 @@ export default function WorkspaceHub({
                   className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#ff3d00] px-4 py-3 text-sm font-black text-[#1a0e05] hover:brightness-110"
                 >
                   <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                  {modal.mode === "add" ? "Create account" : "Save"}
+                  {modal.mode === "add" ? "Create dashboard" : "Save"}
                 </button>
               </div>
               <p className="flex items-center justify-center gap-1 text-center font-mono text-[9px] text-white/30">

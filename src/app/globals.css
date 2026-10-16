@@ -82,17 +82,29 @@ body {
   border-radius: 2px;
 }
 
-/* Slim dark scrollbar — no layout shift (overlay-style) */
+/* Slim luxury scrollbar — thin, dark, gold on hover (no layout shift) */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #2b2616 var(--background);
+}
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: #08080a;
 }
 ::-webkit-scrollbar-thumb {
-  background: #26262b;
-  border-radius: 8px;
-  border: 2px solid var(--background);
+  background: linear-gradient(180deg, #2e2a18, #211d10);
+  border-radius: 999px;
+  border: 2px solid #08080a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d4af37, #8a6d1b);
+  border-color: #08080a;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .display {
@@ -540,6 +552,78 @@ body {
   animation: load-shimmer 2.8s ease-in-out infinite;
 }
 
+/* Official crest float — gentle light bob for club logos */
+@keyframes crest-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.crest-float {
+  animation: crest-float 3.6s ease-in-out infinite;
+}
+
+/* Club magic — shine sweep + twinkling sparks on the crest cards */
+.club-shine {
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+  transform: skewX(-14deg) translateX(-160%);
+  animation: club-shine 4.2s ease-in-out infinite;
+}
+@keyframes club-shine {
+  0% {
+    transform: skewX(-14deg) translateX(-160%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  60%,
+  100% {
+    transform: skewX(-14deg) translateX(320%);
+    opacity: 0;
+  }
+}
+@keyframes club-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+.club-spark {
+  box-shadow: 0 0 8px currentColor;
+  animation: club-spark 2.6s ease-in-out infinite;
+}
+.club-spark-2 {
+  animation-delay: 1.3s;
+}
+
+/* BUDI shimmer — light creative gold sweep for the clubs finale word */
+@keyframes budi-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.budi-shimmer {
+  background: linear-gradient(100deg, #8a6d1b 15%, #f9edb0 40%, #d4af37 55%, #8a6d1b 80%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: budi-shimmer 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 14px rgba(212, 175, 55, 0.3));
+}
+
 /* Arabic bloom — "بودي" blooms soft after the B draw: blur lifts,
    hairlines grow outward, letters settle with a glow. Delay inline. */
 @keyframes load-ar-reveal {
@@ -575,7 +659,7 @@ body {
 }
 
 /* ——— Luxury preloader: drawn B + silky BUDI + glass console ——— */
-/* B silhouette — one hairline stroke draws itself, then breathes emerald */
+/* B silhouette — one hairline stroke draws itself, then breathes gold */
 @keyframes load-luxe-draw {
   to {
     stroke-dashoffset: 0;
@@ -583,7 +667,7 @@ body {
 }
 @keyframes load-luxe-breathe {
   to {
-    fill: rgba(34, 197, 94, 0.12);
+    fill: rgba(212, 175, 55, 0.14);
   }
 }
 .load-luxe-b {
@@ -668,11 +752,43 @@ body {
 .load-luxe-diamond {
   opacity: 0;
   animation: load-luxe-pop 0.5s ease 1.7s both;
-  box-shadow: 0 0 10px rgba(215, 253, 68, 0.8);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.85);
 }
 .load-luxe-sub {
   opacity: 0;
   animation: load-fadeup 0.7s ease 1.75s both;
+}
+/* Official BUDI wordmark — reveals silk-smooth after the B draw, then breathes gold */
+@keyframes load-budi-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.94);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.load-budi-reveal {
+  opacity: 0;
+  animation: load-budi-reveal 0.85s cubic-bezier(0.22, 1, 0.36, 1) 1.35s both;
+}
+@keyframes load-gold-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.35));
+  }
+  50% {
+    transform: scale(1.035);
+    filter: drop-shadow(0 0 26px rgba(233, 206, 122, 0.6));
+  }
+}
+.load-gold-pulse {
+  animation: load-gold-pulse 2.2s ease-in-out 2.2s infinite;
+  will-change: transform, filter;
 }
 /* Logo seal — the site mark fades in last, after the drawn B completes */
 @keyframes load-luxe-seal {
@@ -794,6 +910,86 @@ body {
 }
 .loader-failsafe {
   animation: loader-failsafe 0.5s ease 7s forwards;
+}
+
+/* ——— Cinematic loader — reference-style (aurora · parallax stars · fill) ———
+   Shared by the control-center opening splash and the dashboard loader.
+   Twin star layers drift at different speeds for real depth; the emblem
+   breathes over a glowing blob; the wordmark letters rise in and are then
+   painted bottom-to-top by a clip-path fill (see .load-fill-up). */
+@keyframes cl-stars-a {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-170px, -120px, 0);
+  }
+}
+@keyframes cl-stars-b {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(130px, -165px, 0);
+  }
+}
+.cl-stars-a {
+  animation: cl-stars-a 80s linear infinite alternate;
+}
+.cl-stars-b {
+  animation: cl-stars-b 120s linear infinite alternate;
+}
+
+/* Logo glow blob — breathes behind the emblem */
+@keyframes cl-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+.cl-glow {
+  animation: cl-glow 2.6s ease-in-out infinite;
+}
+
+/* Emblem drop-in — the reference logo entrance */
+@keyframes cl-logo-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.cl-logo-drop {
+  opacity: 0;
+  animation: cl-logo-drop 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+/* Wordmark base letters — rise + settle in place (fill overlay paints on top) */
+@keyframes cl-letter-in {
+  from {
+    opacity: 0;
+    transform: translateY(38%);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+.cl-letter-in {
+  opacity: 0;
+  animation: cl-letter-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Initial states for GSAP-choreographed elements.
@@ -1113,6 +1309,10 @@ body {
   .marquee-track,
   .marquee-rev-track,
   .load-shimmer,
+  .budi-shimmer,
+  .crest-float,
+  .club-shine,
+  .club-spark,
   .load-luxe-b,
   .load-luxe-b-stem,
   .load-luxe-letter,
@@ -1122,20 +1322,27 @@ body {
   .load-luxe-sub,
   .load-luxe-seal,
   .load-luxe-console,
+  .load-budi-reveal,
+  .load-gold-pulse,
   .load-magic-halo,
   .load-magic-spark,
   .load-magic-dust,
+  .cl-stars-a,
+  .cl-stars-b,
+  .cl-glow,
+  .cl-logo-drop,
+  .cl-letter-in,
   .load-draw-b {
     animation: none;
   }
   /* Reduced motion: the B must still be visible without its draw animation. */
   .load-draw-b {
-    fill: #22c55e;
+    fill: #d4af37;
     stroke-dashoffset: 0;
   }
   .load-luxe-b {
     stroke-dashoffset: 0;
-    fill: rgba(34, 197, 94, 0.12);
+    fill: rgba(212, 175, 55, 0.14);
   }
   .load-luxe-b-stem {
     stroke-dashoffset: 0;
@@ -1150,9 +1357,17 @@ body {
   .load-luxe-sub,
   .load-luxe-seal,
   .load-luxe-console,
+  .load-budi-reveal,
   .load-luxe-diamond,
+  .cl-logo-drop,
+  .cl-letter-in,
   .load-fill-up {
     opacity: 1;
+  }
+  .cl-logo-drop,
+  .cl-letter-in {
+    transform: none;
+    filter: none;
   }
   .load-magic-halo {
     opacity: 0.6;

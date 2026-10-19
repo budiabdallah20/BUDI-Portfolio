@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { checkAdmin } from "../_guard";
+import { purgeContentCache } from "../_revalidate";
 import { supabaseService } from "@/lib/supabase/server";
 import { audit, auditEventFromReq } from "@/lib/audit";
 
@@ -60,11 +60,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     console.error(`[admin/remove] unreachable (${table}):`, e instanceof Error ? e.message : e);
     return auditFail(ev, "Database unreachable", 500);
   }
-  try {
-    revalidatePath("/");
-  } catch {
-    /* ignore */
-  }
+  purgeContentCache();
   ev.table = table;
   ev.id = id;
   void audit(ev);

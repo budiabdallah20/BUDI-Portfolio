@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { checkAdmin } from "../_guard";
+import { purgeContentCache } from "../_revalidate";
 import { upsertResilient } from "../_db";
 import type { AdminDB } from "@/components/admin/store";
 import { bodyTooLarge, sanitizeRow } from "../_validate";
 import { audit, auditEventFromReq } from "@/lib/audit";
+
+export const maxDuration = 60;
 
 /** Whole-DB push is big by nature (images) — 8MB ceiling still stops abuse. */
 const BODY_CAP = 8 * 1024 * 1024;
@@ -119,11 +121,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       dropped.push(...r.dropped.map((c) => `settings.${c}`));
     }
     if (dropped.length > 0) {
-      try {
-        revalidatePath("/");
-      } catch {
-        /* ignore */
-      }
+      purgeContentCache();
       void audit(ev);
       return NextResponse.json({
         ok: true,
@@ -142,11 +140,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     console.error("[admin/seed] unreachable:", e instanceof Error ? e.message : e);
     return auditFail(ev, "Database unreachable", 500);
   }
-  try {
-    revalidatePath("/");
-  } catch {
-    /* ignore */
-  }
+  purgeContentCache();
   void audit(ev);
   return NextResponse.json({
     ok: true,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { checkAdmin } from "../_guard";
+import { purgeContentCache } from "../_revalidate";
 
 /**
  * REAL hard refresh — purges the ISR cache for the live site (`/`) and the
@@ -75,18 +75,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: gate.error }, { status: gate.status, headers });
   }
 
-  const paths: string[] = [];
-  try {
-    revalidatePath("/");
-    paths.push("/");
-  } catch {
-    /* static export — nothing to purge */
-  }
-  try {
-    revalidatePath("/api/content");
-    paths.push("/api/content");
-  } catch {
-    /* static export — nothing to purge */
-  }
+  const paths = purgeContentCache();
   return NextResponse.json({ ok: true, revalidated: true, at: Date.now(), paths }, { headers });
 }

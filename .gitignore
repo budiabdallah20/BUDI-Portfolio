@@ -70,3 +70,5 @@ supabase/.temp/
 # os
 Thumbs.db
 Desktop.ini
+
+.vercel

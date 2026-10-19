@@ -45,11 +45,20 @@ cp .env.example .env
 
 | Variable | Required | Notes |
 |---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | Production | Canonical URL for metadata, sitemap and cross-origin revalidate |
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | Without it the site renders baked-in fallback content |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Public anon key — RLS enforces read-only |
-| `SUPABASE_SERVICE_ROLE_KEY` | Dashboard cloud sync only | **Server-only**, never expose with `NEXT_PUBLIC_` |
-| `ADMIN_PIN` | Dashboard cloud writes | Checked server-side in `/api/admin/verify` |
-| `NEXT_PUBLIC_SITE_URL` | Production | Canonical URL for SEO/metadata |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Public anon key; RLS enforces read-only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Dashboard cloud sync | **Server-only**, never expose with `NEXT_PUBLIC_` |
+| `ADMIN_API_SECRET` | Dashboard login/writes | Exactly 4 digits; checked server-side in `/api/admin/verify` |
+| `ADMIN_ENTRY_PASSWORD` | Footer admin gate | Separate strong password, not the dashboard PIN |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Push notifications | Public VAPID key |
+| `VAPID_PRIVATE_KEY` | Push notifications | **Server-only**, never commit |
+| `VAPID_SUBJECT` | Push notifications | `https://...` or `mailto:...` |
+| `GIT_TOKEN` | Optional | Allows "Punch it" to push without host git credentials |
+
+> `.env` is local and gitignored. For Vercel, add the same names under
+> **Project -> Settings -> Environment Variables -> Production**, then redeploy.
+> `.env.example` contains placeholders only.
 
 ## 🗄️ Database
 

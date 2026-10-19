@@ -7,7 +7,10 @@
 -- What this file does:
 --  1) services / skills / projects / certs / settings / visits / likes
 --  2) adds new badge columns: projects.sponsored,
---     settings.siteVerified, settings.verificationBadges + all rails
+--     settings.siteVerified, settings.verificationBadges + all rails,
+--     plus the full dashboard field batch the editors already expose:
+--     services (price/CTA/FAQ/testimonial), skills (years/order/…),
+--     projects (gallery/impact/client/SEO), settings (SEO meta)
 --  3) RLS (site reads visible rows, writes via dashboard service_role)
 --  4) RPCs: increment_visit / increment_like / decrement_like
 --  5) seeds settings id='site' + backfills NULLs on existing rows
@@ -36,6 +39,19 @@ create table if not exists services (
   "timelineEn" text default '',
   "timelineFr" text default '',
   visible boolean default true,
+  "startingPrice" text default '',
+  currency text default 'USD',
+  "ctaLink" text default '',
+  "ctaLabelEn" text default 'Get a quote',
+  "ctaLabelFr" text default 'Demander un devis',
+  faq jsonb default '[]'::jsonb,
+  popular boolean default false,
+  "deliveryDays" int default 0,
+  revisions int default 2,
+  "testimonialQuote" text default '',
+  "testimonialAuthor" text default '',
+  addons text[] default '{}',
+  "iconColor" text default '',
   updated_at timestamptz default now()
 );
 
@@ -50,6 +66,11 @@ create table if not exists skills (
   "detailEn" text default '',
   "detailFr" text default '',
   visible boolean default true,
+  years int default 0,
+  "learningNow" boolean default false,
+  "certId" text default '',
+  featured boolean default false,
+  "order" int default 0,
   updated_at timestamptz default now()
 );
 
@@ -76,6 +97,20 @@ create table if not exists projects (
   "briefFr" text[] default '{}',
   sponsored boolean default false,
   visible boolean default true,
+  gallery text[] default '{}',
+  "demoEmbed" text default '',
+  "impactEn" text default '',
+  "impactFr" text default '',
+  "clientName" text default '',
+  "clientLogo" text default '',
+  "teamSize" int default 1,
+  tags text[] default '{}',
+  featured boolean default false,
+  progress int default 0,
+  version text default '',
+  changelog text[] default '{}',
+  "seoSlug" text default '',
+  "seoDesc" text default '',
   updated_at timestamptz default now()
 );
 
@@ -129,6 +164,13 @@ create table if not exists settings (
   "siteVerified" boolean default true,
   "verificationBadges" jsonb default '[]'::jsonb,
   "catLabels" jsonb default '{}'::jsonb,
+  "seoTitle" text default '',
+  "seoDesc" text default '',
+  "seoKeywords" text default '',
+  "ogImage" text default '',
+  "twitterHandle" text default '',
+  "canonicalBase" text default '',
+  "robotsIndex" boolean default true,
   updated_at timestamptz default now()
 );
 
@@ -180,6 +222,19 @@ alter table services add column if not exists "bestForFr" text default '';
 alter table services add column if not exists "timelineEn" text default '';
 alter table services add column if not exists "timelineFr" text default '';
 alter table services add column if not exists visible boolean default true;
+alter table services add column if not exists "startingPrice" text default '';
+alter table services add column if not exists currency text default 'USD';
+alter table services add column if not exists "ctaLink" text default '';
+alter table services add column if not exists "ctaLabelEn" text default 'Get a quote';
+alter table services add column if not exists "ctaLabelFr" text default 'Demander un devis';
+alter table services add column if not exists faq jsonb default '[]'::jsonb;
+alter table services add column if not exists popular boolean default false;
+alter table services add column if not exists "deliveryDays" int default 0;
+alter table services add column if not exists revisions int default 2;
+alter table services add column if not exists "testimonialQuote" text default '';
+alter table services add column if not exists "testimonialAuthor" text default '';
+alter table services add column if not exists addons text[] default '{}';
+alter table services add column if not exists "iconColor" text default '';
 alter table services add column if not exists updated_at timestamptz default now();
 
 alter table skills add column if not exists name text default '';
@@ -191,6 +246,11 @@ alter table skills add column if not exists icon text default '';
 alter table skills add column if not exists "detailEn" text default '';
 alter table skills add column if not exists "detailFr" text default '';
 alter table skills add column if not exists visible boolean default true;
+alter table skills add column if not exists years int default 0;
+alter table skills add column if not exists "learningNow" boolean default false;
+alter table skills add column if not exists "certId" text default '';
+alter table skills add column if not exists featured boolean default false;
+alter table skills add column if not exists "order" int default 0;
 alter table skills add column if not exists updated_at timestamptz default now();
 
 alter table projects add column if not exists "titleFr" text default '';
@@ -213,6 +273,20 @@ alter table projects add column if not exists "briefEn" text[] default '{}';
 alter table projects add column if not exists "briefFr" text[] default '{}';
 alter table projects add column if not exists sponsored boolean default false;
 alter table projects add column if not exists visible boolean default true;
+alter table projects add column if not exists gallery text[] default '{}';
+alter table projects add column if not exists "demoEmbed" text default '';
+alter table projects add column if not exists "impactEn" text default '';
+alter table projects add column if not exists "impactFr" text default '';
+alter table projects add column if not exists "clientName" text default '';
+alter table projects add column if not exists "clientLogo" text default '';
+alter table projects add column if not exists "teamSize" int default 1;
+alter table projects add column if not exists tags text[] default '{}';
+alter table projects add column if not exists featured boolean default false;
+alter table projects add column if not exists progress int default 0;
+alter table projects add column if not exists version text default '';
+alter table projects add column if not exists changelog text[] default '{}';
+alter table projects add column if not exists "seoSlug" text default '';
+alter table projects add column if not exists "seoDesc" text default '';
 alter table projects add column if not exists updated_at timestamptz default now();
 
 alter table certs add column if not exists "titleEn" text default '';
@@ -260,6 +334,13 @@ alter table settings add column if not exists "instapayAt" text default '';
 alter table settings add column if not exists "siteVerified" boolean default true;
 alter table settings add column if not exists "verificationBadges" jsonb default '[]'::jsonb;
 alter table settings add column if not exists "catLabels" jsonb default '{}'::jsonb;
+alter table settings add column if not exists "seoTitle" text default '';
+alter table settings add column if not exists "seoDesc" text default '';
+alter table settings add column if not exists "seoKeywords" text default '';
+alter table settings add column if not exists "ogImage" text default '';
+alter table settings add column if not exists "twitterHandle" text default '';
+alter table settings add column if not exists "canonicalBase" text default '';
+alter table settings add column if not exists "robotsIndex" boolean default true;
 alter table settings add column if not exists updated_at timestamptz default now();
 
 -- ── 3) RLS ───────────────────────────────────────────────────────────

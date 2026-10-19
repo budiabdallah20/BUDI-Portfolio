@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { execFile } from "node:child_process";
 import { checkAdmin } from "../_guard";
+import { purgeContentCache } from "../_revalidate";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { RATE_LIMITS } from "@/lib/security/limits";
 import { audit, auditEventFromReq } from "@/lib/audit";
@@ -244,11 +244,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
     if (!pushRes.ok) return fail(friendly(pushRes.out), pushRes.out);
 
-    try {
-      revalidatePath("/");
-    } catch {
-      /* static route — ignore */
-    }
+    purgeContentCache();
     ev.meta = { branch, files: changed.length, hash: shortHash };
     void audit(ev);
     return NextResponse.json({

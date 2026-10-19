@@ -5,14 +5,23 @@ import { supabaseService } from "@/lib/supabase/server";
  *
  * The dashboard ships features (new columns) faster than the cloud schema
  * gets re-run: a row carrying a column Postgres doesn't know yet fails the
- * whole write with 42703 ("column does not exist") → the dreaded 500
- * "Database error" on a simple work-status toggle. Instead of failing, we
- * drop the unknown column(s) and retry (max 3 drops, never `id`), so the
- * write lands TODAY. A server warning tells the owner to re-run
- * supabase/schema.sql — the permanent fix — while users feel nothing.
+ * whole write → the dreaded 500 "Database error" on a simple work-status
+ * toggle. Instead of failing, we drop the unknown column(s) and retry
+ * (never `id`), so the write lands TODAY. A server warning tells the owner
+ * to re-run supabase/schema.sql — the permanent fix — while users feel
+ * nothing.
+ *
+ * The unknown column is reported ONE at a time, so the cap must cover a
+ * whole feature batch (services gained 13 fields at once); MAX_DRIFT_DROPS
+ * is that ceiling. The message has two possible shapes — PostgREST's schema
+ * cache (PGRST204) and raw Postgres (42703) — and BOTH must be recognized,
+ * or the airbag silently degrades into a 500.
  */
 
-const MISSING_COLUMN_RE = /column "([^"]+)" of relation "[^"]+" does not exist|column ([\w.]+) does not exist/i;
+const MAX_DRIFT_DROPS = 30;
+
+const MISSING_COLUMN_RE =
+  /column "([^"]+)" of relation "[^"]+" does not exist|column ([\w.]+) does not exist|Could not find the '([^']+)' column of '[^']+' in the schema cache/i;
 
 export type UpsertOutcome =
   | { ok: true; dropped: string[] }
@@ -35,7 +44,7 @@ export async function upsertResilient(
   }));
   if (list.length === 0) return { ok: true, dropped: [] };
   const dropped: string[] = [];
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt <= MAX_DRIFT_DROPS; attempt += 1) {
     const sb = supabaseService();
     const payload = list.length === 1 ? (list[0] as Record<string, unknown>) : list;
     const { error } = await sb.from(table).upsert(payload, { onConflict: "id" });
@@ -48,7 +57,8 @@ export async function upsertResilient(
       return { ok: true, dropped };
     }
     const msg = typeof error.message === "string" ? error.message : "";
-    const col = MISSING_COLUMN_RE.exec(msg)?.[1] ?? MISSING_COLUMN_RE.exec(msg)?.[2];
+    const match = MISSING_COLUMN_RE.exec(msg);
+    const col = match?.[1] ?? match?.[2] ?? match?.[3];
     if (!col || col === "id" || dropped.includes(col)) {
       console.error(`[admin-db] upsert failed on "${table}":`, msg);
       return { ok: false, message: msg };

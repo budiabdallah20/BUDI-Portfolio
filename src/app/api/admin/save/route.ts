@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { checkAdmin } from "../_guard";
+import { purgeContentCache } from "../_revalidate";
 import { upsertResilient } from "../_db";
 import { SAVE_TABLES, bodyTooLarge, sanitizeRow } from "../_validate";
 import { audit, auditEventFromReq } from "@/lib/audit";
+
+export const maxDuration = 60;
 
 /** 512KB per row-write — dashboard rows are kilobytes; anything bigger is abuse. */
 const BODY_CAP = 512 * 1024;
@@ -68,11 +70,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       return auditFail(ev, "Database error", 500);
     }
     if (saved.dropped.length > 0) {
-      try {
-        revalidatePath("/");
-      } catch {
-        /* static route — ignore */
-      }
+      purgeContentCache();
       ev.meta = { table, droppedColumns: saved.dropped };
       void audit(ev);
       return NextResponse.json(
@@ -83,11 +81,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     console.error(`[admin/save] unreachable (${table}):`, e instanceof Error ? e.message : e);
     return auditFail(ev, "Database unreachable", 500);
   }
-  try {
-    revalidatePath("/");
-  } catch {
-    /* static route — ignore */
-  }
+  purgeContentCache();
   ev.meta = { table };
   void audit(ev);
   return NextResponse.json({ ok: true, revalidated: true, at: Date.now() });

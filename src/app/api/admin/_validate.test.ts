@@ -60,3 +60,57 @@ describe("sanitizeRow", () => {
     expect(sanitizeRow("skills", { id: "s", name: "N", level: 999 }).ok).toBe(false);
   });
 });
+
+describe("dashboard field batch — extended columns survive the gate", () => {
+  it("accepts extended service fields and canonicalizes FAQ entries", () => {
+    const r = sanitizeRow("services", {
+      id: "srv-x",
+      title: "T",
+      startingPrice: "$500",
+      currency: "USD",
+      ctaLink: "https://wa.me/123",
+      faq: [{ qEn: "Q", aEn: "A", qFr: "Qf", aFr: "Af", evil: "drop me" }],
+      popular: true,
+      deliveryDays: 7,
+      revisions: 2,
+      iconColor: "#ff3d00",
+    });
+    expect(r.ok).toBe(true);
+    expect(r.clean).toMatchObject({ startingPrice: "$500", popular: true, deliveryDays: 7 });
+    expect(r.clean?.faq).toEqual([{ qEn: "Q", aEn: "A", qFr: "Qf", aFr: "Af" }]);
+  });
+  it("rejects hostile links, malformed FAQ, bad gallery images and bad ints", () => {
+    expect(sanitizeRow("services", { id: "s", title: "T", ctaLink: "javascript:alert(1)" }).ok).toBe(
+      false,
+    );
+    expect(sanitizeRow("services", { id: "s", title: "T", faq: [{ qEn: 1 }] }).ok).toBe(false);
+    expect(sanitizeRow("services", { id: "s", title: "T", deliveryDays: 999 }).ok).toBe(false);
+    expect(
+      sanitizeRow("projects", { id: "p", title: "T", gallery: ["data:text/html,x"] }).ok,
+    ).toBe(false);
+    expect(sanitizeRow("projects", { id: "p", title: "T", teamSize: 0 }).ok).toBe(false);
+    expect(
+      sanitizeRow("projects", {
+        id: "p",
+        title: "T",
+        gallery: ["data:image/png;base64,iVBORw0KGgo=", "/images/projects/x.svg"],
+      }).ok,
+    ).toBe(true);
+  });
+  it("keeps skill years/order/featured and settings SEO fields", () => {
+    const skill = sanitizeRow("skills", {
+      id: "skill-x",
+      name: "X",
+      years: 3,
+      featured: true,
+      order: 2,
+      learningNow: false,
+    });
+    expect(skill.ok).toBe(true);
+    expect(skill.clean).toMatchObject({ years: 3, featured: true, order: 2 });
+    const settings = sanitizeRow("settings", { id: "site", seoTitle: "BUDI", robotsIndex: false });
+    expect(settings.ok).toBe(true);
+    expect(settings.clean).toMatchObject({ seoTitle: "BUDI", robotsIndex: false });
+    expect(sanitizeRow("settings", { id: "site", robotsIndex: "yes" }).ok).toBe(false);
+  });
+});

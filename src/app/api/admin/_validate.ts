@@ -87,7 +87,9 @@ type Field =
   | { k: "bool" }
   | { k: "enum"; values: readonly string[] }
   | { k: "int"; min: number; max: number }
-  | { k: "strArr"; maxItems: number; maxLen: number };
+  | { k: "strArr"; maxItems: number; maxLen: number }
+  | { k: "imgArr"; maxItems: number }
+  | { k: "faq"; maxItems: number };
 
 function checkField(value: unknown, f: Field): boolean {
   switch (f.k) {
@@ -113,6 +115,22 @@ function checkField(value: unknown, f: Field): boolean {
         (Array.isArray(value) &&
           value.length <= f.maxItems &&
           value.every((x) => typeof x === "string" && x.length <= f.maxLen))
+      );
+    case "imgArr":
+      return (
+        Array.isArray(value) && value.length <= f.maxItems && value.every((x) => isSafeImage(x))
+      );
+    case "faq":
+      return (
+        Array.isArray(value) &&
+        value.length <= f.maxItems &&
+        value.every((entry) => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+          const q = entry as Record<string, unknown>;
+          return (
+            isStr(q.qEn, 160) && isStr(q.aEn, 400) && isStr(q.qFr, 160) && isStr(q.aFr, 400)
+          );
+        })
       );
   }
 }
@@ -142,6 +160,19 @@ const TABLES: Record<string, Record<string, Field>> = {
     timelineEn: S(80),
     timelineFr: S(80),
     visible: { k: "bool" },
+    startingPrice: S(40),
+    currency: S(8),
+    ctaLink: { k: "link" },
+    ctaLabelEn: S(40),
+    ctaLabelFr: S(40),
+    faq: { k: "faq", maxItems: 8 },
+    popular: { k: "bool" },
+    deliveryDays: { k: "int", min: 0, max: 365 },
+    revisions: { k: "int", min: 0, max: 20 },
+    testimonialQuote: S(300),
+    testimonialAuthor: S(80),
+    addons: OPT_ARR(8, 60),
+    iconColor: S(20),
   },
   skills: {
     name: { k: "str", max: 40, empty: false },
@@ -153,6 +184,11 @@ const TABLES: Record<string, Record<string, Field>> = {
     detailEn: S(220),
     detailFr: S(220),
     visible: { k: "bool" },
+    years: { k: "int", min: 0, max: 50 },
+    learningNow: { k: "bool" },
+    certId: S(60),
+    featured: { k: "bool" },
+    order: { k: "int", min: 0, max: 9999 },
   },
   projects: {
     title: { k: "str", max: 80, empty: false },
@@ -176,6 +212,20 @@ const TABLES: Record<string, Record<string, Field>> = {
     briefFr: OPT_ARR(8, 220),
     sponsored: { k: "bool" },
     visible: { k: "bool" },
+    gallery: { k: "imgArr", maxItems: 8 },
+    demoEmbed: { k: "link" },
+    impactEn: S(220),
+    impactFr: S(220),
+    clientName: S(80),
+    clientLogo: { k: "image" },
+    teamSize: { k: "int", min: 1, max: 50 },
+    tags: OPT_ARR(12, 30),
+    featured: { k: "bool" },
+    progress: { k: "int", min: 0, max: 100 },
+    version: S(20),
+    changelog: OPT_ARR(12, 220),
+    seoSlug: S(80),
+    seoDesc: S(320),
   },
   certs: {
     titleEn: { k: "str", max: 90, empty: false },
@@ -225,6 +275,13 @@ const SETTINGS_FIELDS: Record<string, Field> = {
   instapayHandle: S(60),
   instapayAt: S(10),
   siteVerified: { k: "bool" },
+  seoTitle: S(120),
+  seoDesc: S(320),
+  seoKeywords: S(500),
+  ogImage: { k: "image" },
+  twitterHandle: S(40),
+  canonicalBase: S(200),
+  robotsIndex: { k: "bool" },
 };
 
 export interface SanitizeResult {
@@ -301,6 +358,15 @@ export function sanitizeRow(table: string, row: unknown): SanitizeResult {
     if (v === undefined) continue;
     if (!checkField(v, rule)) return { ok: false, error: `Bad field: ${key}` };
     clean[key] = v;
+  }
+  // Nested FAQ entries are rebuilt field-by-field — no smuggled extra keys.
+  if (Array.isArray(clean.faq)) {
+    clean.faq = (clean.faq as Record<string, unknown>[]).map((f) => ({
+      qEn: f.qEn,
+      aEn: f.aEn,
+      qFr: f.qFr,
+      aFr: f.aFr,
+    }));
   }
   return { ok: true, clean };
 }

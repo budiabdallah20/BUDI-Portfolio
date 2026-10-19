@@ -871,6 +871,192 @@ html {
   animation: load-dust-rise 2.8s ease-in infinite;
 }
 
+/* Quranic verse + flag — small pulsing glass card */
+@keyframes quran-glass-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(212,175,55,0.25), 0 0 4px rgba(255,61,0,0.15); transform: scale(1); }
+  50% { box-shadow: 0 0 22px rgba(212,175,55,0.45), 0 0 10px rgba(167,139,250,0.25); transform: scale(1.02); }
+}
+.quran-glass {
+  animation: quran-glass-pulse 2.8s ease-in-out infinite;
+  transform-origin: center;
+}
+.quran-glass-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at center, rgba(212,175,55,0.2), transparent 70%);
+  animation: quran-glass-pulse 2.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(3px);
+}
+@keyframes egypt-flag-wave {
+  0%, 100% { transform: rotate(-1.5deg) scale(1); }
+  50% { transform: rotate(1.5deg) scale(1.06); }
+}
+@keyframes egypt-flag-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(206,17,38,0.3); }
+  50% { box-shadow: 0 0 12px rgba(206,17,38,0.6), 0 0 6px rgba(192,162,39,0.4); }
+}
+.egypt-flag {
+  animation: egypt-flag-wave 2.4s ease-in-out infinite, egypt-flag-glow 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes magic-shimmer {
+  0% { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+  12% { opacity: 0.7; }
+  88% { opacity: 0.7; }
+  100% { transform: translateX(260%) skewX(-18deg); opacity: 0; }
+}
+.magic-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 5;
+}
+.magic-shimmer::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: 0;
+  width: 38%;
+  height: 160%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), rgba(215, 253, 68, 0.35), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+  opacity: 0;
+}
+.group:hover .magic-shimmer::before,
+.magic-shimmer.is-active::before {
+  animation: magic-shimmer 1.25s ease-out;
+}
+
+@keyframes magic-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  45% { opacity: 1; transform: scale(1.15) rotate(180deg); }
+  70% { opacity: 0.6; transform: scale(0.9) rotate(270deg); }
+}
+.magic-sparkle {
+  position: absolute;
+  pointer-events: none;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffffff 0%, var(--accent) 35%, transparent 72%);
+  border-radius: 50%;
+  opacity: 0;
+  animation: magic-sparkle 2.6s ease-in-out infinite;
+  z-index: 6;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+.magic-sparkle:nth-child(2) { animation-delay: 0.7s; width: 6px; height: 6px; }
+.magic-sparkle:nth-child(3) { animation-delay: 1.4s; width: 5px; height: 5px; }
+.magic-sparkle:nth-child(4) { animation-delay: 2.0s; width: 7px; height: 7px; }
+.magic-sparkle:nth-child(2) { animation-delay: 0.7s; width: 6px; height: 6px; }
+.magic-sparkle:nth-child(3) { animation-delay: 1.4s; width: 5px; height: 5px; }
+.magic-sparkle:nth-child(4) { animation-delay: 2.0s; width: 7px; height: 7px; }
+
+@keyframes magic-border-spin {
+  to { transform: rotate(360deg); }
+}
+.magic-border {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from 0deg, transparent 0%, var(--accent) 12%, #ff3d00 24%, transparent 36%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+  animation: magic-border-spin 3.6s linear infinite;
+  animation-play-state: paused;
+}
+.group:hover .magic-border,
+.magic-border.is-active {
+  opacity: 0.85;
+  animation-play-state: running;
+}
+
+@keyframes magic-glow-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.08); }
+}
+.magic-glow {
+  position: absolute;
+  inset: -20%;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+  animation: magic-glow-pulse 3s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.group:hover .magic-glow,
+.magic-glow.is-active {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+/* ——— Logo magic: rotating conic ring + orbiting sparkles ——— */
+@keyframes logo-ring-spin {
+  to { transform: rotate(360deg); }
+}
+.logo-magic-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 16px;
+  background: conic-gradient(from 0deg, transparent 0%, #d4af37 18%, #f9edb0 28%, transparent 40%, transparent 60%, #d4af37 78%, #f9edb0 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  opacity: 0.55;
+  animation: logo-ring-spin 6s linear infinite;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
+}
+.group:hover .logo-magic-ring {
+  opacity: 0.9;
+  animation-duration: 2.4s;
+}
+@keyframes logo-spark-orbit {
+  0% { transform: rotate(0deg) translateX(58px) rotate(0deg); opacity: 0.9; }
+  50% { opacity: 1; }
+  100% { transform: rotate(360deg) translateX(58px) rotate(-360deg); opacity: 0.9; }
+}
+.logo-orbit-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #f9edb0 40%, #d4af37 70%, transparent 100%);
+  box-shadow: 0 0 10px #f9edb0, 0 0 20px rgba(212, 175, 55, 0.6);
+  animation: logo-spark-orbit 4.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes logo-glow-breathe {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.45)); }
+  50% { filter: drop-shadow(0 0 28px rgba(212, 175, 55, 0.85)) drop-shadow(0 0 48px rgba(212, 175, 55, 0.35)); }
+}
+.logo-magic-glow {
+  animation: logo-glow-breathe 3.4s ease-in-out infinite;
+}
+.group:hover .logo-magic-glow {
+  animation-duration: 1.6s;
+}
+
+
 /* Orbiting spark around the monogram */
 @keyframes orbit-spin {
   to {
@@ -1116,6 +1302,109 @@ html {
 .animate-float-slow {
   animation: float-slow 6s ease-in-out infinite;
 }
+
+/* ——— Certificates: breathing aura + sealed hover corners ——— */
+/* Opacity-only on purpose: animating `transform` on a blurred layer forces
+ * the browser to re-rasterise the blur every frame. One composited layer,
+ * breathing opacity, is free. */
+@keyframes cert-aura {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.animate-cert-aura {
+  animation: cert-aura 6s ease-in-out infinite;
+}
+
+.cert-corner {
+  position: absolute;
+  z-index: 20;
+  width: 15px;
+  height: 15px;
+  border: 0 solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cert-corner--tl {
+  top: 7px;
+  left: 7px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  transform: translate(7px, 7px);
+}
+.cert-corner--tr {
+  top: 7px;
+  right: 7px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  transform: translate(-7px, 7px);
+}
+.cert-corner--bl {
+  bottom: 7px;
+  left: 7px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  transform: translate(7px, -7px);
+}
+.cert-corner--br {
+  bottom: 7px;
+  right: 7px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  transform: translate(-7px, -7px);
+}
+.cert-card:hover .cert-corner {
+  opacity: 0.95;
+  transform: translate(0, 0);
+}
+
+/* ——— Navbar emblem: entrance, gold breathing pulse, silk sheen ——— */
+@keyframes logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-logo-in {
+  animation: logo-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes logo-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.75));
+  }
+}
+.animate-logo-breathe {
+  animation: logo-breathe 3.8s ease-in-out infinite;
+}
+@keyframes logo-sheen {
+  0% {
+    transform: translateX(-170%) skewX(-18deg);
+  }
+  55%,
+  100% {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+.logo-sheen {
+  animation: logo-sheen 4.6s ease-in-out infinite;
+}
+
 @keyframes spin-conic {
   to {
     transform: rotate(360deg);
@@ -1149,6 +1438,14 @@ html {
 }
 .animate-pin-pop {
   animation: pin-pop 0.22s ease-out;
+}
+
+/* PIN digits are rendered as dots WITHOUT type="password" — four password
+   inputs in one form make Chrome log the "multiple password forms" DOM
+   warning. The visual result is identical. */
+.pin-mask {
+  -webkit-text-security: disc;
+  text-security: disc;
 }
 
 /* Giant footer watermark — multicolor letters drifting alive */
@@ -1266,6 +1563,132 @@ html {
   transform-origin: center;
 }
 
+/* ——— Footer magic: light sweeps, gold corner frames, shield sparkles ———
+   Shared, GPU-cheap decorations (transform/opacity only). Every one of them
+   is a pure-CSS `aria-hidden` layer, so they cost nothing for SEO/a11y and
+   the global reduced-motion block below turns them all off. */
+@keyframes sheen-sweep {
+  0% {
+    transform: translateX(-220%) skewX(-22deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  58% {
+    opacity: 0.9;
+  }
+  74%,
+  100% {
+    transform: translateX(340%) skewX(-22deg);
+    opacity: 0;
+  }
+}
+.sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  top: -55%;
+  bottom: -55%;
+  left: 0;
+  width: 46%;
+  transform: translateX(-220%) skewX(-22deg);
+  animation: sheen-sweep 4.8s ease-in-out infinite;
+}
+/* The protection badge: a lime-white scanner light. */
+.sheen--shield::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), rgba(215, 253, 68, 0.5), transparent);
+}
+/* The BUDI wordmarks: liquid gold. */
+.sheen--gold::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 246, 214, 0.55), rgba(212, 175, 55, 0.8), transparent);
+}
+
+/* Corner brackets — the "engineered frame" around the wordmarks. They sit
+   slightly inset and snap to the corners when the lockup is hovered. */
+.frame-corner {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 0 solid rgba(212, 175, 55, 0.7);
+  opacity: 0.45;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease,
+    border-color 0.35s ease;
+  pointer-events: none;
+}
+.frame-corner--tl {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  transform: translate(7px, 7px);
+}
+.frame-corner--tr {
+  top: 0;
+  right: 0;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  transform: translate(-7px, 7px);
+}
+.frame-corner--bl {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  transform: translate(7px, -7px);
+}
+.frame-corner--br {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  transform: translate(-7px, -7px);
+}
+.group\/frame:hover .frame-corner,
+.group\/budi:hover .frame-corner {
+  opacity: 1;
+  border-color: rgba(249, 237, 176, 0.95);
+  transform: translate(0, 0);
+}
+/* Always-on frame (the giant finale wordmark) — softly breathing edges. */
+@keyframes frame-corner-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+.frame-corner--live {
+  animation: frame-corner-breathe 3.6s ease-in-out infinite;
+}
+
+/* Gold halo behind the wordmarks — transform/opacity only. */
+@keyframes word-halo {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.06);
+  }
+}
+.word-halo {
+  animation: word-halo 5.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -1284,6 +1707,10 @@ html {
   .animate-aurora-b,
   .animate-aurora-c,
   .animate-float-slow,
+  .animate-cert-aura,
+  .animate-logo-in,
+  .animate-logo-breathe,
+  .logo-sheen,
   .animate-spin-conic,
   .animate-bar-shine,
   .animate-pin-pop,
@@ -1324,9 +1751,13 @@ html {
   .load-luxe-console,
   .load-budi-reveal,
   .load-gold-pulse,
-  .load-magic-halo,
-  .load-magic-spark,
-  .load-magic-dust,
+  .quran-glass,
+  .quran-glass-glow,
+  .magic-border,
+  .magic-glow,
+  .logo-magic-ring,
+  .logo-orbit-spark,
+  .logo-magic-glow,
   .cl-stars-a,
   .cl-stars-b,
   .cl-glow,

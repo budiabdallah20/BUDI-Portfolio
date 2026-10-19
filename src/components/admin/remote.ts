@@ -55,11 +55,17 @@ function enqueue<T>(key: string, job: () => Promise<T>): Promise<T> {
   return next;
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+/**
+ * Admin calls carry a HARD timeout — a stalled request must fail loudly,
+ * never leave the dashboard spinning. Deploy is the one slow path (git
+ * push chain, server-side limit 120s), so it gets a longer ceiling.
+ */
+async function post<T>(path: string, body: unknown, timeoutMs = 20_000): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret() },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   let json: { error?: string } = {};
   try {
@@ -131,11 +137,35 @@ const PROD_ORIGIN =
  * (already purged). Never throws — a missed prod purge just falls back to
  * the 60s ISR window.
  */
+/** Loopback / RFC1918 hosts: never a deployed production origin. */
+function isLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return true;
+  if (host.endsWith(".localhost") || host.endsWith(".local")) return true;
+  if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
+  return /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+}
+
 async function revalidateProd(): Promise<boolean> {
   try {
     if (typeof window === "undefined") return false;
-    if (window.location.origin === PROD_ORIGIN) return false;
-    const res = await fetch(`${PROD_ORIGIN}/api/admin/revalidate`, {
+    let target: URL;
+    try {
+      target = new URL(PROD_ORIGIN, window.location.href);
+    } catch {
+      return false;
+    }
+    // Same server (host + port) — the same-origin revalidate above already
+    // purged it. Comparing HOST (not origin) also covers http dev → https
+    // dev: those are the SAME server, so no second request is needed.
+    if (target.host === window.location.host) return false;
+    // A localhost/LAN "production" target is not a deployment — skip it.
+    // This is what used to fire a mixed-content fetch to http://localhost
+    // from the HTTPS dev server, which CSP correctly blocked.
+    if (isLocalHost(target.hostname)) return false;
+    // Never downgrade HTTPS → HTTP: mixed content + CSP would block it.
+    if (window.location.protocol === "https:" && target.protocol !== "https:") return false;
+    const res = await fetch(`${target.origin}/api/admin/revalidate`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret() },
       body: JSON.stringify({}),
@@ -183,6 +213,7 @@ export async function deployStatus(): Promise<DeployStatus> {
   const res = await fetch("/api/admin/deploy", {
     headers: { "x-admin-secret": adminSecret() },
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
   });
   let errText = `Status failed (${res.status})`;
   let json: DeployStatus | null = null;
@@ -200,7 +231,7 @@ export async function deployStatus(): Promise<DeployStatus> {
 
 /** THE punch — commit + push every change to GitHub. Vercel deploys after. */
 export function deployPunch(): Promise<DeployResult> {
-  return post<DeployResult>("/api/admin/deploy", {});
+  return post<DeployResult>("/api/admin/deploy", {}, 150_000);
 }
 
 export interface RemoteSnapshot {
@@ -214,7 +245,7 @@ export interface RemoteSnapshot {
 }
 
 export async function fetchSnapshot(): Promise<RemoteSnapshot> {
-  const res = await fetch("/api/content", { cache: "no-store" });
+  const res = await fetch("/api/content", { cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error("Content unreachable");
   return (await res.json()) as RemoteSnapshot;
 }

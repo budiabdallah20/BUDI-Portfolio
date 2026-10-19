@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { execFile } from "node:child_process";
 import { checkAdmin } from "../_guard";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS } from "@/lib/security/limits";
 import { audit, auditEventFromReq } from "@/lib/audit";
 
 /**
@@ -36,6 +37,21 @@ let deploying = false;
 interface GitResult {
   ok: boolean;
   out: string;
+}
+
+/**
+ * A real GitHub token, or "". `.env` is normally copied from `.env.example`,
+ * so the `ghp_xxxxxxxx…` placeholder MUST NOT be pushed to GitHub as if it
+ * were real: that fails with a confusing 403 and the audit log blames the
+ * repo. A placeholder is treated exactly like "not configured" — the host's
+ * own git credentials then do the push.
+ */
+function realGitToken(value: string | undefined): string {
+  const token = (value ?? "").trim();
+  if (token === "") return "";
+  if (/x{8,}/i.test(token)) return "";
+  if (/^(your|my|replace|changeme|placeholder|paste|example)/i.test(token)) return "";
+  return token;
 }
 
 function scrub(text: string): string {
@@ -139,14 +155,18 @@ export async function POST(req: Request): Promise<NextResponse> {
     return gateError(gate);
   }
   const ip = clientIp(req);
-  const perIp = rateLimit(`deploy:${ip}`, 5, 60 * 60 * 1000);
+  const perIp = rateLimit(`deploy:${ip}`, RATE_LIMITS.deploy.max, RATE_LIMITS.deploy.windowMs);
   if (!perIp.ok) {
     return NextResponse.json(
       { error: "Too many punches — one deploy wave per while. Retry later.", retryAfterSec: perIp.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(perIp.retryAfterSec) } },
     );
   }
-  const global = rateLimit("deploy-global", 10, 60 * 60 * 1000);
+  const global = rateLimit(
+    "deploy-global",
+    RATE_LIMITS.deployGlobal.max,
+    RATE_LIMITS.deployGlobal.windowMs,
+  );
   if (!global.ok) {
     return NextResponse.json(
       { error: "Deploy lane busy — retry shortly.", retryAfterSec: global.retryAfterSec },
@@ -197,7 +217,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     // Push auth: prefer a server-side token (never logged, never stored in
     // the repo), else the host's own git credentials do the job.
-    const token = (process.env.GIT_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim();
+    const token = realGitToken(process.env.GIT_TOKEN ?? process.env.GITHUB_TOKEN);
     let pushRes: GitResult;
     if (token !== "") {
       const remoteRes = await runGit(["remote", "get-url", "origin"]);

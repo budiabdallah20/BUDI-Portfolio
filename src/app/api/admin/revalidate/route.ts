@@ -17,8 +17,11 @@ const CORS = {
 
 /**
  * Origins allowed to READ this endpoint cross-origin: the deployed site
- * itself + local dev servers (the dashboard often runs on localhost while
- * purging prod). Anything else gets no ACAO header → the browser blocks it.
+ * itself, local dev servers AND the LAN/Wi-Fi host `next dev` advertises
+ * (the dashboard is often opened from a phone or a second device while
+ * purging prod). Anything else gets no ACAO header → the browser blocks it,
+ * and the missing header used to show up as "blocked by CORS policy" noise
+ * in the console of every LAN admin session.
  * (The secret is still mandatory regardless — this only shrinks who may
  * even attempt from a browser.)
  */
@@ -26,7 +29,16 @@ function allowedOrigin(origin: string): boolean {
   if (origin === "") return false;
   try {
     const u = new URL(origin);
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+    const host = u.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return true;
+    if (host.endsWith(".localhost") || host.endsWith(".local")) return true;
+    if (
+      /^192\.168\./.test(host) ||
+      /^10\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) {
+      return true;
+    }
     const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
     if (site !== "") {
       try {

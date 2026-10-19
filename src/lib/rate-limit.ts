@@ -52,13 +52,17 @@ export function rateLimit(
 }
 
 /**
- * Spoof-resistant client IP.
+ * Client IP for rate-limit keys.
  *
- * Platforms (Vercel included) APPEND the real client IP to any
- * attacker-supplied `x-forwarded-for` prefix — so the LAST entry is the
- * one the attacker cannot forge, while the FIRST is fully attacker
- * controlled. Taking `[0]` (the old behavior) made the brute-force shield
- * bypassable with one header. We take the tail.
+ * Behind an APPENDING proxy (Vercel — the supported deploy target) the real
+ * client IP is appended to any attacker-supplied `x-forwarded-for` prefix,
+ * so the LAST entry is the one the caller cannot forge; `[0]` was trivially
+ * bypassable. We take the tail.
+ *
+ * HONEST LIMIT: on a directly-exposed `next start` (no proxy in front) no
+ * header is trustworthy — route handlers cannot see the socket peer. Per-IP
+ * budgets are advisory there; the shared global buckets (admin 40/min,
+ * deploy 10/h) still bound total pressure.
  */
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS } from "@/lib/security/limits";
 import { insertNotification, recentOfType } from "@/lib/notify";
 
 /**
@@ -9,7 +10,11 @@ import { insertNotification, recentOfType } from "@/lib/notify";
  */
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = clientIp(req);
-  const rl = rateLimit(`err-beacon:${ip}`, 5, 60 * 1000);
+  const rl = rateLimit(
+    `err-beacon:${ip}`,
+    RATE_LIMITS.notifyError.max,
+    RATE_LIMITS.notifyError.windowMs,
+  );
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many hits" },

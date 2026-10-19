@@ -15,6 +15,7 @@ Bilingual (EN/FR), animated, Supabase-backed, with a private admin console and t
 - **BUDI OS hub** — up to 100 isolated dashboard accounts, per-account loader/PIN/theme, last-opened resume, linked external dashboards
 - **Supabase** — content tables, counters, realtime refresh, RLS
 - **Hardened runtime** — failsafe loaders, chunk-recovery, offline-tolerant likes/weather
+- **Live security certificate** — `/security` grades 13 protections (real TLS probe, headers, rate limits, timeouts) + SPF/DMARC checker
 
 ## 🧱 Stack
 
@@ -24,7 +25,8 @@ Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · GSAP · Motion · Sup
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3000 (plain HTTP)
+npm run dev:https  # https://localhost:8443 (trusted local TLS cert; live report at /security)
 ```
 
 ## ✅ Validate (same as CI)

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 import WelcomeToast from "@/components/home/WelcomeToast";
+import InstallBanner from "@/components/home/InstallBanner";
 import ConsoleWelcome from "@/components/home/ConsoleWelcome";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/home/Hero";
@@ -62,6 +63,8 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
     : [];
   const [loading, setLoading] = useState<boolean>(showLoader);
   const completedRef = useRef(false);
+  /** True only when the server actually reached Supabase — gates DB pings. */
+  const dbReadyRef = useRef(content !== null);
   const { lang } = useLanguage();
   const handleComplete = useCallback((): void => {
     if (completedRef.current) return;
@@ -124,6 +127,10 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
 
   // Real visit counting — one increment per tab session, RPC-guarded.
   useEffect(() => {
+    // No cloud content ⇒ the database is unconfigured/unreachable, so the
+    // counter route can only answer 503. Skip the ping entirely instead of
+    // painting a red failed request in every visitor's console.
+    if (!dbReadyRef.current) return;
     try {
       if (sessionStorage.getItem("budi-visit-sent")) return;
       sessionStorage.setItem("budi-visit-sent", "1");
@@ -202,6 +209,7 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
       )}
       <Navbar visible={!loading} availability={availability} />
       {!loading && <WelcomeToast />}
+      {!loading && <InstallBanner />}
       <main id="content">
         <Hero start={!loading} image={content?.settings?.heroImage || undefined} />
         <About availability={availability} image={content?.settings?.aboutImage || undefined} />

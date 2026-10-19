@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS } from "@/lib/security/limits";
 
 /**
  * Rate-limited like/unlike proxy — the ONLY path to the counters.
@@ -26,14 +27,14 @@ function validKey(v: unknown): v is string {
 
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = clientIp(req);
-  const burst = rateLimit(`like-burst:${ip}`, 3, 3 * 1000);
+  const burst = rateLimit(`like-burst:${ip}`, RATE_LIMITS.likeBurst.max, RATE_LIMITS.likeBurst.windowMs);
   if (!burst.ok) {
     return NextResponse.json(
       { error: "Slow down" },
       { status: 429, headers: { "Retry-After": String(burst.retryAfterSec) } },
     );
   }
-  const minute = rateLimit(`like:${ip}`, 30, 60 * 1000);
+  const minute = rateLimit(`like:${ip}`, RATE_LIMITS.likeMinute.max, RATE_LIMITS.likeMinute.windowMs);
   if (!minute.ok) {
     return NextResponse.json(
       { error: "Too many votes — try again shortly" },

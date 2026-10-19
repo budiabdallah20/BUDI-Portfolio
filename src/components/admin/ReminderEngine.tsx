@@ -73,7 +73,11 @@ interface Timings {
 
 async function fetchTimings(): Promise<Timings | null> {
   try {
-    const res = await fetch("https://api.aladhan.com/v1/timingsByCity?city=Suez&country=Egypt&method=5");
+    // Hard timeout — a stalled third-party API must never freeze reminders.
+    const res = await fetch(
+      "https://api.aladhan.com/v1/timingsByCity?city=Suez&country=Egypt&method=5",
+      { signal: AbortSignal.timeout(10_000) },
+    );
     if (!res.ok) return null;
     const json = (await res.json()) as { data?: { timings?: Record<string, string> } };
     const t = json.data?.timings;

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS } from "@/lib/security/limits";
+
+/** Log the "not configured" warning once per server instance, not per visit. */
+let warnedMissingService = false;
 
 /**
  * Rate-limited visit counter — the ONLY path to the counter. The
@@ -10,8 +14,26 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
  * THIS route enforces the server side: max 10 visit-hits/min per IP.
  */
 export async function POST(req: Request): Promise<NextResponse> {
+  // Fire-and-forget analytics. When the service role isn't configured the
+  // counter simply does not exist yet — answer 204 (nothing to record)
+  // instead of 503. A 5xx here only paints "Failed to load resource" in
+  // every visitor's console for a feature that was never switched on; the
+  // owner still sees the real reason in the server log. This is checked
+  // before the rate limiter: with no counter there is nothing to protect,
+  // and 429s would be just as noisy as the 503 it replaces.
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+  if (!url || !key) {
+    if (!warnedMissingService) {
+      warnedMissingService = true;
+      console.warn(
+        "[engagement/visit] counter skipped: set NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY to enable visit stats",
+      );
+    }
+    return new NextResponse(null, { status: 204 });
+  }
   const ip = clientIp(req);
-  const rl = rateLimit(`visit:${ip}`, 10, 60 * 1000);
+  const rl = rateLimit(`visit:${ip}`, RATE_LIMITS.visit.max, RATE_LIMITS.visit.windowMs);
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many hits" },

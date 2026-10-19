@@ -4261,6 +4261,19 @@ function ServicesTab({
       timelineEn: d.timelineEn,
       timelineFr: d.timelineFr,
       visible: true,
+      startingPrice: "",
+      currency: "USD",
+      ctaLink: "",
+      ctaLabelEn: "Get a quote",
+      ctaLabelFr: "Demander un devis",
+      faq: [],
+      popular: false,
+      deliveryDays: 0,
+      revisions: 2,
+      testimonialQuote: "",
+      testimonialAuthor: "",
+      addons: [],
+      iconColor: "",
     });
   };
   return (
@@ -4580,6 +4593,11 @@ function SkillsTab({
               detailEn: "",
               detailFr: "",
               visible: true,
+              years: 0,
+              learningNow: true,
+              certId: "",
+              featured: false,
+              order: 0,
             })
           }
           onBulk={(id, action) =>
@@ -4785,6 +4803,20 @@ function ProjectsTab({
     briefFr: [],
     sponsored: false,
     visible: true,
+    gallery: [],
+    demoEmbed: "",
+    impactEn: "",
+    impactFr: "",
+    clientName: "",
+    clientLogo: "",
+    teamSize: 1,
+    tags: [],
+    featured: false,
+    progress: 0,
+    version: "",
+    changelog: [],
+    seoSlug: "",
+    seoDesc: "",
   });
   const PALETTE = ["#ff3d00", "#38bdf8", "#a78bfa", "#fbbf24", "#34d399", "#fb7185"];
   const groups = [
@@ -5221,6 +5253,14 @@ function CertsTab({
     verify: "",
     verifyLogo: "",
     visible: true,
+    expiry: "",
+    level: "intermediate",
+    hours: 0,
+    type: "certificate",
+    featured: false,
+    pdf: "",
+    issueDate: "",
+    linkedSkills: [],
   });
   const PALETTE = ["#a78bfa", "#38bdf8", "#fbbf24", "#34d399", "#fb7185", "#ff3d00"];
   const groups = [
@@ -6196,6 +6236,19 @@ function ServiceEditor({
       icon: "",
       iconImage: "",
       visible: true,
+      startingPrice: "",
+      currency: "USD",
+      ctaLink: "",
+      ctaLabelEn: "Get a quote",
+      ctaLabelFr: "Demander un devis",
+      faq: [],
+      popular: false,
+      deliveryDays: 0,
+      revisions: 2,
+      testimonialQuote: "",
+      testimonialAuthor: "",
+      addons: [],
+      iconColor: "",
     },
   );
   const [errors, setErrors] = useState<string[]>([]);
@@ -6260,6 +6313,19 @@ function ServiceEditor({
       icon: "",
       iconImage: "",
       visible: true,
+      startingPrice: "",
+      currency: "USD",
+      ctaLink: "",
+      ctaLabelEn: "Get a quote",
+      ctaLabelFr: "Demander un devis",
+      faq: [],
+      popular: false,
+      deliveryDays: 0,
+      revisions: 2,
+      testimonialQuote: "",
+      testimonialAuthor: "",
+      addons: [],
+      iconColor: "",
     });
     setErrors([]);
   };
@@ -6468,6 +6534,72 @@ function ServiceEditor({
             <textarea value={form.pointsFr.join("\n")} onChange={(e) => set("pointsFr", lines(e.target.value))} rows={3} className={inputCls} />
           </Field>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Starting price" hint="e.g. Starting at $500">
+            <input value={form.startingPrice} onChange={(e) => set("startingPrice", e.target.value)} className={inputCls} maxLength={40} />
+          </Field>
+          <Field label="Currency">
+            <input value={form.currency} onChange={(e) => set("currency", e.target.value)} className={inputCls} maxLength={8} />
+          </Field>
+          <Field label="Delivery days">
+            <input type="number" value={form.deliveryDays} onChange={(e) => set("deliveryDays", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Revision rounds">
+            <input type="number" value={form.revisions} onChange={(e) => set("revisions", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="CTA link">
+            <input value={form.ctaLink} onChange={(e) => set("ctaLink", e.target.value)} className={inputCls} maxLength={200} placeholder="https://wa.me/..." />
+          </Field>
+          <Field label="CTA label (EN)">
+            <input value={form.ctaLabelEn} onChange={(e) => set("ctaLabelEn", e.target.value)} className={inputCls} maxLength={40} />
+          </Field>
+          <Field label="CTA label (FR)">
+            <input value={form.ctaLabelFr} onChange={(e) => set("ctaLabelFr", e.target.value)} className={inputCls} maxLength={40} />
+          </Field>
+          <Field label="Icon color override">
+            <input value={form.iconColor} onChange={(e) => set("iconColor", e.target.value)} className={inputCls} maxLength={20} placeholder="#ff3d00" />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Toggle checked={form.popular} onChange={(v) => set("popular", v)} label={form.popular ? "POPULAR — highlighted on site" : "Standard service"} desc="Marks this service as most-requested." />
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Testimonial quote">
+            <textarea value={form.testimonialQuote} onChange={(e) => set("testimonialQuote", e.target.value)} rows={2} className={inputCls} maxLength={300} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Testimonial author">
+            <input value={form.testimonialAuthor} onChange={(e) => set("testimonialAuthor", e.target.value)} className={inputCls} maxLength={80} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Add-ons — one per line">
+            <textarea value={form.addons.join("\n")} onChange={(e) => set("addons", lines(e.target.value))} rows={2} className={inputCls} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="FAQ — format: Q (EN) | A (EN) | Q (FR) | A (FR) per line" hint={`${form.faq.length}/8`}>
+            <textarea
+              value={form.faq.map((f) => `${f.qEn} || ${f.aEn} || ${f.qFr} || ${f.aFr}`).join("\n")}
+              onChange={(e) =>
+                set(
+                  "faq",
+                  e.target.value
+                    .split("\n")
+                    .map((x) => x.trim())
+                    .filter(Boolean)
+                    .map((line) => {
+                      const [qEn, aEn, qFr, aFr] = line.split("||").map((s) => s.trim());
+                      return { qEn: qEn ?? "", aEn: aEn ?? "", qFr: qFr ?? "", aFr: aFr ?? "" };
+                    }),
+                )
+              }
+              rows={3}
+              className={inputCls}
+            />
+          </Field>
+        </div>
         <div className="sm:col-span-2">
           <Toggle checked={form.visible} onChange={(v) => set("visible", v)} label={form.visible ? "LIVE — shows on the site" : "HIDDEN — draft only"} desc="The eye is REAL: saving publishes (or hides) this service on the live site instantly." />
         </div>
@@ -6521,6 +6653,11 @@ function SkillEditor({
       detailEn: "",
       detailFr: "",
       visible: true,
+      years: 0,
+      learningNow: true,
+      certId: "",
+      featured: false,
+      order: 0,
     },
   );
   const [errors, setErrors] = useState<string[]>([]);
@@ -6556,6 +6693,11 @@ function SkillEditor({
       detailEn: "",
       detailFr: "",
       visible: true,
+      years: 0,
+      learningNow: true,
+      certId: "",
+      featured: false,
+      order: 0,
     });
     setErrors([]);
   };
@@ -6719,6 +6861,19 @@ function SkillEditor({
         <Field label="Detail (FR)" hint={`${form.detailFr.length}/220`}>
           <textarea value={form.detailFr} onChange={(e) => set("detailFr", e.target.value)} rows={2} placeholder="La même ligne, en français…" className={inputCls} maxLength={220} />
         </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Years of experience">
+            <input type="number" value={form.years} onChange={(e) => set("years", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Display order">
+            <input type="number" value={form.order} onChange={(e) => set("order", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Linked certificate id">
+            <input value={form.certId} onChange={(e) => set("certId", e.target.value)} className={inputCls} maxLength={60} />
+          </Field>
+        </div>
+        <Toggle checked={form.learningNow} onChange={(v) => set("learningNow", v)} label={form.learningNow ? "LEARNING NOW — in spotlight" : "Not currently learning"} desc="Drives the 'Now leveling up' spotlight on the site." />
+        <Toggle checked={form.featured} onChange={(v) => set("featured", v)} label={form.featured ? "FEATURED — pinned to top-3" : "Standard skill"} desc="Featured skills appear in the Most Mastered headline." />
         <Toggle checked={form.visible} onChange={(v) => set("visible", v)} label={form.visible ? "LIVE — shows on the site" : "HIDDEN — draft only"} desc="Tip: after saving, add this skill to 1–2 project stacks — the site card then shows × projects + score automatically." />
         <FormErrors errors={errors} />
         <button
@@ -6784,6 +6939,20 @@ function ProjectEditor({
       briefFr: [],
       sponsored: false,
       visible: true,
+      gallery: [],
+      demoEmbed: "",
+      impactEn: "",
+      impactFr: "",
+      clientName: "",
+      clientLogo: "",
+      teamSize: 1,
+      tags: [],
+      featured: false,
+      progress: 0,
+      version: "",
+      changelog: [],
+      seoSlug: "",
+      seoDesc: "",
     },
   );
   const [errors, setErrors] = useState<string[]>([]);
@@ -6837,6 +7006,20 @@ function ProjectEditor({
       briefFr: [],
       sponsored: false,
       visible: true,
+      gallery: [],
+      demoEmbed: "",
+      impactEn: "",
+      impactFr: "",
+      clientName: "",
+      clientLogo: "",
+      teamSize: 1,
+      tags: [],
+      featured: false,
+      progress: 0,
+      version: "",
+      changelog: [],
+      seoSlug: "",
+      seoDesc: "",
     });
     setErrors([]);
   };
@@ -6957,6 +7140,48 @@ function ProjectEditor({
             <textarea value={form.briefFr.join("\n")} onChange={(e) => set("briefFr", lines(e.target.value))} rows={3} className={inputCls} />
           </Field>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Impact (EN)">
+            <input value={form.impactEn} onChange={(e) => set("impactEn", e.target.value)} className={inputCls} maxLength={220} />
+          </Field>
+          <Field label="Impact (FR)">
+            <input value={form.impactFr} onChange={(e) => set("impactFr", e.target.value)} className={inputCls} maxLength={220} />
+          </Field>
+          <Field label="Client name">
+            <input value={form.clientName} onChange={(e) => set("clientName", e.target.value)} className={inputCls} maxLength={80} />
+          </Field>
+          <Field label="Team size">
+            <input type="number" value={form.teamSize} onChange={(e) => set("teamSize", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Version">
+            <input value={form.version} onChange={(e) => set("version", e.target.value)} className={inputCls} maxLength={20} />
+          </Field>
+          <Field label="Progress % (in-progress)">
+            <input type="number" value={form.progress} onChange={(e) => set("progress", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="SEO slug">
+            <input value={form.seoSlug} onChange={(e) => set("seoSlug", e.target.value)} className={inputCls} maxLength={80} />
+          </Field>
+          <Field label="SEO description">
+            <input value={form.seoDesc} onChange={(e) => set("seoDesc", e.target.value)} className={inputCls} maxLength={320} />
+          </Field>
+          <Field label="Tags — one per line">
+            <textarea value={form.tags.join("\n")} onChange={(e) => set("tags", lines(e.target.value))} rows={2} className={inputCls} />
+          </Field>
+          <Field label="Changelog — one per line">
+            <textarea value={form.changelog.join("\n")} onChange={(e) => set("changelog", lines(e.target.value))} rows={2} className={inputCls} />
+          </Field>
+          <Field label="Demo embed URL">
+            <input value={form.demoEmbed} onChange={(e) => set("demoEmbed", e.target.value)} className={inputCls} maxLength={300} />
+          </Field>
+        </div>
+        <Field label="Client logo">
+          <ImageUploadField label="Client logo" value={form.clientLogo} onChange={(v) => set("clientLogo", v)} />
+        </Field>
+        <Field label="Gallery (one URL per line)">
+          <textarea value={form.gallery.join("\n")} onChange={(e) => set("gallery", lines(e.target.value))} rows={3} className={inputCls} />
+        </Field>
+        <Toggle checked={form.featured} onChange={(v) => set("featured", v)} label={form.featured ? "FEATURED — pinned first" : "Standard project"} desc="Featured projects appear first on the site." />
         <div className="flex flex-col gap-3">
           <Toggle checked={form.opensource} onChange={(v) => set("opensource", v)} label="Open source" desc="Shows the Open Source badge on the site card." />
           <Toggle checked={form.sponsored} onChange={(v) => set("sponsored", v)} label="★ Sponsored by BUDI" desc="Proof badge with logo on the project card." />
@@ -7015,6 +7240,14 @@ function CertEditor({
       verify: "",
       verifyLogo: "",
       visible: true,
+      expiry: "",
+      level: "intermediate",
+      hours: 0,
+      type: "certificate",
+      featured: false,
+      pdf: "",
+      issueDate: "",
+      linkedSkills: [],
     },
   );
   const [errors, setErrors] = useState<string[]>([]);
@@ -7022,6 +7255,11 @@ function CertEditor({
     setForm((f) => ({ ...f, [k]: v }));
     setErrors([]);
   };
+  const lines = (s: string): string[] =>
+    s
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
   const save = (): void => {
     const res = validate(certSchema, form);
     if (!res.ok) {
@@ -7053,6 +7291,14 @@ function CertEditor({
       verify: "",
       verifyLogo: "",
       visible: true,
+      expiry: "",
+      level: "intermediate",
+      hours: 0,
+      type: "certificate",
+      featured: false,
+      pdf: "",
+      issueDate: "",
+      linkedSkills: [],
     });
     setErrors([]);
   };
@@ -7126,6 +7372,40 @@ function CertEditor({
           onChange={(v) => set("verifyLogo", v)}
           pastePlaceholder="/images/certificates/issuers/… or https://…"
         />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Issue date">
+            <input type="date" value={form.issueDate} onChange={(e) => set("issueDate", e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Expiry date">
+            <input type="date" value={form.expiry} onChange={(e) => set("expiry", e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Level">
+            <select value={form.level} onChange={(e) => set("level", e.target.value as AdminCert["level"])} className={inputCls}>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </Field>
+          <Field label="Type">
+            <select value={form.type} onChange={(e) => set("type", e.target.value as AdminCert["type"])} className={inputCls}>
+              <option value="certificate">Certificate</option>
+              <option value="badge">Badge</option>
+              <option value="award">Award</option>
+              <option value="course">Course</option>
+            </select>
+          </Field>
+          <Field label="Study hours">
+            <input type="number" value={form.hours} onChange={(e) => set("hours", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Credential file URL">
+            <input value={form.pdf} onChange={(e) => set("pdf", e.target.value)} className={inputCls} maxLength={1500000} />
+          </Field>
+          <Field label="Linked skills — one per line">
+            <textarea value={form.linkedSkills.join("\n")} onChange={(e) => set("linkedSkills", lines(e.target.value))} rows={2} className={inputCls} />
+          </Field>
+        </div>
+        <Toggle checked={form.featured} onChange={(v) => set("featured", v)} label={form.featured ? "FEATURED — pinned first" : "Standard credential"} desc="Featured credentials appear first." />
         <div className="flex items-center">
           <Toggle checked={form.visible} onChange={(v) => set("visible", v)} label={form.visible ? "LIVE — shows on the site" : "HIDDEN — draft only"} desc="REAL sync: saving publishes (or hides) this credential live." />
         </div>

@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowUp,
   ArrowUpRight,
   Cake,
   Check,
   Copy,
+  Download,
   Heart,
   Lock,
   Mail,
@@ -62,7 +64,8 @@ const COPY = {
     secured: "Secured · HTTPS",
     securedLocal: "Secure context · Local",
     securedHttp: "HTTP · Dev only",
-    securedTitle: "HTTPS + HSTS preload + CSP — anonymous stats only, your data stays yours.",
+    securedTitle:
+      "HTTPS + HSTS preload + CSP — anonymous stats only, your data stays yours. Open the live security certificate.",
     bdayToday: "BUDI Vault — open now",
     bdayPreview: "Vault preview",
     bdayTitleOpen: "October 24 is here — the BUDI Vault is open.",
@@ -98,7 +101,8 @@ const COPY = {
     secured: "Protégé · HTTPS",
     securedLocal: "Contexte sûr · Local",
     securedHttp: "HTTP · Dev uniquement",
-    securedTitle: "HTTPS + HSTS preload + CSP — stats anonymes, vos données restent à vous.",
+    securedTitle:
+      "HTTPS + HSTS preload + CSP — stats anonymes, vos données restent à vous. Ouvrir le certificat de sécurité en direct.",
     bdayToday: "Coffre BUDI — ouvert",
     bdayPreview: "Aperçu du coffre",
     bdayTitleOpen: "Le 24 octobre est là — le coffre est ouvert.",
@@ -137,6 +141,15 @@ export default function Footer({
   const now = useNow(1000);
   const [copied, setCopied] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [showInstallBtn, setShowInstallBtn] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminPass, setAdminPass] = useState("");
+  const [adminChecking, setAdminChecking] = useState(false);
+  const [adminError, setAdminError] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setShowInstallBtn(false), 60000);
+    return () => window.clearTimeout(id);
+  }, []);
   /**
    * Transport badge — resolved AFTER mount so SSR and first paint stay
    * byte-identical (no hydration mismatch): the pill appears the moment
@@ -164,7 +177,9 @@ export default function Footer({
       const preview = isPreviewHost(host);
       const today = isBirthday(now);
       setBday({ open: today || preview, preview: preview && !today, days: daysUntilBirthday(now) });
-    } catch {
+    } catch (error) {
+      // Never swallow: the badges just stay hidden, but the cause must be visible.
+      console.warn("[footer] badge state unavailable:", error);
       setTransport(null);
       setBday(null);
     }
@@ -398,17 +413,48 @@ export default function Footer({
                 </span>
               </span>
               <span className="leading-none">
-                <span
-                  className="font-display block text-2xl font-black tracking-tight"
-                  style={{
-                    background: "linear-gradient(100deg, #f5eed6 20%, #e9ce7a 50%, #d4af37 80%)",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                    filter: "drop-shadow(0 0 14px rgba(212,175,55,0.35))",
-                  }}
-                >
-                  BUDI
+                {/* BUDI wordmark — gold gradient inside an engineered frame:
+                    four brackets + a liquid-gold light sweep + gold dust. */}
+                <span className="group/frame relative inline-block px-3 py-1">
+                  <span aria-hidden="true" className="frame-corner frame-corner--tl" />
+                  <span aria-hidden="true" className="frame-corner frame-corner--tr" />
+                  <span aria-hidden="true" className="frame-corner frame-corner--bl" />
+                  <span aria-hidden="true" className="frame-corner frame-corner--br" />
+                  <span aria-hidden="true" className="sheen sheen--gold" />
+                  <span
+                    aria-hidden="true"
+                    className="magic-sparkle"
+                    style={{
+                      top: "-4px",
+                      left: "6%",
+                      animationDelay: "0.2s",
+                      background: "radial-gradient(circle, #ffffff 0%, #f9edb0 35%, transparent 72%)",
+                      filter: "drop-shadow(0 0 6px #d4af37)",
+                    }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="magic-sparkle"
+                    style={{
+                      bottom: "-4px",
+                      right: "6%",
+                      animationDelay: "1.4s",
+                      background: "radial-gradient(circle, #ffffff 0%, #f9edb0 35%, transparent 72%)",
+                      filter: "drop-shadow(0 0 6px #d4af37)",
+                    }}
+                  />
+                  <span
+                    className="font-display relative block text-2xl font-black tracking-tight transition-all duration-300 group-hover/frame:drop-shadow-[0_0_26px_rgba(212,175,55,0.7)]"
+                    style={{
+                      background: "linear-gradient(100deg, #f5eed6 20%, #e9ce7a 50%, #d4af37 80%)",
+                      WebkitBackgroundClip: "text",
+                      backgroundClip: "text",
+                      color: "transparent",
+                      filter: "drop-shadow(0 0 14px rgba(212,175,55,0.35))",
+                    }}
+                  >
+                    BUDI
+                  </span>
                 </span>
                 <span className="mt-1 flex items-center gap-1 font-mono text-[9px] tracking-[0.3em] text-[#d4af37] uppercase">
                   <Sparkles className="h-3 w-3" aria-hidden="true" />
@@ -620,35 +666,73 @@ export default function Footer({
             {c.status}
           </p>
           {transport !== null && (
-            <p
+            <Link
+              href="/security"
               title={c.securedTitle}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase ${
-                transport === "http"
-                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.28)]"
-              }`}
+              aria-label={
+                (transport === "https" ? c.secured : transport === "local" ? c.securedLocal : c.securedHttp) +
+                " — /security"
+              }
+              className="group/shield relative inline-flex shrink-0 overflow-hidden rounded-full p-[1.5px] transition-transform duration-300 hover:-translate-y-0.5"
             >
-              <span className="relative flex h-2 w-2">
-                {!reduced && (
+              {/* Magic frame — a conic crown orbiting the badge, emerald for a
+                  real secure context, amber when plain HTTP is honest about it. */}
+              <span
+                aria-hidden="true"
+                className="animate-spin-conic absolute inset-[-140%] m-auto h-[380%] w-[52%] opacity-80"
+                style={{
+                  background:
+                    transport === "http"
+                      ? "conic-gradient(from 0deg, transparent 0%, #fbbf24 18%, #fde68a 30%, transparent 46%, transparent 66%, #f59e0b 86%, transparent 100%)"
+                      : "conic-gradient(from 0deg, transparent 0%, #34d399 16%, #a7f3d0 28%, #38bdf8 42%, transparent 58%, #34d399 82%, transparent 100%)",
+                  filter: "blur(3.5px)",
+                }}
+              />
+              <span
+                className={`relative flex items-center gap-2 overflow-hidden rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase backdrop-blur-md ${
+                  transport === "http"
+                    ? "border-amber-400/40 bg-background/95 text-amber-300"
+                    : "border-emerald-400/40 bg-background/95 text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.28)]"
+                }`}
+              >
+                {/* Light runs across the shield — the "always watching" sweep. */}
+                <span aria-hidden="true" className="sheen sheen--shield" />
+                {/* Twinkle dust on the four corners of the pill. */}
+                <span aria-hidden="true" className="magic-sparkle" style={{ top: "-3px", left: "12%", animationDelay: "0s" }} />
+                <span aria-hidden="true" className="magic-sparkle" style={{ top: "-3px", right: "10%", animationDelay: "0.9s" }} />
+                <span aria-hidden="true" className="magic-sparkle" style={{ bottom: "-3px", left: "30%", animationDelay: "1.7s" }} />
+                <span aria-hidden="true" className="magic-sparkle" style={{ bottom: "-3px", right: "26%", animationDelay: "2.3s" }} />
+                <span className="relative flex h-2 w-2">
+                  {!reduced && (
+                    <span
+                      className={`animate-ping-soft absolute inline-flex h-full w-full rounded-full ${
+                        transport === "http" ? "bg-amber-400" : "bg-emerald-400"
+                      }`}
+                    />
+                  )}
                   <span
-                    className={`animate-ping-soft absolute inline-flex h-full w-full rounded-full ${
+                    className={`relative inline-flex h-2 w-2 rounded-full ${
                       transport === "http" ? "bg-amber-400" : "bg-emerald-400"
                     }`}
                   />
-                )}
-                <span
-                  className={`relative inline-flex h-2 w-2 rounded-full ${
-                    transport === "http" ? "bg-amber-400" : "bg-emerald-400"
+                </span>
+                <ShieldCheck
+                  className={`h-3.5 w-3.5 transition-transform duration-300 group-hover/shield:scale-110 ${
+                    transport === "http"
+                      ? "drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"
+                      : "drop-shadow-[0_0_8px_rgba(52,211,153,0.9)]"
                   }`}
+                  aria-hidden="true"
                 />
-              </span>
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              {transport === "https"
-                ? c.secured
-                : transport === "local"
-                  ? c.securedLocal
-                  : c.securedHttp}
-            </p>
+                <span className="relative">
+                  {transport === "https"
+                    ? c.secured
+                    : transport === "local"
+                      ? c.securedLocal
+                      : c.securedHttp}
+                  </span>
+                </span>
+            </Link>
           )}
           {bday !== null &&
             (() => {
@@ -725,7 +809,26 @@ export default function Footer({
                 </span>
               );
             })()}
-          <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2">
+            {showInstallBtn && (
+              <button
+                type="button"
+                onClick={() => {
+                  const event = window.__budiInstallPrompt;
+                  if (event) {
+                    void event.prompt?.();
+                    window.__budiInstallPrompt = undefined;
+                  }
+                  setShowInstallBtn(false);
+                }}
+                aria-label="Install app"
+                title="Install BUDI app"
+                className="flex h-10 cursor-pointer items-center gap-1.5 border border-accent/40 bg-accent/10 px-3 font-mono text-[11px] text-accent transition-all duration-200 hover:border-accent hover:bg-accent hover:text-accent-foreground"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Install app
+              </button>
+            )}
             <button
               type="button"
               onClick={openPalette}
@@ -743,6 +846,16 @@ export default function Footer({
               className="flex h-10 w-10 cursor-pointer items-center justify-center border border-border text-muted transition-all duration-200 hover:border-accent hover:text-accent"
             >
               <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+            {/* Admin entry — separate password from the dashboard PIN. */}
+            <button
+              type="button"
+              onClick={() => setAdminOpen(true)}
+              aria-label="Admin"
+              title="Admin control center"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center border border-border text-muted transition-all duration-200 hover:border-accent hover:text-accent"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -775,17 +888,57 @@ export default function Footer({
 
 
         {/* ——— Finale: verse → BUDI → slim tech strip, organized ——— */}
-        {/* BUDI finale — giant gold outline like the 07 ghost numeral */}
-        <div aria-hidden="true" className="mt-10 overflow-hidden text-center select-none">
-          <span
-            className="display block leading-none font-black tracking-tight whitespace-nowrap uppercase text-transparent"
-            style={{
-              fontSize: "clamp(4.5rem, 15vw, 11rem)",
-              WebkitTextStroke: "2px rgba(212,175,55,0.6)",
-              textShadow: "0 0 70px rgba(212,175,55,0.18)",
-            }}
-          >
-            BUDI
+        {/* BUDI finale — giant gold outline like the 07 ghost numeral, now
+            framed: breathing corner brackets, a liquid-gold sweep and a halo
+            that breathes behind it. Decorative only (aria-hidden). */}
+        <div aria-hidden="true" className="group/budi mt-10 overflow-hidden text-center select-none">
+          <span className="relative mx-auto inline-block max-w-full px-6 py-3 sm:px-12">
+            <span
+              className="word-halo pointer-events-none absolute inset-0 rounded-[32px]"
+              style={{
+                background: "radial-gradient(ellipse 62% 58% at 50% 55%, rgba(212,175,55,0.30), transparent 72%)",
+                filter: "blur(14px)",
+              }}
+            />
+            <span className="frame-corner frame-corner--tl frame-corner--live" />
+            <span className="frame-corner frame-corner--tr frame-corner--live" />
+            <span className="frame-corner frame-corner--bl frame-corner--live" />
+            <span className="frame-corner frame-corner--br frame-corner--live" />
+            <span className="sheen sheen--gold" />
+            <span
+              className="magic-sparkle"
+              style={{
+                top: "6%",
+                left: "4%",
+                animationDelay: "0.4s",
+                width: "10px",
+                height: "10px",
+                background: "radial-gradient(circle, #ffffff 0%, #f9edb0 35%, transparent 72%)",
+                filter: "drop-shadow(0 0 8px #d4af37)",
+              }}
+            />
+            <span
+              className="magic-sparkle"
+              style={{
+                bottom: "8%",
+                right: "5%",
+                animationDelay: "1.8s",
+                width: "9px",
+                height: "9px",
+                background: "radial-gradient(circle, #ffffff 0%, #f9edb0 35%, transparent 72%)",
+                filter: "drop-shadow(0 0 8px #d4af37)",
+              }}
+            />
+            <span
+              className="display relative block leading-none font-black tracking-tight whitespace-nowrap uppercase text-transparent transition-[filter] duration-500 group-hover/budi:drop-shadow-[0_0_90px_rgba(212,175,55,0.35)]"
+              style={{
+                fontSize: "clamp(4.5rem, 15vw, 11rem)",
+                WebkitTextStroke: "2px rgba(212,175,55,0.6)",
+                textShadow: "0 0 70px rgba(212,175,55,0.18)",
+              }}
+            >
+              BUDI
+            </span>
           </span>
           <span className="mx-auto mt-3 flex max-w-md items-center justify-center gap-3">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d4af37]/60 to-[#d4af37]/60" />
@@ -824,6 +977,85 @@ export default function Footer({
           </div>
         </div>
       </div>
+
+      {adminOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => !adminChecking && setAdminOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-accent" aria-hidden="true" />
+              <h2 className="font-display text-lg font-bold">Admin access</h2>
+            </div>
+            <p className="mb-4 text-sm text-muted">
+              Enter the footer admin password (different from the dashboard PIN).
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (adminChecking) return;
+                setAdminChecking(true);
+                setAdminError(false);
+                try {
+                  const res = await fetch("/api/admin/entry", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: adminPass }),
+                  });
+                  const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
+                  if (res.ok && data.ok) {
+                    window.location.href = "/admin";
+                    return;
+                  }
+                  setAdminError(true);
+                } catch {
+                  setAdminError(true);
+                } finally {
+                  setAdminChecking(false);
+                }
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="password"
+                value={adminPass}
+                onChange={(e) => {
+                  setAdminPass(e.target.value);
+                  setAdminError(false);
+                }}
+                autoFocus
+                placeholder="Password"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              {adminError && (
+                <p className="text-xs text-red-400">Wrong password — try again.</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={adminChecking || adminPass === ""}
+                  className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-bold text-accent-foreground disabled:opacity-50"
+                >
+                  {adminChecking ? "Checking…" : "Unlock"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminOpen(false)}
+                  disabled={adminChecking}
+                  className="rounded-lg border border-border px-3 py-2 text-sm text-muted"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </footer>
   );
 }

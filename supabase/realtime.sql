@@ -3,7 +3,7 @@
 -- Supabase → SQL Editor → New query → paste ALL → Run
 -- Safe to re-run: duplicate adds are swallowed, functions are OR REPLACE.
 --
--- What this file does:
+-- What this file does: 
 --  1) realtime publication: dashboard writes push to the site live
 --     (services/skills/projects/certs/settings + likes, so vote counts
 --     repaint on every open tab too)

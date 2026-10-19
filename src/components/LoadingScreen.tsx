@@ -201,6 +201,12 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps): React
       role="status"
       aria-live="polite"
       aria-label={`Loading ${profile.name} portfolio`}
+      /* The failsafe inline script (layout.tsx) stamps data-loader-released +
+         inline styles on this node when it has to release the curtain on its
+         own — i.e. before React ever hydrated. That is precisely the case
+         suppressHydrationWarning exists for, so React reports no phantom
+         "attributes didn't match" error on a slow first paint. */
+      suppressHydrationWarning
       /* Black-gold luxury curtain.
          .loader-failsafe (pure CSS, zero JS): even if every timer and every
          chunk dies after first paint, the curtain self-dismisses. */

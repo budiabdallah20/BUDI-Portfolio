@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Briefcase, Check, Copy, Crown, Flame, FolderGit, Heart, LayoutGrid, Plus, Search, Sprout, Star } from "lucide-react";
 import GlassModal from "@/components/GlassModal";
@@ -27,6 +27,10 @@ interface Skill {
   /** Library icon key — renders instead of the logo when set. */
   icon?: string;
   detail: { en: string; fr: string };
+  years?: number;
+  featured?: boolean;
+  learningNow?: boolean;
+  order?: number;
 }
 
 /** Page size for the dense grid — 100+ skills stay one click away. */
@@ -115,6 +119,11 @@ const SkillTile = memo(function SkillTile({
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="group relative overflow-hidden rounded-xl border border-border bg-surface/60 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-[0_16px_44px_-20px_var(--accent)]"
     >
+      {/* Magical touches */}
+      <span aria-hidden="true" className="magic-glow" />
+      <span aria-hidden="true" className="magic-border" />
+      <span aria-hidden="true" className="magic-shimmer" />
+      <span aria-hidden="true" className="magic-sparkle" style={{ top: "8px", right: "10px", animationDelay: "0.3s" }} />
       <span
         aria-hidden="true"
         className="absolute top-0 left-0 z-10 h-[2px] w-0 transition-all duration-500 group-hover:w-full"
@@ -145,6 +154,7 @@ const SkillTile = memo(function SkillTile({
           </button>
           <p className="font-mono text-[9px] tracking-[0.18em] text-faint uppercase">
             {catLabel}
+            {skill.years && skill.years > 0 ? ` · ${skill.years}y` : ""}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-center gap-1">
@@ -348,13 +358,24 @@ export default function Skills({
   const [sortAZ, setSortAZ] = useState(false);
   const [stackCopied, setStackCopied] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [skillLiked, setSkillLiked] = useState<Record<string, boolean>>(loadSkillLiked);
+  const [skillLiked, setSkillLiked] = useState<Record<string, boolean>>({});
   const [detailName, setDetailName] = useState<string | null>(null);
   const t = lang === "fr" ? COPY.fr : COPY.en;
 
-  /** Database wins when it has rows — SKILLS constant is the fallback. Hidden (eye-off) rows never reach the site. */
+  /**
+   * Hydration-safe heart restore: see Projects. The SSR pass has no storage,
+   * so every skill heart renders `0` first on both sides; the browser's own
+   * saved hearts land right after mount. Reading them during the state
+   * initializer is what produced React error #418 (server `0` vs client `1`).
+   */
+  useEffect(() => {
+    setSkillLiked(loadSkillLiked());
+  }, []);
+
+  /** Database wins whenever it is wired in — an empty list is a real state.
+   *  SKILLS constant is only the no-database fallback. */
   const list: Skill[] = useMemo(() => {
-    if (remote && remote.length > 0) {
+    if (remote !== undefined) {
       return remote
         .filter((r) => r.visible !== false)
         .map((r) => ({
@@ -366,6 +387,10 @@ export default function Skills({
         logo: r.logo,
         icon: r.icon || "",
         detail: { en: r.detailEn, fr: r.detailFr },
+        years: r.years ?? 0,
+        featured: r.featured === true,
+        learningNow: r.learningNow === true,
+        order: r.order ?? 0,
       }));
     }
     return SKILLS;
@@ -383,9 +408,16 @@ export default function Skills({
       (s) =>
         (tab === "all" || s.cat === tab) && (q === "" || s.name.toLowerCase().includes(q)),
     );
-    return [...rows].sort((a, b) =>
-      sortAZ ? a.name.localeCompare(b.name) : b.level - a.level,
-    );
+    return [...rows].sort((a, b) => {
+      if (!sortAZ) {
+        const oa = a.order && a.order > 0 ? a.order : 9999;
+        const ob = b.order && b.order > 0 ? b.order : 9999;
+        if (oa !== ob) return oa - ob;
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+      }
+      return sortAZ ? a.name.localeCompare(b.name) : b.level - a.level;
+    });
   }, [list, tab, query, sortAZ]);
 
   const filtered = filteredAll.slice(0, visibleCount);
@@ -400,10 +432,14 @@ export default function Skills({
     ];
   }, [list, t]);
 
-  const learning = list.filter((s) => s.levelKey === "intermediate");
+  const learning = list.filter((s) => s.learningNow === true || s.levelKey === "intermediate");
 
   /** Top-3 sharpest tools — the HR headline strip. */
-  const topThree = useMemo(() => [...list].sort((a, b) => b.level - a.level).slice(0, 3), [list]);
+  const topThree = useMemo(() => {
+    const featured = list.filter((s) => s.featured);
+    const pool = featured.length >= 3 ? featured : list;
+    return [...pool].sort((a, b) => b.level - a.level).slice(0, 3);
+  }, [list]);
 
   /** Live proof: every skill knows how many projects actually use it + its showcase score. */
   const usageByName = useMemo(() => {

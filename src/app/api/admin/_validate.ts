@@ -190,6 +190,14 @@ const TABLES: Record<string, Record<string, Field>> = {
     verify: { k: "link" },
     verifyLogo: { k: "image" },
     visible: { k: "bool" },
+    expiry: S(20),
+    level: { k: "enum", values: ["beginner", "intermediate", "advanced", "expert"] },
+    hours: { k: "int", min: 0, max: 10000 },
+    type: { k: "enum", values: ["certificate", "badge", "award", "course"] },
+    featured: { k: "bool" },
+    pdf: { k: "str", max: 1500000 },
+    issueDate: S(20),
+    linkedSkills: OPT_ARR(12, 40),
   },
 };
 

@@ -93,6 +93,14 @@ create table if not exists certs (
   verify text default '',
   "verifyLogo" text default '',
   visible boolean default true,
+  expiry text default '',
+  level text default 'intermediate',
+  hours int default 0,
+  type text default 'certificate',
+  featured boolean default false,
+  pdf text default '',
+  "issueDate" text default '',
+  "linkedSkills" text[] default '{}',
   updated_at timestamptz default now()
 );
 
@@ -136,9 +144,11 @@ create table if not exists likes (
 
 -- Owner inbox (dashboard bell + ReminderEngine + site-error beacon).
 -- No public reads: written/read ONLY via service_role API proxies.
+-- The type CHECK lives HERE (the first create) — see §8 for the migration
+-- that backfills it onto databases created before the constraint existed.
 create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),
-  type text default 'info',
+  type text default 'info' check (type in ('visit', 'error', 'prayer', 'birthday', 'appointment', 'info')),
   title text default '',
   body text default '',
   url text default '/admin',
@@ -217,6 +227,14 @@ alter table certs add column if not exists image text default '';
 alter table certs add column if not exists verify text default '';
 alter table certs add column if not exists "verifyLogo" text default '';
 alter table certs add column if not exists visible boolean default true;
+alter table certs add column if not exists expiry text default '';
+alter table certs add column if not exists level text default 'intermediate';
+alter table certs add column if not exists hours int default 0;
+alter table certs add column if not exists type text default 'certificate';
+alter table certs add column if not exists featured boolean default false;
+alter table certs add column if not exists pdf text default '';
+alter table certs add column if not exists "issueDate" text default '';
+alter table certs add column if not exists "linkedSkills" text[] default '{}';
 alter table certs add column if not exists updated_at timestamptz default now();
 
 alter table settings add column if not exists "siteName" text default 'BUDI';
@@ -278,35 +296,39 @@ create policy "public read likes" on likes for select using (true);
 -- anon clients could snoop inbox titles off the publication.
 
 -- ── 4) RPCs ──────────────────────────────────────────────────────────
+-- `security definer` + `search_path = ''` (empty, NOT `public`): with an
+-- empty search_path every table is schema-qualified, so nothing in the
+-- caller's search_path can shadow `visits`/`likes` and hijack the
+-- definer's rights. pg_catalog (greatest/char_length) is always implicit.
 create or replace function increment_visit(p_id text)
-returns int language plpgsql security definer set search_path = public
+returns int language plpgsql security definer set search_path = ''
 as $$ declare v int;
 begin
   if char_length(p_id) < 1 or char_length(p_id) > 120 then raise exception 'bad visit id'; end if;
-  insert into visits (id, count) values (p_id, 1)
-    on conflict (id) do update set count = visits.count + 1
+  insert into public.visits (id, count) values (p_id, 1)
+    on conflict (id) do update set count = public.visits.count + 1
     returning count into v;
   return v;
 end; $$;
 
 create or replace function increment_like(p_id text)
-returns int language plpgsql security definer set search_path = public
+returns int language plpgsql security definer set search_path = ''
 as $$ declare v int;
 begin
   if char_length(p_id) < 1 or char_length(p_id) > 200 then raise exception 'bad like id'; end if;
-  insert into likes (id, count) values (p_id, 1)
-    on conflict (id) do update set count = likes.count + 1
+  insert into public.likes (id, count) values (p_id, 1)
+    on conflict (id) do update set count = public.likes.count + 1
     returning count into v;
   return v;
 end; $$;
 
 create or replace function decrement_like(p_id text)
-returns int language plpgsql security definer set search_path = public
+returns int language plpgsql security definer set search_path = ''
 as $$ declare v int;
 begin
   if char_length(p_id) < 1 or char_length(p_id) > 200 then raise exception 'bad like id'; end if;
-  insert into likes (id, count) values (p_id, 0)
-    on conflict (id) do update set count = greatest(likes.count - 1, 0)
+  insert into public.likes (id, count) values (p_id, 0)
+    on conflict (id) do update set count = greatest(public.likes.count - 1, 0)
     returning count into v;
   return v;
 end; $$;
@@ -315,6 +337,19 @@ end; $$;
 -- (/api/engagement/*, service_role). Direct RPC calls with the public anon
 -- key are revoked, so bots can't bypass throttling, race counts, or bloat
 -- the tables with minted ids. Reads stay public (SELECT policies above).
+--
+-- CRITICAL — `from public` is the line that actually does the work.
+-- PostgreSQL grants EXECUTE to the pseudo-role PUBLIC on every new function
+-- by default. Revoking only from `anon`/`authenticated` removes the DIRECT
+-- grant but leaves PUBLIC's grant intact — and since every role is a member
+-- of PUBLIC, anon keeps its EXECUTE and can still call the RPCs straight
+-- from the browser with the public anon key. Both statements are required
+-- (see Supabase docs: "revoking execution … 2 steps required").
+-- Verify after running:  set local role anon;
+--                       select increment_visit('x');  -- must ERROR.
+revoke execute on function increment_visit(text) from public;
+revoke execute on function increment_like(text) from public;
+revoke execute on function decrement_like(text) from public;
 revoke execute on function increment_visit(text) from anon, authenticated;
 revoke execute on function increment_like(text) from anon, authenticated;
 revoke execute on function decrement_like(text) from anon, authenticated;
@@ -335,6 +370,12 @@ update settings set "vodafoneNumber" = '01065228072' where id = 'site' and "voda
 update settings set "taptapState" = 'active' where id = 'site' and "taptapState" is null;
 update settings set "instapayState" = 'soon' where id = 'site' and "instapayState" is null;
 update projects set sponsored = false where sponsored is null;
+update certs set level = 'intermediate' where level is null or level = '';
+update certs set type = 'certificate' where type is null or type = '';
+update certs set hours = 0 where hours is null;
+update certs set featured = false where featured is null;
+update certs set "linkedSkills" = '{}'::text[] where "linkedSkills" is null;
+update certs set visible = true where visible is null;
 
 -- ── 6) INSTANT contract — updated_at auto-touch (re-run safe) ─────────
 -- Why: the live site detects dashboard edits via max(updated_at) in
@@ -422,3 +463,21 @@ alter table push_subscriptions enable row level security;
 create index if not exists idx_notifications_created on notifications (created_at desc);
 create index if not exists idx_notifications_type_created on notifications (type, created_at desc);
 create index if not exists idx_notifications_unread on notifications (read, created_at desc) where read = false;
+
+-- Backfill the type CHECK onto databases created by an EARLIER version of this
+-- file (where the create above had no CHECK and `create table if not exists`
+-- at §8 could never add one). Rows with an off-list type are parked on 'info'
+-- rather than deleted — the inbox is history, never throw it away.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.notifications'::regclass and conname = 'notifications_type_check'
+  ) then
+    update notifications set type = 'info'
+      where type is not null and type not in ('visit', 'error', 'prayer', 'birthday', 'appointment', 'info');
+    alter table notifications
+      add constraint notifications_type_check
+      check (type in ('visit', 'error', 'prayer', 'birthday', 'appointment', 'info'));
+  end if;
+end $$;

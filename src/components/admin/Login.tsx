@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Lock, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowLeft, Check, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import Logo from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { storeSecret } from "./remote";
@@ -115,6 +115,10 @@ export default function Login({
   const [success, setSuccess] = useState(false);
   const [checking, setChecking] = useState(false);
   const [lockMsg, setLockMsg] = useState<string | null>(null);
+  /** The SERVER couldn't verify at all (missing/quoted ADMIN_API_SECRET) —
+   *  a completely different failure from a typo, and one the owner can fix
+   *  without touching code. Gets its own call-to-action below the form. */
+  const [misconfigured, setMisconfigured] = useState(false);
   const [shake, setShake] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
@@ -157,6 +161,7 @@ export default function Login({
     const pin = values.join("");
     setChecking(true);
     setLockMsg(null);
+    setMisconfigured(false);
     void (async (): Promise<void> => {
       try {
         const res = await fetch("/api/admin/verify", {
@@ -192,7 +197,20 @@ export default function Login({
           return;
         }
         if (res.status === 500) {
-          setLockMsg("Server not configured — contact the site owner");
+          // The server knows EXACTLY why it can't verify — don't throw that
+          // away and show a generic "wrong PIN" instead. A deployment with no
+          // ADMIN_API_SECRET (or a value saved with quotes) answers 500, and
+          // until now it looked identical to a typo. Surface the real reason
+          // and point at the diagnostics that prove it.
+          let msg = "Server not configured — ADMIN_API_SECRET missing or malformed";
+          try {
+            const j = (await res.json()) as { error?: string };
+            if (j.error) msg = j.error;
+          } catch {
+            /* keep default */
+          }
+          setLockMsg(msg);
+          setMisconfigured(true);
           fail();
           return;
         }
@@ -359,10 +377,14 @@ export default function Login({
                   autoComplete="one-time-code"
                   maxLength={1}
                   aria-label={`Digit ${i + 1}`}
-                  type="password"
+                  name={`pin-digit-${i + 1}`}
+                  // text + CSS masking instead of type="password": four
+                  // password inputs in one form trigger Chrome's "multiple
+                  // password forms" DOM warning. Visually identical (dots).
+                  type="text"
                   disabled={success || checking}
                   className={cn(
-                    "h-14 w-12 rounded-lg border bg-black/40 text-center font-mono text-2xl font-bold text-[#f4f4ef] outline-none transition-all duration-200",
+                    "pin-mask h-14 w-12 rounded-lg border bg-black/40 text-center font-mono text-2xl font-bold text-[#f4f4ef] outline-none transition-all duration-200",
                     d !== "" && "animate-pin-pop",
                     success
                       ? "border-[#bef264] shadow-[0_0_22px_rgba(190,242,100,0.55)]"
@@ -406,6 +428,30 @@ export default function Login({
             <p className="relative mt-4 border-t border-white/10 pt-4 font-mono text-[10px] tracking-[0.18em] text-white/30 uppercase">
               Tip — paste the 4-digit code · Enter unlocks
             </p>
+
+            {/* Deployment misconfiguration ≠ a typo. This block only exists
+                when the SERVER answered 500, and it hands the owner the one
+                link that proves what's actually wrong. */}
+            {misconfigured && (
+              <div className="relative mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
+                <p className="font-mono text-[10px] tracking-[0.18em] text-amber-300 uppercase">
+                  проблемة من السيرفر مش من الكود
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-amber-100/70">
+                  السيرفر شغال بس مفيش له قيمة <code className="text-amber-200">ADMIN_API_SECRET</code>{" "}
+                   صح في بيئة النشر. افتح التشخيص وأنا أقولك بالظبط أنهي متغيّر ناقص:
+                </p>
+                <a
+                  href="/api/admin/diagnose"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 font-mono text-[10px] tracking-[0.15em] text-amber-200 uppercase transition-colors hover:bg-amber-400/20"
+                >
+                  <Activity className="h-3 w-3" aria-hidden="true" />
+                  افحص إعدادات النشر
+                </a>
+              </div>
+            )}
           </div>
         </div>
         <p className="mt-4 text-center font-mono text-[10px] tracking-[0.3em] text-white/30 uppercase">

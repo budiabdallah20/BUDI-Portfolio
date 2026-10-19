@@ -35,6 +35,29 @@ export const serviceSchema = z.object({
   bestForFr: str(80, "Best-for (FR)"),
   timelineEn: str(80, "Timeline (EN)"),
   timelineFr: str(80, "Timeline (FR)"),
+  startingPrice: z.string().trim().max(40).default(""),
+  currency: z.string().trim().max(8).default("USD"),
+  ctaLink: z.string().trim().max(200).default(""),
+  ctaLabelEn: z.string().trim().max(40).default("Get a quote"),
+  ctaLabelFr: z.string().trim().max(40).default("Demander un devis"),
+  faq: z
+    .array(
+      z.object({
+        qEn: z.string().trim().max(160).default(""),
+        aEn: z.string().trim().max(400).default(""),
+        qFr: z.string().trim().max(160).default(""),
+        aFr: z.string().trim().max(400).default(""),
+      }),
+    )
+    .max(8)
+    .default([]),
+  popular: z.boolean().default(false),
+  deliveryDays: z.coerce.number().int().min(0).max(365).default(0),
+  revisions: z.coerce.number().int().min(0).max(20).default(2),
+  testimonialQuote: z.string().trim().max(300).default(""),
+  testimonialAuthor: z.string().trim().max(80).default(""),
+  addons: z.array(z.string().trim().min(1).max(60)).max(8).default([]),
+  iconColor: z.string().trim().max(20).default(""),
 });
 
 export const skillSchema = z.object({
@@ -46,6 +69,11 @@ export const skillSchema = z.object({
   icon: z.string().trim().max(40).default(""),
   detailEn: z.string().trim().max(220).default(""),
   detailFr: z.string().trim().max(220).default(""),
+  years: z.coerce.number().int().min(0).max(50).default(0),
+  learningNow: z.boolean().default(false),
+  certId: z.string().trim().max(60).default(""),
+  featured: z.boolean().default(false),
+  order: z.coerce.number().int().min(0).max(9999).default(0),
 });
 
 export const projectSchema = z.object({
@@ -67,6 +95,20 @@ export const projectSchema = z.object({
   timelineFr: z.string().trim().max(80).default(""),
   briefEn: strArr(8, 220, "brief points"),
   briefFr: strArr(8, 220, "brief points"),
+  gallery: z.array(z.string().trim().max(1500000)).max(8).default([]),
+  demoEmbed: z.string().trim().max(300).default(""),
+  impactEn: z.string().trim().max(220).default(""),
+  impactFr: z.string().trim().max(220).default(""),
+  clientName: z.string().trim().max(80).default(""),
+  clientLogo: z.string().trim().max(1500000).default(""),
+  teamSize: z.coerce.number().int().min(1).max(50).default(1),
+  tags: strArr(12, 30, "tags"),
+  featured: z.boolean().default(false),
+  progress: z.coerce.number().int().min(0).max(100).default(0),
+  version: z.string().trim().max(20).default(""),
+  changelog: strArr(12, 220, "changelog entries"),
+  seoSlug: z.string().trim().max(80).default(""),
+  seoDesc: z.string().trim().max(320).default(""),
 });
 
 export const certSchema = z.object({
@@ -81,6 +123,14 @@ export const certSchema = z.object({
   image: z.string().trim().max(1500000).default(""),
   verify: z.string().trim().max(200).default(""),
   verifyLogo: z.string().trim().max(1500000).default(""),
+  expiry: z.string().trim().max(20).default(""),
+  level: z.enum(["beginner", "intermediate", "advanced", "expert"]).default("intermediate"),
+  hours: z.coerce.number().int().min(0).max(10000).default(0),
+  type: z.enum(["certificate", "badge", "award", "course"]).default("certificate"),
+  featured: z.boolean().default(false),
+  pdf: z.string().trim().max(1500000).default(""),
+  issueDate: z.string().trim().max(20).default(""),
+  linkedSkills: strArr(12, 40, "linked skills"),
 });
 
 export const tableSchemas = {

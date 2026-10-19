@@ -34,6 +34,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The security unit tests (_validate / _guard) are the regression net for
+      # the XSS allowlists and the brute-force lock. Running them only locally
+      # means a refactor can silently reopen a hole and CI still goes green.
+      - name: Unit tests
+        run: npm test
+
       - name: Production build
         run: npm run build
         env:

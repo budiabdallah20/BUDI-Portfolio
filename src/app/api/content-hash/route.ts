@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAnon } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS } from "@/lib/security/limits";
 
 /**
  * Tiny freshness fingerprint — max updated_at + row counts + likes sum,
@@ -14,7 +15,11 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request): Promise<NextResponse> {
-  const rl = rateLimit(`content-hash:${clientIp(req)}`, 120, 60 * 1000);
+  const rl = rateLimit(
+    `content-hash:${clientIp(req)}`,
+    RATE_LIMITS.contentHash.max,
+    RATE_LIMITS.contentHash.windowMs,
+  );
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Slow down" },

@@ -227,6 +227,7 @@ export default function Contact({
   const { lang, t } = useLanguage();
   const reduced = useReducedMotion();
   const [copied, setCopied] = useState<string | null>(null);
+  const [contactCardOpen, setContactCardOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [supportOpen, setSupportOpen] = useState(false);
   const c = lang === "fr" ? COPY.fr : COPY.en;
@@ -563,7 +564,7 @@ export default function Contact({
               ))}
               <button
                 type="button"
-                onClick={downloadVCard}
+                onClick={() => setContactCardOpen(true)}
                 aria-label={t.contact.vcard}
                 title={t.contact.vcard}
                 className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-accent/50 bg-accent/10 px-3 text-accent transition-all duration-200 hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground"
@@ -1099,6 +1100,120 @@ export default function Contact({
           </div>
         </div>
       </div>
+
+      {contactCardOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setContactCardOpen(false)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-[#0b0b0c] p-6 text-foreground shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setContactCardOpen(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted hover:text-accent"
+            >
+              ✕
+            </button>
+
+            {/* Printable card */}
+            <div id="contact-card-print" className="rounded-xl border border-border bg-white p-6 text-black">
+              <div className="flex items-center gap-4">
+                <Image src="/images/birthday/4.jpg" alt="Mohamed Abdallah" width={80} height={80} className="h-20 w-20 rounded-xl object-cover" />
+                <div>
+                  <h2 className="text-xl font-bold">Mohamed Abdallah Mohamed Muslim Ali</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#ff3d00]">Full-Stack Developer</p>
+                  <p className="mt-1 text-sm text-gray-600">Suez, Egypt · Available for work</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Phone</span><p>+20 106 522 8072</p></div>
+                <div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Email</span><p>budiabdallah922@gmail.com</p></div>
+                <div className="sm:col-span-2"><span className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Address</span><p>Hadi Al-Sha'rawi St, Suez District, Al-Namsa, Suez, Egypt</p></div>
+                <div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Languages</span><p>Arabic · English · French</p></div>
+                <div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Birthday</span><p>2006-10-24</p></div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full border border-gray-300 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">BUDI Verified</span>
+                <span className="rounded-full border border-gray-300 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">Available for work</span>
+                <span className="rounded-full border border-gray-300 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">Response &lt; 24h</span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {socialLinks.map((s) => (
+                  <a key={s.label} href={s.href} target="_blank" rel="noreferrer" className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-[#ff3d00]">
+                    {s.label}
+                  </a>
+                ))}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-4">
+                <div className="flex flex-col items-center">
+                  <Image
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://budi-portfolio.vercel.app")}`}
+                    alt="Portfolio QR"
+                    width={96}
+                    height={96}
+                    className="rounded-md border border-gray-300 bg-white p-1"
+                    unoptimized
+                  />
+                  <span className="mt-1 text-[10px] uppercase text-gray-500">Portfolio</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Image
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("BEGIN:VCARD\\nFN:Mohamed Abdallah Mohamed Muslim Ali\\nTEL:+201065228072\\nEMAIL:budiabdallah922@gmail.com\\nEND:VCARD")}`}
+                    alt="Contact QR"
+                    width={96}
+                    height={96}
+                    className="rounded-md border border-gray-300 bg-white p-1"
+                    unoptimized
+                  />
+                  <span className="mt-1 text-[10px] uppercase text-gray-500">Contact</span>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">CV: /documents/cv.html</p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const w = window.open("", "_blank");
+                  if (!w) return;
+                  const el = document.getElementById("contact-card-print");
+                  if (!el) return;
+                  w.document.write("<!DOCTYPE html><html><head><meta charset='utf-8'><title>Contact Card</title><style>body{font-family:Inter,system-ui,sans-serif;padding:24px;} .card{max-width:720px;margin:0 auto;border:1px solid #ddd;border-radius:16px;padding:24px;}</style></head><body><div class='card'>" + el.innerHTML + "</div><script>window.onload=function(){window.print();}</script></body></html>");
+                  w.document.close();
+                }}
+                className="rounded-md border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent hover:text-accent-foreground"
+              >
+                {lang === "fr" ? "Imprimer" : "Print"}
+              </button>
+              <button
+                type="button"
+                onClick={downloadVCard}
+                className="rounded-md border border-border bg-surface/60 px-4 py-2 text-sm font-semibold text-foreground hover:border-accent/50 hover:text-accent"
+              >
+                {lang === "fr" ? "Télécharger vCard" : "Download vCard"}
+              </button>
+              <a
+                href="/documents/cv.html"
+                download
+                className="rounded-md border border-border bg-surface/60 px-4 py-2 text-sm font-semibold text-foreground hover:border-accent/50 hover:text-accent"
+              >
+                {lang === "fr" ? "Télécharger CV" : "Download CV"}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

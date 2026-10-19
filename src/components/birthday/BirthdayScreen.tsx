@@ -23,12 +23,14 @@ import {
   Quote,
   Sparkles,
   Star,
+  Trash2,
   Trophy,
   X,
   Zap,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useNow } from "@/hooks/useNow";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import {
   daysUntilBirthday,
@@ -57,6 +59,11 @@ import {
 
 const CONFETTI_COLORS = ["#ff3d00", "#d7fd44", "#a78bfa", "#38bdf8", "#f9edb0", "#34d399"];
 
+/** The AI anthem film. Deploy it to public/videos/birthday.mp4 AND set
+ *  public/videos/manifest.json → { "birthday": true }. Both are required;
+ *  the flag without the file falls back to the cinema show. */
+const VIDEO_SRC = "/videos/birthday.mp4";
+
 interface Particle {
   x: number;
   y: number;
@@ -74,13 +81,36 @@ function useConfetti(enabled: boolean): { ref: React.RefObject<HTMLCanvasElement
   const ref = useRef<HTMLCanvasElement | null>(null);
   const parts = useRef<Particle[]>([]);
   const reduced = useReducedMotion();
+  /** Logical (CSS-pixel) size. The backing store is DPR-scaled, so the
+   *  physics must never read canvas.width/height directly or everything
+   *  would fall off-screen twice as fast on a retina display. */
+  const size = useRef({ w: 0, h: 0 });
+
+  /** Match the backing store to the display density without blurring. */
+  const resize = (): boolean => {
+    const canvas = ref.current;
+    if (!canvas) return false;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const bw = Math.round(w * dpr);
+    const bh = Math.round(h * dpr);
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    size.current = { w, h };
+    return true;
+  };
 
   const burst = useCallback(() => {
     if (reduced) return;
     const canvas = ref.current;
     if (!canvas) return;
-    const w = (canvas.width = window.innerWidth);
-    const h = (canvas.height = window.innerHeight);
+    if (!resize()) return;
+    const { w, h } = size.current;
     for (let i = 0; i < 160; i += 1) {
       parts.current.push({
         x: w / 2 + (Math.random() - 0.5) * w * 0.5,
@@ -103,20 +133,32 @@ function useConfetti(enabled: boolean): { ref: React.RefObject<HTMLCanvasElement
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    if (!resize()) return;
     let raf = 0;
     const tick = (): void => {
       raf = window.requestAnimationFrame(tick);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      parts.current = parts.current.filter((p) => p.life > 0 && p.y < canvas.height + 30);
-      for (const p of parts.current) {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, size.current.w, size.current.h);
+      // Compact in place. The previous version did
+      // `parts.current = parts.current.filter(...)`, which allocated a brand
+      // new array of up to 160 objects on EVERY frame — 60 allocations/sec of
+      // garbage that the GC then had to chase while the animation was trying
+      // to hold 60fps. Writing survivors back into the same array costs
+      // nothing and keeps the particle count honest.
+      const arr = parts.current;
+      let write = 0;
+      for (let read = 0; read < arr.length; read += 1) {
+        const p = arr[read]!;
         p.vy += 0.22;
         p.vx *= 0.99;
         p.x += p.vx;
         p.y += p.vy;
         p.rot += p.vr;
         p.life -= 0.006;
+        if (p.life <= 0 || p.y > size.current.h + 30) continue; // dropped
+        arr[write] = p;
+        write += 1;
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.4));
         ctx.translate(p.x, p.y);
@@ -125,15 +167,21 @@ function useConfetti(enabled: boolean): { ref: React.RefObject<HTMLCanvasElement
         ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
         ctx.restore();
       }
+      arr.length = write;
     };
     tick();
     const opener = window.setTimeout(burst, 450);
+    const onResize = (): void => {
+      resize();
+    };
+    window.addEventListener("resize", onResize);
     return (): void => {
       window.cancelAnimationFrame(raf);
       window.clearTimeout(opener);
+      window.removeEventListener("resize", onResize);
       parts.current = [];
     };
-  }, [enabled, burst, reduced]);
+  }, [enabled, burst, reduced, resize]);
 
   return { ref, burst };
 }
@@ -215,6 +263,115 @@ function useAgeOnBirthday(): { years: number; daysLived: number; hoursLived: num
 function CinemaShow(): React.JSX.Element {
   const [frame, setFrame] = useState(0);
   const [verse, setVerse] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const nodesRef = useRef<OscillatorNode[]>([]);
+
+  /**
+   * Celebratory pentatonic motif synthesised in the browser — no asset, no
+   * autoplay policy fight.
+   *
+   * FIX: every oscillator used to be created and connected but never
+   * disconnected. Web Audio keeps a live node (and its gain stage) in the
+   * graph until it is released, so a few dozen taps on this button slowly
+   * loaded the audio thread with dead nodes until playback started to crackle
+   * or stall. Now every oscillator tears itself down when it finishes.
+   */
+  const playAnthem = useCallback((): void => {
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") void ctx.resume();
+
+      // Stop anything still ringing from a previous tap before starting over.
+      for (const n of nodesRef.current) {
+        try {
+          n.stop();
+        } catch {
+          /* already stopped */
+        }
+      }
+      nodesRef.current = [];
+
+      const master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+
+      const notes = [
+        523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25, 392.0, 523.25, 659.25, 783.99, 880.0,
+        783.99, 659.25, 523.25,
+      ];
+      const step = 0.32;
+      let t = ctx.currentTime + 0.1;
+      const created: OscillatorNode[] = [];
+
+      for (const freq of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.18, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + step);
+        osc.connect(gain).connect(master);
+        osc.start(t);
+        osc.stop(t + step);
+        // Release this note's chain when it finishes, otherwise the graph
+        // grows by two nodes per note, forever.
+        osc.onended = (): void => {
+          try {
+            osc.disconnect();
+            gain.disconnect();
+          } catch {
+            /* already torn down */
+          }
+        };
+        created.push(osc);
+        t += step;
+      }
+      nodesRef.current = created;
+
+      // The master bus outlives every note by one; drop it once they are all
+      // done so nothing is left resident in the graph.
+      window.setTimeout(
+        () => {
+          try {
+            master.disconnect();
+          } catch {
+            /* already torn down */
+          }
+        },
+        notes.length * step * 1000 + 600,
+      );
+
+      setPlaying(true);
+      window.setTimeout(
+        () => setPlaying(false),
+        notes.length * step * 1000 + 400,
+      );
+    } catch {
+      /* Web Audio unavailable */
+    }
+  }, []);
+
+  // Page teardown must not leave a live AudioContext running.
+  useEffect(
+    () => () => {
+      for (const n of nodesRef.current) {
+        try {
+          n.stop();
+          n.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      nodesRef.current = [];
+    },
+    [],
+  );
   useEffect(() => {
     const id = window.setInterval(() => setFrame((f) => f + 1), 4200);
     return (): void => window.clearInterval(id);
@@ -253,6 +410,15 @@ function CinemaShow(): React.JSX.Element {
           <Music className="h-3 w-3" aria-hidden="true" />
           BUDI Anthem · AI Lyric Film
         </span>
+        <button
+          type="button"
+          onClick={playAnthem}
+          className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-[#d4af37]/90 px-3 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-black uppercase transition-all hover:brightness-110"
+          aria-label="Play AI anthem"
+        >
+          <Music className="h-3 w-3" aria-hidden="true" />
+          {playing ? "♪ جاري التشغيل…" : "▶ شغّل الأغنية"}
+        </button>
       </div>
       <div className="absolute inset-x-0 bottom-0 px-5 pt-10 pb-4">
         <p className="flex items-center gap-2 font-mono text-[11px] tracking-[0.3em] text-[#f9edb0] uppercase">
@@ -272,35 +438,104 @@ function CinemaShow(): React.JSX.Element {
 }
 
 function FilmPanel({ preview }: { preview: boolean }): React.JSX.Element {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [film, setFilm] = useState<"video" | "cinema">("cinema");
+  const [filmError, setFilmError] = useState<string | null>(null);
+
+  /**
+   * Two-step probe. The manifest flag alone is not enough: it is easy to
+   * flip `birthday: true` before the MP4 is actually uploaded, and a <video>
+   * pointing at a 404 renders as a black box with a dead play button before
+   * `onError` ever fires. So: read the flag, then confirm the bytes are really
+   * there with a HEAD request. Only then do we commit to the video layout.
+   */
   useEffect(() => {
     let alive = true;
-    void fetch("/videos/manifest.json", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: unknown) => {
-        if (alive && json && typeof json === "object" && (json as { birthday?: unknown }).birthday === true) {
-          setFilm("video");
+    void (async (): Promise<void> => {
+      try {
+        const res = await fetch("/videos/manifest.json", { cache: "no-store" });
+        const json: unknown = res.ok ? await res.json() : null;
+        if (!alive) return;
+        if (!json || typeof json !== "object" || (json as { birthday?: unknown }).birthday !== true) {
+          return; // flag off → cinema, silently
         }
-      })
-      .catch(() => {
-        /* offline — cinema stays */
-      });
+        // Flag is on — is the file actually deployed?
+        const head = await fetch(VIDEO_SRC, { method: "HEAD", cache: "no-store" });
+        if (!alive) return;
+        if (head.ok) setFilm("video");
+      } catch {
+        /* offline or missing manifest — cinema stays */
+      }
+    })();
     return (): void => {
       alive = false;
     };
   }, []);
+
+  /**
+   * Unmute-then-play in one user gesture. Doing it in two steps (a separate
+   * click on a mute toggle) trips the autoplay policy on iOS/Safari, which is
+   * where this page is most likely to be opened.
+   */
+  const playFilm = (): void => {
+    const v = videoRef.current;
+    if (!v) return;
+    setFilmError(null);
+    v.muted = false;
+    v.volume = 1;
+    void v
+      .play()
+      .then(() => setPlaying(true))
+      .catch(() => {
+        setPlaying(false);
+        setFilmError(
+          "المتصفح رفض التشغيل التلقائي — اضغط زر ▶ نفسه اللي فوق، أو فعّل الصوت من إعدادات المتصفح.",
+        );
+      });
+  };
   return (
     <div>
       {film === "video" ? (
-        <div className="overflow-hidden rounded-2xl border border-[#d4af37]/30 shadow-[0_0_60px_rgba(212,175,55,0.25)]">
+        <div className="relative overflow-hidden rounded-2xl border border-[#d4af37]/30 shadow-[0_0_60px_rgba(212,175,55,0.25)]">
           <video
-            src="/videos/birthday.mp4"
+            ref={videoRef}
+            src={VIDEO_SRC}
             poster="/images/birthday/4.jpg"
             controls
             playsInline
             preload="metadata"
+            onError={() => {
+              // The file vanished between the HEAD probe and playback (a
+              // redeploy mid-session). Fall back instead of showing a corpse.
+              setFilm("cinema");
+              setPlaying(false);
+            }}
+            onEnded={() => setPlaying(false)}
             className="aspect-video w-full bg-black"
           />
+          {!playing && (
+            <button
+              type="button"
+              onClick={playFilm}
+              className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] transition-opacity hover:bg-black/30"
+              aria-label="Play film with sound"
+            >
+              <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#d4af37] text-black shadow-[0_0_40px_rgba(212,175,55,0.7)] transition-transform hover:scale-110">
+                <svg viewBox="0 0 24 24" className="ml-1 h-9 w-9 fill-current" aria-hidden="true">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+            </button>
+          )}
+          {filmError && (
+            <p
+              role="alert"
+              className="absolute inset-x-4 bottom-4 rounded-lg border border-red-400/40 bg-black/85 px-3 py-2 text-center text-[11px] text-red-200"
+            >
+              {filmError}
+            </p>
+          )}
           <div className="bg-black/80 px-5 py-4">
             <p dir="rtl" lang="ar" className="text-center text-base font-bold text-[#f9edb0]">
               {ANTHEM_CHORUS_AR}
@@ -336,7 +571,8 @@ function FilmPanel({ preview }: { preview: boolean }): React.JSX.Element {
           <p className="mt-1 text-xs text-white/60 italic">{ANTHEM_CHORUS_EN}</p>
           <p className="mt-3 text-[11px] leading-relaxed text-white/50">
             عايز الفيديو الـ AI الكامل بصوت؟ حط ملف <span dir="ltr">birthday.mp4</span> في{" "}
-            <span dir="ltr">public/videos/</span> وافتح <span dir="ltr">manifest.json → birthday: true</span>
+            <span dir="ltr">public/videos/</span> وخلي <span dir="ltr">manifest.json → birthday: true</span> —
+            الفيديو بيظهر لوحده أوتوماتيك أول ما الملف يكون موجود فعلاً.
           </p>
           {preview && (
             <p className="mt-2 rounded-lg bg-[#d4af37]/10 px-3 py-2 font-mono text-[10px] text-[#e9ce7a]">
@@ -349,23 +585,74 @@ function FilmPanel({ preview }: { preview: boolean }): React.JSX.Element {
   );
 }
 
+/**
+ * Milliseconds left until the current day ENDS in Cairo.
+ *
+ * The countdown used to build the deadline with `end.setHours(23,59,59,999)`,
+ * which is the VISITOR's local midnight — so a guest in Dubai, Berlin or
+ * Cairo-on-a-laptop-with-a-wrong-clock saw a different "time left today" than
+ * the vault actually closes at. The whole page is explicitly Cairo-timed
+ * (BirthdayLocked already uses nextBirthdayStartMs), so the hero clock now
+ * matches it.
+ */
+function msLeftInCairoDay(now: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Cairo",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const read = (type: Intl.DateTimeFormatPartTypes): number => {
+    const found = parts.find((p) => p.type === type);
+    const n = Number(found?.value ?? "0");
+    return Number.isFinite(n) ? n : 0;
+  };
+  // Some ICU builds emit "24" for midnight under hour12:false.
+  const h = read("hour") % 24;
+  const m = read("minute");
+  const s = read("second");
+  const elapsed = h * 3600 + m * 60 + s;
+  return Math.max(0, (86_400 - elapsed) * 1000 - 999);
+}
+
 /* ------------------------------------------------------------------ */
 /* Gallery + lightbox                                                 */
 /* ------------------------------------------------------------------ */
 
 function GalleryWall({ onBurst }: { onBurst: () => void }): React.JSX.Element {
   const [open, setOpen] = useState<number | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const count = VAULT_PHOTOS.length;
+
+  // Scroll lock through the project's own counter, so stacking this lightbox
+  // over any other modal can't leave the page permanently unscrollable.
+  useBodyScrollLock(open !== null);
+
   useEffect(() => {
     if (open === null) return;
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") setOpen(null);
-      if (e.key === "ArrowRight") setOpen((v) => (v === null ? v : (v + 1) % VAULT_PHOTOS.length));
-      if (e.key === "ArrowLeft")
-        setOpen((v) => (v === null ? v : (v - 1 + VAULT_PHOTOS.length) % VAULT_PHOTOS.length));
+      if (e.key === "ArrowRight") setOpen((v) => (v === null ? v : (v + 1) % count));
+      if (e.key === "ArrowLeft") setOpen((v) => (v === null ? v : (v - 1 + count) % count));
     };
     window.addEventListener("keydown", onKey);
     return (): void => window.removeEventListener("keydown", onKey);
-  }, [open ]);
+  }, [open, count]);
+
+  // Move focus into the lightbox on open, and hand it back to the thumbnail
+  // that opened it on close — without this, Tab walks behind the overlay and
+  // a keyboard user is effectively stranded on the page underneath.
+  useEffect(() => {
+    if (open === null) return;
+    closeRef.current?.focus();
+    return (): void => openerRef.current?.focus();
+  }, [open]);
+
+  const step = (delta: number): void =>
+    setOpen((v) => (v === null ? v : (v + delta + count) % count));
+
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -373,7 +660,8 @@ function GalleryWall({ onBurst }: { onBurst: () => void }): React.JSX.Element {
           <button
             key={p.src}
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              openerRef.current = e.currentTarget;
               setOpen(i);
               onBurst();
             }}
@@ -427,33 +715,37 @@ function GalleryWall({ onBurst }: { onBurst: () => void }): React.JSX.Element {
                 {VAULT_PHOTOS[open]!.story}
               </p>
               <p className="mt-2 font-mono text-[11px] text-white/40 tabular-nums">
-                {open + 1} / {VAULT_PHOTOS.length}
+                {open + 1} / {count}
               </p>
             </div>
+            {/* Icons were swapped relative to their labels: "Previous" drew a
+                right-pointing chevron while stepping backwards. Arrow keys
+                keep their existing mapping (Right = next). */}
             <span className="absolute top-3 right-3 flex gap-2">
               <button
                 type="button"
-                aria-label="Previous"
-                onClick={() => setOpen((v) => (v === null ? v : (v - 1 + VAULT_PHOTOS.length) % VAULT_PHOTOS.length))}
+                ref={closeRef}
+                aria-label="Close"
+                onClick={() => setOpen(null)}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white hover:bg-[#d4af37] hover:text-black"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next photo"
+                onClick={() => step(1)}
                 className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white hover:bg-[#d4af37] hover:text-black"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                aria-label="Next"
-                onClick={() => setOpen((v) => (v === null ? v : (v + 1) % VAULT_PHOTOS.length))}
+                aria-label="Previous photo"
+                onClick={() => step(-1)}
                 className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white hover:bg-[#d4af37] hover:text-black"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => setOpen(null)}
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white hover:bg-red-500"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </span>
           </div>
@@ -495,7 +787,27 @@ function WishesSection({ onBurst }: { onBurst: () => void }): React.JSX.Element 
     }
   }, []);
 
-  const all = useMemo(() => [...DEFAULT_WISHES, ...custom], [custom]);
+  const persist = (next: string[]): void => {
+    setCustom(next);
+    try {
+      window.localStorage.setItem(WISH_KEY, JSON.stringify(next));
+    } catch {
+      /* storage blocked */
+    }
+  };
+
+  /**
+   * Remove one of YOUR wishes. Only the local ones are removable — the
+   * built-in DEFAULT_WISHES ship with the page. Previously a visitor could
+   * add up to 30 wishes and then had no way to take a single one back; a
+   * typo or a joke they regretted was permanent for that browser.
+   */
+  const removeWish = (index: number): void => {
+    if (index < 0 || index >= custom.length) return;
+    const next = custom.filter((_, i) => i !== index);
+    persist(next);
+    onBurst();
+  };
 
   const addWish = (): void => {
     const clean = sanitizeWish(input);
@@ -504,12 +816,7 @@ function WishesSection({ onBurst }: { onBurst: () => void }): React.JSX.Element 
       return;
     }
     const next = [...custom, clean].slice(-30);
-    setCustom(next);
-    try {
-      window.localStorage.setItem(WISH_KEY, JSON.stringify(next));
-    } catch {
-      /* storage blocked */
-    }
+    persist(next);
     setInput("");
     setError(null);
     setFlash(clean);
@@ -557,16 +864,40 @@ function WishesSection({ onBurst }: { onBurst: () => void }): React.JSX.Element 
         )}
       </div>
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {all.map((w, i) => (
+        {DEFAULT_WISHES.map((w) => (
           <li
-            key={`${w}-${i}`}
+            key={w}
             className="flex items-start gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm leading-relaxed text-white/85"
           >
             <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#e9ce7a]" aria-hidden="true" />
             <span dir="auto">{w}</span>
           </li>
         ))}
+        {custom.map((w, i) => (
+          <li
+            key={`own-${i}-${w}`}
+            className="group flex items-start gap-2 rounded-xl border border-[#d4af37]/25 bg-[#d4af37]/[0.05] px-3 py-2.5 text-sm leading-relaxed text-white/90"
+          >
+            <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-[#d4af37]" aria-hidden="true" />
+            <span dir="auto" className="min-w-0 flex-1 break-words">
+              {w}
+            </span>
+            <button
+              type="button"
+              onClick={() => removeWish(i)}
+              aria-label={`امسح الأمنية: ${w}`}
+              className="shrink-0 cursor-pointer rounded-md p-1 text-white/25 transition-colors hover:bg-red-500/20 hover:text-red-300 focus-visible:text-red-300"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
       </ul>
+      {custom.length > 0 && (
+        <p className="mt-3 font-mono text-[10px] tracking-[0.18em] text-white/35 uppercase">
+          {custom.length} / 30 من أمنياتك · محفوظة على جهازك بس
+        </p>
+      )}
     </div>
   );
 }
@@ -638,6 +969,59 @@ function CakeGame({ onBurst }: { onBurst: () => void }): React.JSX.Element {
 export function BirthdayOpen({ preview }: { preview: boolean }): React.JSX.Element {
   const { ref, burst } = useConfetti(true);
   const age = useAgeOnBirthday();
+  const [party, setParty] = useState(false);
+  const [trail, setTrail] = useState<{ x: number; y: number; id: number }[]>([]);
+  const trailId = useRef(0);
+  // Mouse trail of stars
+  const trailReduced = useReducedMotion();
+  useEffect(() => {
+    if (typeof window === "undefined" || trailReduced) return;
+    // FIX: this used to call setState on EVERY mousemove — a 144Hz mouse
+    // meant 144 React renders/sec, each allocating a fresh 19-element array,
+    // and it ignored prefers-reduced-motion entirely while the confetti
+    // canvas right above it honoured it. Now coalesced to one update per
+    // animation frame (the most a 60Hz display can even show) and skipped
+    // entirely when the visitor asked for less motion.
+    let raf = 0;
+    let pending: { x: number; y: number } | null = null;
+    const flush = (): void => {
+      raf = 0;
+      if (!pending) return;
+      trailId.current += 1;
+      const point = { x: pending.x, y: pending.y, id: trailId.current };
+      pending = null;
+      setTrail((prev) => [...prev.slice(-18), point]);
+    };
+    const onMove = (e: MouseEvent): void => {
+      pending = { x: e.clientX, y: e.clientY };
+      if (raf === 0) raf = window.requestAnimationFrame(flush);
+    };
+    window.addEventListener("mousemove", onMove);
+    return (): void => {
+      if (raf !== 0) window.cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMove);
+    };
+  }, [trailReduced]);
+  // Auto-clear trail
+  useEffect(() => {
+    const id = window.setInterval(() => setTrail((p) => p.slice(1)), 80);
+    return (): void => window.clearInterval(id);
+  }, []);
+  // Countdown to end of birthday day (Cairo)
+  const [left, setLeft] = useState({ h: 0, m: 0, s: 0 });
+  useEffect(() => {
+    const tick = (): void => {
+      const diff = msLeftInCairoDay(new Date());
+      setLeft({
+        h: Math.floor(diff / 3_600_000),
+        m: Math.floor((diff % 3_600_000) / 60_000),
+        s: Math.floor((diff % 60_000) / 1000),
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return (): void => window.clearInterval(id);
+  }, []);
   return (
     <div className="relative min-h-svh overflow-hidden bg-[#0a0a0b]">
       <style>{`
@@ -647,8 +1031,31 @@ export function BirthdayOpen({ preview }: { preview: boolean }): React.JSX.Eleme
         @keyframes bday-kb { from { transform: scale(1.12); } to { transform: scale(1); } }
         .bday-float { animation: bday-float 5s ease-in-out infinite; }
         @keyframes bday-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        .bday-disco { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(60px); opacity: 0.35; mix-blend-mode: screen; animation: bday-disco 4s linear infinite; }
+        .bday-disco-a { background: radial-gradient(circle, #ff3d00, transparent 60%); top: -20%; left: -10%; }
+        .bday-disco-b { background: radial-gradient(circle, #d7fd44, transparent 60%); bottom: -20%; right: -10%; animation-delay: -1.3s; }
+        .bday-disco-c { background: radial-gradient(circle, #a78bfa, transparent 60%); top: 30%; left: 40%; animation-delay: -2.6s; }
+        @keyframes bday-disco { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(10vw, -5vh) scale(1.2); } 66% { transform: translate(-8vw, 8vh) scale(0.9); } 100% { transform: translate(0,0) scale(1); } }
       `}</style>
       <canvas ref={ref} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[60]" />
+      {/* Mouse trail stars */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[55]">
+        {trail.map((t) => (
+          <span
+            key={t.id}
+            className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f9edb0] opacity-80"
+            style={{ left: t.x, top: t.y, boxShadow: "0 0 8px #d4af37", transition: "opacity 0.6s" }}
+          />
+        ))}
+      </div>
+      {/* Disco lights overlay (party mode) */}
+      {party && (
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[5] overflow-hidden">
+          <span className="bday-disco bday-disco-a" />
+          <span className="bday-disco bday-disco-b" />
+          <span className="bday-disco bday-disco-c" />
+        </div>
+      )}
       <div
         aria-hidden="true"
         className="absolute inset-0"
@@ -665,33 +1072,57 @@ export function BirthdayOpen({ preview }: { preview: boolean }): React.JSX.Eleme
           </p>
         )}
 
+        {/* Party mode + countdown */}
+        <div className="mx-auto mb-6 flex w-fit flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setParty((p) => !p);
+              if (!party) burst();
+            }}
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black transition-all hover:-translate-y-0.5 ${
+              party
+                ? "bg-gradient-to-r from-[#ff3d00] via-[#d7fd44] to-[#a78bfa] text-black shadow-[0_0_30px_rgba(255,61,0,0.6)]"
+                : "border border-[#d4af37]/50 bg-[#d4af37]/10 text-[#e9ce7a]"
+            }`}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {party ? "🎉 Party Mode ON" : "🎉 Party Mode"}
+          </button>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-4 py-2 font-mono text-[11px] text-white/70 tabular-nums">
+            <Clock className="h-3.5 w-3.5 text-[#d4af37]" aria-hidden="true" />
+            {left.h}h {String(left.m).padStart(2, "0")}m {String(left.s).padStart(2, "0")}s left today
+            <span className="text-white/35">· Cairo</span>
+          </span>
+        </div>
+
         {/* HERO */}
         <div className="flex justify-center">
           <span className="bday-float relative flex h-20 w-20 items-center justify-center rounded-3xl border border-[#d4af37]/50 bg-[#d4af37]/10 shadow-[0_0_50px_rgba(212,175,55,0.45)]">
             <Crown className="h-9 w-9 text-[#e9ce7a]" aria-hidden="true" />
           </span>
         </div>
-        <p className="mt-6 text-center font-mono text-xs tracking-[0.5em] text-[#d4af37] uppercase">
-          October 24 · BUDI Vault · Unlocked
-        </p>
-        <h1 className="display mt-3 text-center text-[clamp(2.6rem,9vw,5.5rem)] leading-none font-black tracking-tight">
-          <span
-            className="block"
-            style={{
-              background: "linear-gradient(100deg, #f9edb0 10%, #d4af37 45%, #ff3d00 90%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-              filter: "drop-shadow(0 0 26px rgba(212,175,55,0.35))",
-            }}
-          >
-            HAPPY BIRTHDAY
-          </span>
-          <span className="mt-2 block text-foreground">BUDI · {age.years}</span>
-        </h1>
-        <p className="mt-3 text-center text-sm text-muted">
-          {profile.name} · Full-Stack Developer · Suez, Egypt · {age.daysLived.toLocaleString("en-US")} days of becoming
-        </p>
+          <p className="mt-6 text-center font-mono text-xs tracking-[0.5em] text-[#d4af37] uppercase">
+            24 أكتوبر · خزنة بودي · مفتوحة
+          </p>
+          <h1 className="display mt-3 text-center text-[clamp(2.6rem,9vw,5.5rem)] leading-none font-black tracking-tight">
+            <span
+              className="block"
+              style={{
+                background: "linear-gradient(100deg, #f9edb0 10%, #d4af37 45%, #ff3d00 90%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                filter: "drop-shadow(0 0 26px rgba(212,175,55,0.35))",
+              }}
+            >
+              عيد ميلاد سعيد
+            </span>
+            <span className="mt-2 block text-foreground">بودي · {age.years}</span>
+          </h1>
+          <p className="mt-3 text-center text-sm text-muted">
+            {profile.name} · مطور Full-Stack · السويس، العراق · {age.daysLived.toLocaleString("en-US")} يوم من العظمة
+          </p>
 
         <div className="mt-6 flex justify-center">
           <Logo />
@@ -952,10 +1383,10 @@ export function BirthdayLocked({ preview }: { preview: boolean }): React.JSX.Ele
         <h1 className="font-display mt-2 text-2xl font-black text-foreground sm:text-3xl">
           الكنز مقفول… وهيفتح 24 أكتوبر
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          This page opens every year on <span className="font-bold text-[#e9ce7a]">October 24</span> — Cairo time.
-          جوّا هتلاقي 10 صور، فيلم الأغنية، رسالة للمستقبل، وحائط أمنيات.
-        </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            تفتح هذه الصفحة كل عام في <span className="font-bold text-[#e9ce7a]">24 أكتوبر</span> — بتوقيت القاهرة.
+            داخلها: 10 صور، فيلم الأغنية، رسالة للمستقبل، وحائط أمنيات.
+          </p>
 
         <div className="mt-6 grid grid-cols-4 gap-2" role="timer" aria-label="Countdown to October 24">
           {cells.map(({ v, l }) => (

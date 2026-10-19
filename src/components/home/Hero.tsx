@@ -14,6 +14,7 @@ import {
   Sun,
   Sunrise,
   Sunset,
+  BadgeCheck,
 } from "lucide-react";
 import { heroCopy, profile, socialLinks, stackChips } from "@/data/portfolio";
 import { techLogo } from "@/data/techLogos";
@@ -61,13 +62,16 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
   const frameRef = useRef<HTMLDivElement>(null);
   const hireRef = useRef<HTMLAnchorElement>(null);
   const reduced = useReducedMotion();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const fr = lang === "fr";
   const { text: typed, index: roleIndex } = useTypewriter(t.hero.roles.map((r) => r.title));
   const activeRole = t.hero.roles[roleIndex % t.hero.roles.length] ?? t.hero.roles[0];
 
   // ——— Role = Color: ember palette follows the active role ———
   const roleColor: RoleColor =
     ROLE_COLORS[roleIndex % ROLE_COLORS.length] ?? ROLE_COLORS[0]!;
+  const exploreColor: RoleColor =
+    ROLE_COLORS[(roleIndex + 1) % ROLE_COLORS.length] ?? ROLE_COLORS[1]!;
 
   // ——— Live Suez clock. Null pre-mount → static fallback, zero hydration mismatch ———
   const now = useNow(1000);
@@ -349,7 +353,11 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
                 className="absolute inset-y-0 left-0 w-1/2 -skew-x-12 -translate-x-[180%] bg-black/25 blur-md transition-transform duration-700 group-hover:translate-x-[380%]"
               />
               <span className="relative">{t.hero.hireMe}</span>
-              <ArrowUpRight className="relative h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              <ArrowUpRight
+                className="relative h-4 w-4 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 text-[var(--icon-color)] group-hover:text-[var(--hover-color)]"
+                style={{ "--icon-color": roleColor.bg, "--hover-color": "#22d3ee", filter: `drop-shadow(0 0 6px ${roleColor.glow})` } as React.CSSProperties}
+                aria-hidden="true"
+              />
             </a>
             <a
               href={heroCopy.secondaryCta.href}
@@ -362,7 +370,11 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
               <span className="relative transition-colors duration-300 group-hover:text-accent-foreground">
                 {t.hero.explore}
               </span>
-              <ArrowRight className="relative h-4 w-4 transition-all duration-300 group-hover:translate-x-1 group-hover:text-accent-foreground" />
+              <ArrowRight
+                className="relative h-4 w-4 transition-all duration-300 group-hover:translate-x-1 text-[var(--icon-color)] group-hover:text-[var(--hover-color)]"
+                style={{ "--icon-color": exploreColor.bg, "--hover-color": "#34d399", filter: `drop-shadow(0 0 6px ${exploreColor.glow})` } as React.CSSProperties}
+                aria-hidden="true"
+              />
             </a>
             <a
               href={heroCopy.tertiaryCta.href}
@@ -374,6 +386,18 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
               </span>
               {t.hero.downloadCv}
             </a>
+          </div>
+
+          {/* Quick trust features — two at-a-glance signals of meticulous work */}
+          <div data-hero-reveal className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/[0.08] px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-emerald-300 uppercase">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              {fr ? "Disponible · réponse < 24h" : "Available · replies < 24h"}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-cyan-300 uppercase">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              {fr ? "Site vérifié & sécurisé" : "Verified & secure site"}
+            </span>
           </div>
 
           <div data-hero-reveal className="mt-9 flex items-center gap-2">

@@ -10,8 +10,8 @@ import BirthdayExperience from "@/components/birthday/BirthdayScreen";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "BUDI Vault — Opens October 24",
-  description: "The golden vault: 10 photos, AI anthem film, memories road, and wishes. Opens every October 24 (Cairo).",
+  title: "خزنة بودي — تفتح 24 أكتوبر",
+  description: "الخزنة الذهبية: 10 صور، فيلم الأغنية (AI)، طريق الذكريات، وأمنيات. تفتح كل 24 أكتوبر (بتوقيت القاهرة).",
   robots: { index: false, follow: false },
 };
 

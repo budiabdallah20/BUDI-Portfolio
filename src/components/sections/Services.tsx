@@ -130,6 +130,13 @@ interface ServiceView {
   timeline: string;
   icon: string;
   iconImage: string;
+  startingPrice: string;
+  currency: string;
+  ctaLink: string;
+  ctaLabel: string;
+  popular: boolean;
+  deliveryDays: number;
+  revisions: number;
 }
 
 export default function Services({ remote }: { remote?: AdminService[] }): React.JSX.Element {
@@ -169,9 +176,11 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
     }, 1600);
   };
 
-  /** Database wins when it has rows — baked-in dictionary is the fallback. Hidden (eye-off) rows never reach the site. */
-  const source: ServiceView[] = useMemo(() => {
-    if (remote && remote.length > 0) {
+    /** Database wins whenever it is wired in — an empty list is a real state
+     *  (a deleted service must disappear). Baked-in dictionary is only the
+     *  no-database fallback. */
+    const source: ServiceView[] = useMemo(() => {
+      if (remote !== undefined) {
       return remote
         .filter((r) => r.visible !== false)
         .map((r) => ({
@@ -184,6 +193,13 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
         timeline: fr ? r.timelineFr : r.timelineEn,
         icon: r.icon || "",
         iconImage: r.iconImage || "",
+        startingPrice: r.startingPrice || "",
+        currency: r.currency || "USD",
+        ctaLink: r.ctaLink || "",
+        ctaLabel: fr ? r.ctaLabelFr || r.ctaLabelEn : r.ctaLabelEn,
+        popular: r.popular === true,
+        deliveryDays: r.deliveryDays ?? 0,
+        revisions: r.revisions ?? 0,
       }));
     }
     return t.services.items.map((item) => {
@@ -198,6 +214,13 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
         timeline: fr ? meta.timeline.fr : meta.timeline.en,
         icon: "",
         iconImage: "",
+        startingPrice: "",
+        currency: "USD",
+        ctaLink: "",
+        ctaLabel: fr ? "Demander un devis" : "Get a quote",
+        popular: false,
+        deliveryDays: 0,
+        revisions: 2,
       };
     });
   }, [remote, fr, t]);
@@ -488,6 +511,16 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                         <span className="text-faint tabular-nums">
                           {item.points.length} ✓
                         </span>
+                        {item.popular && (
+                          <span className="rounded-full bg-accent px-2 py-0.5 font-mono text-[9px] font-black tracking-[0.12em] text-accent-foreground uppercase">
+                            Popular
+                          </span>
+                        )}
+                        {item.startingPrice && (
+                          <span className="font-mono text-[10px] tracking-[0.08em] text-accent tabular-nums">
+                            {item.startingPrice} {item.currency}
+                          </span>
+                        )}
                       </p>
                       <button
                         type="button"

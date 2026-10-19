@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { ArrowUpRight, Check, ChevronDown, Download, Expand, ExternalLink, FolderGit, Heart, Link2, Plus, Search } from "lucide-react";
@@ -143,7 +143,7 @@ export default function Projects({
   const reduced = useReducedMotion();
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<SortMode>("featured");
-  const [liked, setLiked] = useState<Record<string, boolean>>(loadLiked);
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [briefKey, setBriefKey] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -151,11 +151,24 @@ export default function Projects({
   /** In-flight votes per project key — the spam shield for toggleLike. */
   const pendingLikes = useRef<Set<string>>(new Set());
 
+  /**
+   * Hydration-safe heart restore: the server has no localStorage, so the
+   * first paint starts every heart at 0 on both sides. Reading the saved
+   * hearts inside the state initializer made the client render `+1` next to
+   * the server's `0` — a text mismatch React answers with error #418 (it
+   * throws the whole SSR tree away). Restore AFTER mount instead.
+   */
+  useEffect(() => {
+    setLiked(loadLiked());
+  }, []);
+
   const fr = lang === "fr";
 
-  /** Database wins when it has rows — dictionary is the fallback. Hidden (eye-off) rows never reach the site. */
+  /** Database wins whenever it is wired in — an empty list is a real state
+   *  (a deleted project must disappear). Dictionary is only the no-database
+   *  fallback. */
   const list = useMemo(() => {
-    if (remote && remote.length > 0) {
+    if (remote !== undefined) {
       return remote
         .filter((r) => r.visible !== false)
         .map((r) => ({
@@ -175,9 +188,22 @@ export default function Projects({
         role: fr ? r.roleFr || r.roleEn : r.roleEn,
         timeline: fr ? r.timelineFr || r.timelineEn : r.timelineEn,
         sponsored: r.sponsored === true,
+        gallery: r.gallery ?? [],
+        demoEmbed: r.demoEmbed || "",
+        impact: fr ? r.impactFr || r.impactEn : r.impactEn,
+        clientName: r.clientName || "",
+        clientLogo: r.clientLogo || "",
+        teamSize: r.teamSize ?? 1,
+        tags: r.tags ?? [],
+        featured: r.featured === true,
+        progress: r.progress ?? 0,
+        version: r.version || "",
+        changelog: r.changelog ?? [],
+        seoSlug: r.seoSlug || "",
+        seoDesc: r.seoDesc || "",
       }));
     }
-    return t.projects.items.map((p) => ({ ...p, demo: null as string | null, image: "", briefEn: [] as string[], briefFr: [] as string[], role: "", timeline: "", sponsored: false as boolean }));
+    return t.projects.items.map((p) => ({ ...p, demo: null as string | null, image: "", briefEn: [] as string[], briefFr: [] as string[], role: "", timeline: "", sponsored: false as boolean, featured: false as boolean }));
   }, [remote, fr, t]);
   const [detailKey, setDetailKey] = useState<string | null>(null);
   /** Image-only lightbox — cover preview + download, no dossier. */
@@ -286,7 +312,7 @@ export default function Projects({
       };
       return [...rows].sort((a, b) => yearOf(b.year) - yearOf(a.year));
     }
-    return rows;
+    return [...rows].sort((a, b) => (b.featured === true ? 1 : 0) - (a.featured === true ? 1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, filter, sort, liked, query]);
 
@@ -523,6 +549,12 @@ export default function Projects({
                     "radial-gradient(480px circle at var(--sx, 50%) var(--sy, 0%), rgba(215,253,68,0.08), transparent 65%)",
                 }}
               />
+              {/* Magical touches — glow, animated border, shimmer sweep, sparkles */}
+              <span aria-hidden="true" className="magic-glow" />
+              <span aria-hidden="true" className="magic-border" />
+              <span aria-hidden="true" className="magic-shimmer" />
+              <span aria-hidden="true" className="magic-sparkle" style={{ top: "12%", right: "8%", animationDelay: "0s" }} />
+              <span aria-hidden="true" className="magic-sparkle" style={{ bottom: "18%", left: "6%", animationDelay: "0.9s" }} />
               <div
                 className="relative flex min-h-[240px] flex-col justify-between gap-6 overflow-hidden p-6 sm:p-8"
                 style={{
@@ -776,6 +808,11 @@ export default function Projects({
                             "radial-gradient(420px circle at var(--sx, 50%) var(--sy, 0%), rgba(215,253,68,0.08), transparent 65%)",
                         }}
                       />
+                      {/* Magical touches */}
+                      <span aria-hidden="true" className="magic-glow" />
+                      <span aria-hidden="true" className="magic-border" />
+                      <span aria-hidden="true" className="magic-shimmer" />
+                      <span aria-hidden="true" className="magic-sparkle" style={{ top: "10%", right: "6%", animationDelay: "0.2s" }} />
                       {/* Compact cover */}
                       <div
                         className="relative flex h-36 flex-col justify-between overflow-hidden p-3.5"

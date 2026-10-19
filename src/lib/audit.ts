@@ -15,7 +15,10 @@
  *   IP only).
  */
 
+import { appendFileSync } from "node:fs";
+import path from "node:path";
 import { clientIp } from "@/lib/rate-limit";
+import { resolveInside } from "@/lib/security/safe-path";
 
 export interface AuditEvent {
   action: "save" | "remove" | "seed" | "verify" | string;
@@ -30,22 +33,15 @@ export interface AuditEvent {
 }
 
 const LOG_PATH = process.env.AUDIT_LOG_PATH ?? "audit.log";
-let fsMod: typeof import("node:fs") | null = null;
-let fsTried = false;
 
-function getFs(): typeof import("node:fs") | null {
-  if (fsTried) return fsMod;
-  fsTried = true;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    fsMod = (require as unknown as (id: string) => unknown)(
-      "node:fs",
-    ) as typeof import("node:fs");
-  } catch {
-    /* ESM runtime without require — file logging disabled, console only */
-    fsMod = null;
-  }
-  return fsMod;
+/**
+ * Resolve the log target through the traversal guard: a relative name stays
+ * inside the project root; an absolute path only when it came from the
+ * operator's env (trusted config, never user input).
+ */
+function logTarget(): string | null {
+  if (path.isAbsolute(LOG_PATH)) return LOG_PATH;
+  return resolveInside(process.cwd(), LOG_PATH);
 }
 
 /** Should we also write the local append-only file (dev / opt-in). */
@@ -55,7 +51,7 @@ function fileLoggingEnabled(): boolean {
 
 /**
  * Record one admin event. Fire-and-forget safe: `void audit(...)`.
- * The console line is synchronous; the file append is best-effort async.
+ * The console line is synchronous; the file append is best-effort.
  */
 export function audit(event: AuditEvent): void {
   const line = JSON.stringify({
@@ -78,10 +74,10 @@ export function audit(event: AuditEvent): void {
   }
   // Local append-only file — dev / opt-in only, never edits history.
   if (!fileLoggingEnabled()) return;
-  const fs = getFs();
-  if (!fs) return;
+  const target = logTarget();
+  if (!target) return;
   try {
-    fs.appendFileSync(LOG_PATH, line + "\n", { encoding: "utf8" });
+    appendFileSync(target, line + "\n", { encoding: "utf8" });
   } catch {
     /* noop — audit must never break the request */
   }

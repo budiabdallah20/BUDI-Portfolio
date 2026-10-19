@@ -38,7 +38,12 @@ Fix = breaking (`shadcn@1.0.0`), so it is **deferred by owner decision**.
      then **Redeploy** (env loads at build/boot).
   3. Optional Cloudflare in front: SSL mode **Full (strict)**, Always-Use-
      HTTPS ON, WAF ON. Keep `frame-ancestors 'self'` (dashboard preview).
-- **Local:** stays `http://localhost:3000` — correct, no self-signed hack.
+- **Local (encrypted):** `npm run dev:https` serves **real HTTPS on
+  `https://localhost:8443`** using `certs/localhost.crt|key` (generate +
+  OS-trust once with `npm run gen:cert`). HSTS/COOP are live in dev, the
+  certificate page performs a real TLS handshake probe of its own server,
+  and `https://localhost:8443/security` works exactly like production.
+  Plain `npm run dev` remains on `:3000`.
 
 ## 4) Checklist mapping (condensed)
 - Auth: PIN + `timingSafeEqual`, 8 tries→15m lock (repeat 1h), global
@@ -74,3 +79,35 @@ Fix = breaking (`shadcn@1.0.0`), so it is **deferred by owner decision**.
 - [ ] After any `.env` edit: **restart** `next dev` (env loads at boot).
 - [ ] On Vercel: set the 5 env vars above + redeploy; verify `https://`
       + HSTS + `https://yourdomain/api/content-hash` → 200.
+
+## 8) Round 2 — 2026-10-19: live Security Certificate + deeper hardening
+- **`/security` page (EN/FR)** — 13 live checks graded A+→D: TLS/HTTPS,
+  HSTS, CSP, anti-clickjacking, nosniff, Referrer/Permissions-Policy, XSS,
+  SSRF guard, path-traversal guard, rate limiting, request timeouts,
+  data-at-rest (Supabase holds no passwords/payments; RLS), trusted local
+  TLS cert. Reads the live response headers plus a real TLS handshake
+  (`tls.connect`) of its own server on loopback.
+- **`GET /api/security/status`** — machine-readable proof: TLS probe
+  (protocol/cipher/cert), guards, limits, timeout facts. Rate-limited 60/min.
+- **`GET /api/security/dns?domain=`** — SPF/DMARC checker (DNS-over-HTTPS
+  via `dns.google`, the only allowlisted outbound host). 20/min; 400 invalid.
+- **Email hardening records to publish at your DNS provider:**
+  | Host | Type | Value |
+  |---|---|---|
+  | `@` | TXT | `v=spf1 -all` (this domain sends no mail; if a provider does, use that provider's `include:` + `~all`) |
+  | `_dmarc` | TXT | `v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s; rua=mailto:dmarc@yourdomain; fo=1` (start `p=none` for a week if unsure) |
+  | `<selector>._domainkey` | TXT | `v=DKIM1; k=rsa; p=<2048-bit public key from your mail provider>` |
+- **Single source of truth** — `src/lib/security/headers.ts` feeds both
+  `next.config.ts` and the page (no drift); `limits.ts` feeds every route.
+- **New guards** — `safe-path.ts` (`resolveInside`) contains admin video
+  paths + audit-log paths; `outbound.ts` SSRF allowlist (https-only, port
+  443, no credentials, no redirects, 512KB cap).
+- **Timeouts everywhere** — Supabase 15s, admin POST 20s (deploy 150s),
+  weather 8s, prayer 10s, translate 12s, TLS probe 4s, DoH 5s.
+- **Local HTTPS** — `npm run dev:https` → `https://localhost:8443`
+  (8443 by convention; `--port` still overridable).
+- Re-verified after changes: `typecheck` ✅ `lint` ✅ `tests 51/51` ✅ `build` ✅
+  and a live smoke on `https://localhost:8443` ✅ — trusted cert, TLS 1.3
+  (`TLS_AES_256_GCM_SHA384`), HSTS + CSP + XFO read back from the real
+  response, SPF/DMARC lookup OK (`google.com`), invalid domain → 400,
+  `POST /api/security/status` → 405.

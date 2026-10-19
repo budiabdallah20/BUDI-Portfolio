@@ -37,6 +37,30 @@ function isPrivateLan(hostname: string): boolean {
  * (and phone-on-LAN testing) with a dead https://localhost:3000.
  */
 export function proxy(req: NextRequest): NextResponse {
+  // CSRF / cross-origin guard for state-changing API calls: browsers always
+  // send an Origin header on cross-site requests, so a mismatched (or
+  // obviously foreign) Origin on a mutating method is rejected. Same-origin
+  // and server-to-server (no Origin) calls pass through untouched.
+  const method = req.method.toUpperCase();
+  if (
+    (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") &&
+    req.nextUrl.pathname.startsWith("/api/")
+  ) {
+    const origin = req.headers.get("origin");
+    if (origin) {
+      let ok = false;
+      try {
+        const o = new URL(origin);
+        ok = o.host === req.nextUrl.host;
+      } catch {
+        ok = false;
+      }
+      if (!ok) {
+        return NextResponse.json({ error: "Forbidden origin" }, { status: 403 });
+      }
+    }
+  }
+
   const forwardedProto = req.headers
     .get("x-forwarded-proto")
     ?.split(",")[0]

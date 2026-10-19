@@ -287,6 +287,10 @@ export default function CinematicLoader({
       role="status"
       aria-live="polite"
       aria-label={label}
+      /* The failsafe script may stamp data-loader-released + inline styles on
+         this node before React hydrates (slow first paint) — intentional, so
+         React must not report a phantom hydration mismatch. */
+      suppressHydrationWarning
       className={`loader-failsafe fixed inset-0 ${zClass} flex items-center justify-center overflow-hidden`}
       style={{ backgroundColor: bg, color: "#f4f4ef" }}
     >

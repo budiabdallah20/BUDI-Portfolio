@@ -25,6 +25,13 @@ interface Cert {
   /** Drop the file in public/images/certificates/ and set the path — card upgrades itself. */
   image: string | null;
   verify: string | null;
+  expiry?: string | null;
+  level?: "beginner" | "intermediate" | "advanced" | "expert";
+  hours?: number;
+  type?: "certificate" | "badge" | "award" | "course";
+  featured?: boolean;
+  pdf?: string | null;
+  linkedSkills?: string[];
 }
 
 /** Grid page size — the shelf grows to 100+ with one tap. */
@@ -148,9 +155,11 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
   const t = lang === "fr" ? COPY.fr : COPY.en;
   const fr = lang === "fr";
 
-  /** Database wins when it has rows — baked-in list is the fallback. Hidden (eye-off) rows never reach the site. */
-  const certs: Cert[] = useMemo<Cert[]>(() => {
-    if (remote && remote.length > 0) {
+    /** Database wins whenever it is wired in — even an empty list is a real
+     *  state (a deleted certificate must disappear, not resurrect the
+     *  baked-in seed). The baked-in list is only the no-database fallback. */
+    const certs: Cert[] = useMemo<Cert[]>(() => {
+      if (remote !== undefined) {
       return remote
         .filter((r) => r.visible !== false)
         .map((r) => ({
@@ -162,6 +171,13 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
         skills: r.skills,
         image: r.image || null,
         verify: r.verify || null,
+        expiry: r.expiry || null,
+        level: r.level,
+        hours: r.hours,
+        type: r.type,
+        featured: r.featured === true,
+        pdf: r.pdf || null,
+        linkedSkills: r.linkedSkills ?? r.skills,
       }));
     }
     return CERTS;
@@ -361,126 +377,193 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
               transition={{ duration: 0.4, ease: "easeOut", delay: (i % 4) * 0.06 }}
               onMouseMove={onCardMove}
               onMouseLeave={onCardLeave}
-              className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface/60 transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-[0_20px_60px_-28px_rgba(215,253,68,0.35)]"
+              className="cert-card group relative"
             >
+              {/* ——— Magic BEHIND the card ————
+                  Two layers live outside the card box so the glass surface
+                  hides their centre: a soft aura that breathes at rest, and
+                  a full-spectrum halo that blooms on hover. */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                className={cn(
+                  "pointer-events-none absolute -inset-1 rounded-2xl opacity-30 blur-lg",
+                  !reduced && "animate-cert-aura",
+                )}
                 style={{
                   background:
-                    "radial-gradient(360px circle at var(--sx, 50%) var(--sy, 0%), rgba(215,253,68,0.08), transparent 65%)",
+                    "linear-gradient(135deg, rgba(215,253,68,0.55), rgba(255,61,0,0.4) 55%, rgba(139,92,246,0.5))",
                 }}
               />
               <span
                 aria-hidden="true"
-                className="absolute top-0 left-0 z-10 h-[2px] w-0 bg-accent shadow-[0_0_12px_rgba(255,61,0,0.8)] transition-all duration-500 group-hover:w-full"
+                className="pointer-events-none absolute -inset-2.5 rounded-3xl opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-70"
+                style={{
+                  background:
+                    "conic-gradient(from 130deg, rgba(215,253,68,0.75), rgba(255,61,0,0.6), rgba(139,92,246,0.65), rgba(215,253,68,0.75))",
+                }}
               />
-              {/* Compact image slot — 16/10, zoom on hover — opens the glass dossier */}
-              <button
-                type="button"
-                onClick={() => setDetailId(cert.id)}
-                aria-label={fr ? cert.title.fr : cert.title.en}
-                aria-haspopup="dialog"
-                className={cn(
-                  "relative flex aspect-[16/10] w-full cursor-pointer items-center justify-center overflow-hidden border-b border-border",
-                )}
-              >
-                {cert.image ? (
-                  <SmartImage
-                    src={cert.image}
-                    alt={fr ? cert.title.fr : cert.title.en}
-                    fill
-                    fit="cover"
-                    loading="lazy"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                ) : (
-                  <span className="flex flex-col items-center gap-2 p-4 text-center">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-accent/40 bg-accent/[0.06] text-accent">
-                      <ImagePlus className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
-                      {t.addImage}
-                    </span>
-                  </span>
-                )}
-                <span className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-accent backdrop-blur-md">
-                  <Award className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-                <span className="absolute bottom-2 left-2 rounded-full border border-white/10 bg-black/55 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-white/80 uppercase backdrop-blur-md tabular-nums">
-                  {cert.year} · {cert.months}{fr ? "m" : "mo"}
-                </span>
-              </button>
 
-              <div className="flex flex-1 flex-col p-3.5">
-                <p className="truncate font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
-                  {fr ? cert.issuer.fr : cert.issuer.en}
-                </p>
+              <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface/70 transition-[transform,border-color,box-shadow] duration-300 group-hover:-translate-y-1 group-hover:border-accent/50 group-hover:shadow-[0_24px_70px_-30px_rgba(215,253,68,0.5)]">
+                {/* Sealed corners — snap inward on hover */}
+                <span aria-hidden="true" className="cert-corner cert-corner--tl" />
+                <span aria-hidden="true" className="cert-corner cert-corner--tr" />
+                <span aria-hidden="true" className="cert-corner cert-corner--bl" />
+                <span aria-hidden="true" className="cert-corner cert-corner--br" />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{
+                    background:
+                      "radial-gradient(360px circle at var(--sx, 50%) var(--sy, 0%), rgba(215,253,68,0.08), transparent 65%)",
+                  }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0 left-0 z-10 h-[2px] w-0 bg-accent shadow-[0_0_12px_rgba(255,61,0,0.8)] transition-all duration-500 group-hover:w-full"
+                />
+                <span
+                  aria-hidden="true"
+                  className="display pointer-events-none absolute right-1 bottom-0 z-[5] text-5xl font-black text-foreground/[0.04] select-none"
+                >
+                  0{i + 1}
+                </span>
+                {/* Compact image slot — 16/10, zoom on hover — opens the glass dossier */}
                 <button
                   type="button"
                   onClick={() => setDetailId(cert.id)}
+                  aria-label={fr ? cert.title.fr : cert.title.en}
                   aria-haspopup="dialog"
-                  className="font-display mt-1 line-clamp-2 min-h-[2.5em] cursor-pointer text-left text-[15px] leading-snug font-bold text-foreground transition-colors hover:text-accent"
-                >
-                  {fr ? cert.title.fr : cert.title.en}
-                </button>
-                <div className="mt-2 mb-2.5 flex flex-wrap gap-1">
-                  {visibleSkills.map((skill) => {
-                    const logo = techLogo(skill);
-                    return (
-                      <span
-                        key={skill}
-                        className="flex items-center gap-1 border border-border px-1.5 py-px font-mono text-[9px] tracking-[0.1em] text-muted uppercase"
-                      >
-                        {logo && (
-                          <Image
-                            src={logo}
-                            alt=""
-                            width={10}
-                            height={10}
-                            loading="lazy"
-                            className="block h-2.5 w-2.5"
-                          />
-                        )}
-                        {skill}
-                      </span>
-                    );
-                  })}
-                  {extraSkills > 0 && (
-                    <span className="font-mono text-[9px] text-faint tabular-nums">+{extraSkills}</span>
+                  className={cn(
+                    "relative flex aspect-[16/10] w-full cursor-pointer items-center justify-center overflow-hidden border-b border-border",
                   )}
-                </div>
-                <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5">
-                  <span className="truncate font-mono text-[9px] tracking-[0.14em] text-faint uppercase tabular-nums">
-                    {cert.id}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDetailId(cert.id)}
-                      aria-haspopup="dialog"
-                      className="cursor-pointer font-mono text-[10px] tracking-[0.18em] text-muted uppercase transition-colors duration-200 hover:text-accent"
-                    >
-                      {fr ? "Détails" : "Details"} →
-                    </button>
-                    {cert.verify ? (
-                      <a
-                        href={cert.verify}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-accent transition-transform duration-200 hover:-translate-y-0.5"
-                      >
-                        <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                        {t.verify}
-                    </a>
+                >
+                  {cert.image ? (
+                    <SmartImage
+                      src={cert.image}
+                      alt={fr ? cert.title.fr : cert.title.en}
+                      fill
+                      fit="cover"
+                      loading="lazy"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                   ) : (
-                    <span className="inline-flex shrink-0 cursor-not-allowed items-center gap-1 text-[11px] font-semibold text-faint">
-                      <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                      {t.verifySoon}
+                    <span className="flex flex-col items-center gap-2 p-4 text-center">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-accent/40 bg-accent/[0.06] text-accent">
+                        <ImagePlus className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
+                        {t.addImage}
+                      </span>
                     </span>
                   )}
+                  <span className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-accent backdrop-blur-md">
+                    <Award className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
+                  <span className="absolute bottom-2 left-2 rounded-full border border-white/10 bg-black/55 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-white/80 uppercase backdrop-blur-md tabular-nums">
+                    {cert.year} · {cert.months}{fr ? "m" : "mo"}
+                  </span>
+                  {/* Silk sweep — a blade of light crosses the credential on hover */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 -translate-x-[180%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-[320%]"
+                  />
+                </button>
+
+                <div className="flex flex-1 flex-col p-3.5">
+                  <p className="truncate font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
+                    {fr ? cert.issuer.fr : cert.issuer.en}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(cert.id)}
+                    aria-haspopup="dialog"
+                    className="font-display mt-1 line-clamp-2 min-h-[2.5em] cursor-pointer text-left text-[15px] leading-snug font-bold text-foreground transition-colors hover:text-accent"
+                  >
+                    {fr ? cert.title.fr : cert.title.en}
+                  </button>
+                  <div className="mt-2 mb-2.5 flex flex-wrap gap-1">
+                    {visibleSkills.map((skill) => {
+                      const logo = techLogo(skill);
+                      return (
+                        <span
+                          key={skill}
+                          className="flex items-center gap-1 border border-border px-1.5 py-px font-mono text-[9px] tracking-[0.1em] text-muted uppercase"
+                        >
+                          {logo && (
+                            <Image
+                              src={logo}
+                              alt=""
+                              width={10}
+                              height={10}
+                              loading="lazy"
+                              className="block h-2.5 w-2.5"
+                            />
+                          )}
+                          {skill}
+                        </span>
+                      );
+                    })}
+                    {extraSkills > 0 && (
+                      <span className="font-mono text-[9px] text-faint tabular-nums">+{extraSkills}</span>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-mono text-[9px] tracking-[0.14em] text-faint uppercase tabular-nums">
+                        {cert.id}
+                      </span>
+                      {cert.type && cert.type !== "certificate" && (
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-px font-mono text-[8px] uppercase text-faint">
+                          {cert.type}
+                        </span>
+                      )}
+                      {cert.hours && cert.hours > 0 && (
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-px font-mono text-[8px] tabular-nums text-faint">
+                          {cert.hours}h
+                        </span>
+                      )}
+                      {cert.expiry && (
+                        <span className="rounded-full border border-amber-400/30 bg-amber-400/[0.06] px-1.5 py-px font-mono text-[8px] text-amber-300">
+                          exp {cert.expiry}
+                        </span>
+                      )}
+                    {cert.skills.length > 0 && (
+                      <span
+                        className="shrink-0 rounded-full border border-accent/25 bg-accent/[0.06] px-1.5 py-px font-mono text-[9px] tracking-[0.08em] text-accent/80 tabular-nums uppercase"
+                        title={cert.skills.join(", ")}
+                      >
+                        {cert.skills.length} {fr ? "comp." : "skills"}
+                      </span>
+                    )}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(cert.id)}
+                        aria-haspopup="dialog"
+                        className="cursor-pointer font-mono text-[10px] tracking-[0.18em] text-muted uppercase transition-colors duration-200 hover:text-accent"
+                      >
+                        {fr ? "Détails" : "Details"} →
+                      </button>
+                      {cert.verify ? (
+                        <a
+                          href={cert.verify}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-accent transition-transform duration-200 hover:-translate-y-0.5"
+                        >
+                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t.verify}
+                      </a>
+                    ) : (
+                      <span className="inline-flex shrink-0 cursor-not-allowed items-center gap-1 text-[11px] font-semibold text-faint">
+                        <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t.verifySoon}
+                      </span>
+                    )}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.article>

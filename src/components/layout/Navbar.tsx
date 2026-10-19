@@ -8,6 +8,7 @@ import { workDeadlineSuffix, workLabel, type SiteAvailability } from "@/componen
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
 import LangFlag from "./LangFlag";
@@ -106,6 +107,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   const toggleRef = useRef<HTMLButtonElement>(null);
   const { t, lang } = useLanguage();
   const active = useScrollSpy(navLinks.map((l) => l.id));
+  const reduced = useReducedMotion();
   /** Dashboard-owned availability — every navbar badge flips with one switch. */
   const avail: SiteAvailability = availability ?? { status: "available", note: "", noteFr: "", until: "" };
   const availLabel =
@@ -181,12 +183,31 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
             href="#home"
             onClick={() => setOpen(false)}
             className={cn(
-              "group flex items-center rounded-xl transition-all duration-300",
+              "group relative flex items-center rounded-xl transition-all duration-300",
               solid && "drop-shadow-[0_0_14px_rgba(212,175,55,0.4)]",
             )}
             aria-label="BUDI — back to home"
           >
-            <Logo variant="full" />
+            <span className={cn("relative inline-flex", !reduced && "logo-magic-glow")}>
+              <span
+                className={cn(
+                  "inline-flex transition-transform duration-300 group-hover:scale-[1.02]",
+                  !reduced && "animate-logo-in",
+                )}
+              >
+                <span className="inline-flex">
+                  <Logo variant="full" />
+                </span>
+              </span>
+              {!reduced && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
+                >
+                  <span className="logo-sheen absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                </span>
+              )}
+            </span>
           </a>
 
           <ul className="hidden items-center gap-0.5 lg:flex">

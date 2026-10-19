@@ -49,6 +49,31 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
+ * Resolve the active service-worker registration, or reject after `timeoutMs`.
+ * `navigator.serviceWorker.ready` NEVER settles while no worker is registered
+ * (dev, or a non-secure origin), so awaiting it directly left the push buttons
+ * spinning forever. A bounded wait fails fast with a real message instead.
+ */
+function swRegistration(timeoutMs = 4000): Promise<ServiceWorkerRegistration> {
+  return new Promise<ServiceWorkerRegistration>((resolve, reject) => {
+    const timer = window.setTimeout(
+      () => reject(new Error("service worker unavailable")),
+      timeoutMs,
+    );
+    navigator.serviceWorker.ready.then(
+      (reg) => {
+        window.clearTimeout(timer);
+        resolve(reg);
+      },
+      (err: unknown) => {
+        window.clearTimeout(timer);
+        reject(err instanceof Error ? err : new Error("service worker unavailable"));
+      },
+    );
+  });
+}
+
+/**
  * NotificationsInbox — the owner's bell, dashboard only.
  * Local permission + push subscription + Supabase inbox (poll 30s) +
  * test send + per-type toggles + PWA install button.
@@ -88,7 +113,7 @@ export default function NotificationsInbox(): React.JSX.Element {
   const checkSubscription = async (): Promise<void> => {
     try {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swRegistration();
       const sub = await reg.pushManager.getSubscription();
       setSubscribed(!!sub);
     } catch {
@@ -167,7 +192,7 @@ export default function NotificationsInbox(): React.JSX.Element {
         flash("VAPID key missing — add it to env");
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swRegistration();
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
       const json = sub.toJSON();
       const res = await fetch("/api/push/subscribe", {
@@ -188,7 +213,7 @@ export default function NotificationsInbox(): React.JSX.Element {
   const unsubscribePush = async (): Promise<void> => {
     setBusy(true);
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swRegistration();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await fetch("/api/push/subscribe", {

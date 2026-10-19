@@ -1,67 +1,54 @@
+import os from "node:os";
 import type { NextConfig } from "next";
+import { buildSecurityHeaders } from "./src/lib/security/headers";
+
+const IS_DEV = process.env.NODE_ENV !== "production";
+// Local HTTPS dev (`npm run dev:https`) is a secure context even though
+// NODE_ENV is "development" — treat it like prod for HSTS/COOP so the
+// encrypted server ships the full lockdown header set instead of dropping it.
+const IS_SECURE = process.env.NODE_ENV === "production" || process.env.FORCE_HTTPS === "1";
 
 /**
- * React DEV needs eval() (callstack reconstruction) and refuses to run
- * without 'unsafe-eval' — but production React NEVER uses eval. So the
- * directive is dev-only: strict in prod, functional in dev.
- * (next.config is evaluated with NODE_ENV=development under `next dev`
- * and NODE_ENV=production for build/start.)
+ * Dev-only: Next blocks dev-only endpoints (`__nextjs_font/...`, the HMR
+ * socket, dev assets) for any origin it wasn't started with. Opening the
+ * "Network:" URL that `next dev` prints (e.g. http://192.168.1.8:3000 from a
+ * phone or a second device) therefore used to fail with 403 on the font
+ * proxy and `net::ERR_INVALID_HTTP_RESPONSE` on the HMR socket.
  *
- * NOTE: script-src has NO bare `https:` host — every script the site runs
- * is 'self' or inline boot code. Any third-party <script> added later must
- * be allowlisted by exact host here, otherwise the browser blocks it.
+ * Only exact addresses this machine actually has are trusted (plus
+ * `*.localhost`/`*.local`). Blanket wildcards like `192.168.*.*` were
+ * removed: they also match attacker-owned FQDNs such as
+ * `192.168.evil.com`, widening dev-mode trust for no benefit.
  */
-const SCRIPT_SRC = [
-  "'self'",
-  "'unsafe-inline'",
-  ...(process.env.NODE_ENV !== "production" ? ["'unsafe-eval'"] : []),
-].join(" ");
+function lanDevOrigins(): string[] {
+  const hosts = new Set<string>(["*.localhost", "*.local"]);
+  try {
+    for (const addresses of Object.values(os.networkInterfaces())) {
+      for (const address of addresses ?? []) {
+        if (address.family === "IPv4" && !address.internal) hosts.add(address.address);
+      }
+    }
+  } catch {
+    /* os unavailable — *.localhost still covers same-machine dev */
+  }
+  return [...hosts];
+}
 
 /**
- * Lockdown headers for every document/page (assets under /_next/ inherit
- * them too — harmless). Notes:
- * - `script/style 'unsafe-inline'` is deliberate: the boot/failsafe inline
- *   scripts in layout.tsx + Tailwind/Motion runtime styles REQUIRE it.
- *   Everything else (objects, frames, base) is locked down.
- * - `frame-ancestors 'self'` (not DENY): the dashboard previews the live
- *   site in an <iframe> on the same origin — DENY would break it.
- * - HSTS is ignored on http://localhost by spec, so local dev is unaffected.
+ * Security headers (CSP, HSTS, XFO, …) are defined ONCE in
+ * `src/lib/security/headers.ts` — the same module the /security certificate
+ * page reads, so what the browser receives and what the page displays can
+ * never drift. See that file for the per-directive rationale.
  */
-const SECURITY_HEADERS = [
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      `script-src ${SCRIPT_SRC}`,
-      "style-src 'self' 'unsafe-inline' https:",
-      "img-src 'self' data: https: blob:",
-      "font-src 'self' data: https:",
-      "connect-src 'self' https: wss:",
-      "frame-src 'self'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'self'",
-    ].join("; "),
-  },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  // Same-origin popups stay usable (WhatsApp/Call links use noopener);
-  // cross-origin windows can no longer reach back into this page.
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  // No Flash-era cross-domain socket policy, ever.
-  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-] as const;
+const SECURITY_HEADERS = buildSecurityHeaders({ dev: IS_DEV, secure: IS_SECURE });
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Dev-only allow-list: the LAN/Wi-Fi hosts `next dev` advertises. Without
+  // it the font proxy 403s and the HMR socket dies for every non-localhost
+  // visitor. Production ignores this option entirely.
+  allowedDevOrigins: IS_DEV ? lanDevOrigins() : [],
   images: {
     // Every `quality={...}` used in the codebase must be listed here,
     // otherwise next/image logs "unconfigured qualities" in the console.

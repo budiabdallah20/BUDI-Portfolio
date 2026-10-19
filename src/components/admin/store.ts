@@ -24,6 +24,16 @@ export interface AdminSkill {
   detailEn: string;
   detailFr: string;
   visible: boolean;
+  /** Years of hands-on experience with this skill. */
+  years: number;
+  /** "Currently leveling up" flag — drives the learning spotlight. */
+  learningNow: boolean;
+  /** Linked certificate id that proves this skill (optional). */
+  certId: string;
+  /** Featured flag — featured skills pin to the top-3 headline. */
+  featured: boolean;
+  /** Manual display order (lower first). 0 = auto (by level). */
+  order: number;
 }
 
 export type ServiceCategory = "development" | "design" | "backend" | "growth";
@@ -47,6 +57,29 @@ export interface AdminService {
   timelineEn: string;
   timelineFr: string;
   visible: boolean;
+  /** Starting price label shown on the card (e.g. "Starting at $500"). */
+  startingPrice: string;
+  /** Currency code for the price (e.g. "USD", "IQD"). */
+  currency: string;
+  /** Call-to-action link (contact/whatsapp/calendly). */
+  ctaLink: string;
+  ctaLabelEn: string;
+  ctaLabelFr: string;
+  /** FAQ entries shown on the service card/modal. */
+  faq: { qEn: string; aEn: string; qFr: string; aFr: string }[];
+  /** "Most requested" badge. */
+  popular: boolean;
+  /** Typical delivery in days. */
+  deliveryDays: number;
+  /** Revision rounds included. */
+  revisions: number;
+  /** Testimonial snippet shown on the card. */
+  testimonialQuote: string;
+  testimonialAuthor: string;
+  /** Optional add-on packages. */
+  addons: string[];
+  /** Override category color (hex). Empty = category default. */
+  iconColor: string;
 }
 
 export interface AdminProject {
@@ -74,6 +107,33 @@ export interface AdminProject {
   /** "Sponsored by BUDI" proof badge with our logo on the project card. */
   sponsored: boolean;
   visible: boolean;
+  /** Extra screenshots (paths/URLs/data URLs). */
+  gallery: string[];
+  /** Embedded demo URL (YouTube/Vimeo/iframe). */
+  demoEmbed: string;
+  /** Short impact statement shown on the card. */
+  impactEn: string;
+  impactFr: string;
+  /** Client name (B2B proof). */
+  clientName: string;
+  /** Client logo image. */
+  clientLogo: string;
+  /** Team size (1 = solo). */
+  teamSize: number;
+  /** Free-form tags beyond tech stack. */
+  tags: string[];
+  /** Featured flag — featured projects pin first. */
+  featured: boolean;
+  /** Progress 0-100 for in-progress projects. */
+  progress: number;
+  /** Release version label (e.g. "v2.1"). */
+  version: string;
+  /** Changelog entries (one per line). */
+  changelog: string[];
+  /** SEO slug for the case-study page. */
+  seoSlug: string;
+  /** SEO meta description. */
+  seoDesc: string;
 }
 
 /** Mirrors the live Certificates section shape — no placeholders, no fakes. */
@@ -92,6 +152,22 @@ export interface AdminCert {
   /** Verified-issuer logo shown beside the verify link (upload or URL). */
   verifyLogo: string;
   visible: boolean;
+  /** Expiry date (ISO YYYY-MM-DD). Empty = no expiry. */
+  expiry: string;
+  /** Difficulty level. */
+  level: "beginner" | "intermediate" | "advanced" | "expert";
+  /** Study hours. */
+  hours: number;
+  /** Credential type. */
+  type: "certificate" | "badge" | "award" | "course";
+  /** Featured flag. */
+  featured: boolean;
+  /** Uploaded credential file (PDF/image data URL or path). */
+  pdf: string;
+  /** Precise issue date (ISO YYYY-MM-DD). */
+  issueDate: string;
+  /** Skills this credential proves (names). */
+  linkedSkills: string[];
 }
 
 /** Master work-availability switch — ONE button in the dashboard drives every
@@ -149,6 +225,14 @@ export interface AdminSettings {
    *  (section = service | skill). The site enums never change; only the
    *  console inventory, pickers and badges show the custom label. */
   catLabels: Record<string, string>;
+  /** SEO — site-wide meta. */
+  seoTitle: string;
+  seoDesc: string;
+  seoKeywords: string;
+  ogImage: string;
+  twitterHandle: string;
+  canonicalBase: string;
+  robotsIndex: boolean;
 }
 
 /** Console display label for a category value — per-account rename or fallback. */
@@ -224,6 +308,13 @@ export function normalizeSettings(raw: unknown): AdminSettings {
     heroImage: str(r.heroImage, fresh.heroImage).slice(0, 1500000),
     aboutImage: str(r.aboutImage, fresh.aboutImage).slice(0, 1500000),
     catLabels: catLabels(r.catLabels),
+    seoTitle: str(r.seoTitle, fresh.seoTitle).slice(0, 120),
+    seoDesc: str(r.seoDesc, fresh.seoDesc).slice(0, 320),
+    seoKeywords: str(r.seoKeywords, fresh.seoKeywords).slice(0, 500),
+    ogImage: str(r.ogImage, fresh.ogImage).slice(0, 1500000),
+    twitterHandle: str(r.twitterHandle, fresh.twitterHandle).slice(0, 40),
+    canonicalBase: str(r.canonicalBase, fresh.canonicalBase).slice(0, 200),
+    robotsIndex: bool(r.robotsIndex, fresh.robotsIndex),
   };
 }
 
@@ -338,14 +429,27 @@ function seedServices(): AdminService[] {
       points: [...s.points],
       pointsFr: fr ? [...fr.points] : [...s.points],
       category: cat,
-      icon: "",
-      iconImage: "",
-      bestForEn: defaults.bestForEn,
-      bestForFr: defaults.bestForFr,
-      timelineEn: defaults.timelineEn,
-      timelineFr: defaults.timelineFr,
-      visible: true,
-    };
+       icon: "",
+       iconImage: "",
+       bestForEn: defaults.bestForEn,
+       bestForFr: defaults.bestForFr,
+       timelineEn: defaults.timelineEn,
+       timelineFr: defaults.timelineFr,
+       visible: true,
+       startingPrice: "",
+       currency: "USD",
+       ctaLink: "",
+       ctaLabelEn: "Get a quote",
+       ctaLabelFr: "Demander un devis",
+       faq: [],
+       popular: false,
+       deliveryDays: 0,
+       revisions: 2,
+       testimonialQuote: "",
+       testimonialAuthor: "",
+       addons: [],
+       iconColor: "",
+     };
   });
 }
 
@@ -377,28 +481,41 @@ function seedCerts(): AdminCert[] {
     months,
     code,
     skills: [...skills],
-    image: images[code] ?? "",
-    verify: "",
-    verifyLogo: "",
-    visible: true,
-  }));
+     image: images[code] ?? "",
+     verify: "",
+     verifyLogo: "",
+     visible: true,
+     expiry: "",
+     level: "intermediate",
+     hours: 0,
+     type: "certificate",
+     featured: false,
+     pdf: "",
+     issueDate: "",
+     linkedSkills: [...skills],
+   }));
 }
 
 function seed(): AdminDB {
   return {
     version: 3,
-    skills: SITE_SKILLS.map((s) => ({
-      id: `skill-${slug(s.name)}`,
-      name: s.name,
-      cat: s.cat,
-      level: s.level,
-      proof: s.proof,
-      logo: s.logo,
-      icon: "",
-      detailEn: s.detail.en,
-      detailFr: s.detail.fr,
-      visible: true,
-    })),
+     skills: SITE_SKILLS.map((s) => ({
+       id: `skill-${slug(s.name)}`,
+       name: s.name,
+       cat: s.cat,
+       level: s.level,
+       proof: s.proof,
+       logo: s.logo,
+       icon: "",
+       detailEn: s.detail.en,
+       detailFr: s.detail.fr,
+       visible: true,
+       years: 0,
+       learningNow: s.proof === "learning",
+       certId: "",
+       featured: s.level >= 85,
+       order: 0,
+     })),
     services: seedServices(),
     projects: dictionaries.en.projects.items.map((p, i) => ({
       id: `proj-${slug(p.github.split("/").pop() || p.title)}`,
@@ -421,9 +538,23 @@ function seed(): AdminDB {
       timelineFr: "",
       briefEn: [],
       briefFr: [],
-      sponsored: false,
-      visible: true,
-    })),
+       sponsored: false,
+       visible: true,
+       gallery: [],
+       demoEmbed: "",
+       impactEn: "",
+       impactFr: "",
+       clientName: "",
+       clientLogo: "",
+       teamSize: 1,
+       tags: [],
+       featured: false,
+       progress: 0,
+       version: "",
+       changelog: [],
+       seoSlug: "",
+       seoDesc: "",
+     })),
     certs: seedCerts(),
     settings: {
       siteName: "BUDI",
@@ -446,10 +577,17 @@ function seed(): AdminDB {
       instapayAt: "",
       siteVerified: true,
       verificationBadges: [],
-      heroImage: "/images/general/hero.jpg",
-      aboutImage: "/images/general/about2.jpg",
-      catLabels: {},
-    },
+       heroImage: "/images/general/hero.jpg",
+       aboutImage: "/images/general/about2.jpg",
+       catLabels: {},
+       seoTitle: "BUDI — I don't just build, I engineer systems.",
+       seoDesc: "Portfolio of BUDI — full-stack developer & designer. Projects, skills, services and certificates.",
+       seoKeywords: "BUDI, portfolio, full-stack developer, Next.js, React, TypeScript, web design, services",
+       ogImage: "/images/general/hero.jpg",
+       twitterHandle: "@budi",
+       canonicalBase: "",
+       robotsIndex: true,
+     },
     visitsBase: 0,
     visitsBump: 0,
   };
@@ -484,10 +622,17 @@ function emptyDb(): AdminDB {
     taptapAt: "",
     instapayHandle: "",
     instapayAt: "",
-    heroImage: "",
-    aboutImage: "",
-    catLabels: {},
-  };
+     heroImage: "",
+     aboutImage: "",
+     catLabels: {},
+     seoTitle: "",
+     seoDesc: "",
+     seoKeywords: "",
+     ogImage: "",
+     twitterHandle: "",
+     canonicalBase: "",
+     robotsIndex: true,
+   };
   return base;
 }
 
@@ -535,6 +680,19 @@ function migrateToV3(raw: Record<string, unknown>): AdminDB {
         icon: strOf(s.icon, ""),
         iconImage: strOf(s.iconImage, ""),
         visible: typeof s.visible === "boolean" ? s.visible : true,
+        startingPrice: strOf(s.startingPrice, fallback.startingPrice),
+        currency: strOf(s.currency, fallback.currency),
+        ctaLink: strOf(s.ctaLink, fallback.ctaLink),
+        ctaLabelEn: strOf(s.ctaLabelEn, fallback.ctaLabelEn),
+        ctaLabelFr: strOf(s.ctaLabelFr, fallback.ctaLabelFr),
+        faq: Array.isArray(s.faq) ? (s.faq as AdminService["faq"]) : [...fallback.faq],
+        popular: typeof s.popular === "boolean" ? s.popular : fallback.popular,
+        deliveryDays: typeof s.deliveryDays === "number" ? s.deliveryDays : fallback.deliveryDays,
+        revisions: typeof s.revisions === "number" ? s.revisions : fallback.revisions,
+        testimonialQuote: strOf(s.testimonialQuote, fallback.testimonialQuote),
+        testimonialAuthor: strOf(s.testimonialAuthor, fallback.testimonialAuthor),
+        addons: arrOf(s.addons, fallback.addons),
+        iconColor: strOf(s.iconColor, fallback.iconColor),
       };
     };
     const normProject = (p: Record<string, unknown>, i: number): AdminProject => {
@@ -586,11 +744,27 @@ function migrateToV3(raw: Record<string, unknown>): AdminDB {
             verify: typeof c.verify === "string" ? c.verify : fallback.verify,
             verifyLogo: typeof c.verifyLogo === "string" ? c.verifyLogo.slice(0, 1500000) : "",
             visible: typeof c.visible === "boolean" ? c.visible : true,
+            expiry: typeof c.expiry === "string" ? c.expiry : fallback.expiry,
+            level:
+              c.level === "beginner" || c.level === "intermediate" || c.level === "advanced" || c.level === "expert"
+                ? c.level
+                : fallback.level,
+            hours: typeof c.hours === "number" ? c.hours : fallback.hours,
+            type:
+              c.type === "certificate" || c.type === "badge" || c.type === "award" || c.type === "course"
+                ? c.type
+                : fallback.type,
+            featured: typeof c.featured === "boolean" ? c.featured : fallback.featured,
+            pdf: typeof c.pdf === "string" ? c.pdf.slice(0, 1500000) : fallback.pdf,
+            issueDate: typeof c.issueDate === "string" ? c.issueDate : fallback.issueDate,
+            linkedSkills: Array.isArray(c.linkedSkills)
+              ? (c.linkedSkills as string[])
+              : [...fallback.linkedSkills],
           };
         })
       : fresh.certs;
     const settings = normalizeSettings(raw.settings);
-    return {
+    const next: AdminDB = {
       version: 3,
       skills,
       services,
@@ -600,6 +774,8 @@ function migrateToV3(raw: Record<string, unknown>): AdminDB {
       visitsBase: typeof raw.visitsBase === "number" ? raw.visitsBase : fresh.visitsBase,
       visitsBump: typeof raw.visitsBump === "number" ? raw.visitsBump : 0,
     };
+    backfillMedia(next);
+    return next;
   } catch {
     return fresh;
   }
@@ -631,18 +807,60 @@ function backfillMedia(db: AdminDB): void {
   for (const s of db.services) {
     if (typeof s.icon !== "string") s.icon = "";
     if (typeof s.iconImage !== "string") s.iconImage = "";
+    if (typeof s.startingPrice !== "string") s.startingPrice = "";
+    if (typeof s.currency !== "string") s.currency = "USD";
+    if (typeof s.ctaLink !== "string") s.ctaLink = "";
+    if (typeof s.ctaLabelEn !== "string") s.ctaLabelEn = "Get a quote";
+    if (typeof s.ctaLabelFr !== "string") s.ctaLabelFr = "Demander un devis";
+    if (!Array.isArray(s.faq)) s.faq = [];
+    if (typeof s.popular !== "boolean") s.popular = false;
+    if (typeof s.deliveryDays !== "number") s.deliveryDays = 0;
+    if (typeof s.revisions !== "number") s.revisions = 2;
+    if (typeof s.testimonialQuote !== "string") s.testimonialQuote = "";
+    if (typeof s.testimonialAuthor !== "string") s.testimonialAuthor = "";
+    if (!Array.isArray(s.addons)) s.addons = [];
+    if (typeof s.iconColor !== "string") s.iconColor = "";
   }
   for (const s of db.skills) {
     if (typeof s.icon !== "string") s.icon = "";
+    if (typeof s.years !== "number") s.years = 0;
+    if (typeof s.learningNow !== "boolean") s.learningNow = s.proof === "learning";
+    if (typeof s.certId !== "string") s.certId = "";
+    if (typeof s.featured !== "boolean") s.featured = s.level >= 85;
+    if (typeof s.order !== "number") s.order = 0;
   }
   for (const p of db.projects) {
     if (typeof p.image !== "string") p.image = "";
     if (typeof (p as { sponsored?: unknown }).sponsored !== "boolean")
       (p as { sponsored: boolean }).sponsored = false;
+    if (!Array.isArray(p.gallery)) p.gallery = [];
+    if (typeof p.demoEmbed !== "string") p.demoEmbed = "";
+    if (typeof p.impactEn !== "string") p.impactEn = "";
+    if (typeof p.impactFr !== "string") p.impactFr = "";
+    if (typeof p.clientName !== "string") p.clientName = "";
+    if (typeof p.clientLogo !== "string") p.clientLogo = "";
+    if (typeof p.teamSize !== "number") p.teamSize = 1;
+    if (!Array.isArray(p.tags)) p.tags = [];
+    if (typeof p.featured !== "boolean") p.featured = false;
+    if (typeof p.progress !== "number") p.progress = 0;
+    if (typeof p.version !== "string") p.version = "";
+    if (!Array.isArray(p.changelog)) p.changelog = [];
+    if (typeof p.seoSlug !== "string") p.seoSlug = "";
+    if (typeof p.seoDesc !== "string") p.seoDesc = "";
   }
   for (const c of db.certs) {
     if (typeof (c as { verifyLogo?: unknown }).verifyLogo !== "string")
       (c as { verifyLogo: string }).verifyLogo = "";
+    if (typeof c.expiry !== "string") c.expiry = "";
+    if (c.level !== "beginner" && c.level !== "intermediate" && c.level !== "advanced" && c.level !== "expert")
+      c.level = "intermediate";
+    if (typeof c.hours !== "number") c.hours = 0;
+    if (c.type !== "certificate" && c.type !== "badge" && c.type !== "award" && c.type !== "course")
+      c.type = "certificate";
+    if (typeof c.featured !== "boolean") c.featured = false;
+    if (typeof c.pdf !== "string") c.pdf = "";
+    if (typeof c.issueDate !== "string") c.issueDate = "";
+    if (!Array.isArray(c.linkedSkills)) c.linkedSkills = [...(c.skills ?? [])];
   }
   if (db.settings) {
     const st = db.settings as unknown as Record<string, unknown>;
@@ -650,6 +868,13 @@ function backfillMedia(db: AdminDB): void {
     if (!Array.isArray(st.verificationBadges)) st.verificationBadges = [];
     if (!st.catLabels || typeof st.catLabels !== "object" || Array.isArray(st.catLabels))
       st.catLabels = {};
+    if (typeof st.seoTitle !== "string") st.seoTitle = "";
+    if (typeof st.seoDesc !== "string") st.seoDesc = "";
+    if (typeof st.seoKeywords !== "string") st.seoKeywords = "";
+    if (typeof st.ogImage !== "string") st.ogImage = "";
+    if (typeof st.twitterHandle !== "string") st.twitterHandle = "";
+    if (typeof st.canonicalBase !== "string") st.canonicalBase = "";
+    if (typeof st.robotsIndex !== "boolean") st.robotsIndex = true;
   }
 }
 

@@ -47,8 +47,10 @@ export default function PrayerTimes(): React.JSX.Element {
     void (async (): Promise<void> => {
       try {
         // Suez, Egypt — method 5 (Egyptian General Authority of Survey).
+        // Hard timeout — a stalled third party falls back to the offline card.
         const res = await fetch(
           "https://api.aladhan.com/v1/timingsByCity?city=Suez&country=Egypt&method=5",
+          { signal: AbortSignal.timeout(10_000) },
         );
         if (!res.ok) throw new Error("busy");
         const json = (await res.json()) as {

@@ -1,3 +1,4 @@
+import { previewMode } from "@/lib/preview-content";
 import { NextResponse } from "next/server";
 import { checkAdmin } from "../_guard";
 import { purgeContentCache } from "../_revalidate";
@@ -37,6 +38,7 @@ function auditFail(
  * server-side validation as single saves.
  */
 export async function POST(req: Request): Promise<NextResponse> {
+  if (previewMode) return NextResponse.json({ error: "Cloud seeding is disabled in local preview. Edit content using the dashboard." }, { status: 409 });
   const gate = checkAdmin(req);
   const ev = auditEventFromReq(req, "seed");
   if (!gate.ok) {

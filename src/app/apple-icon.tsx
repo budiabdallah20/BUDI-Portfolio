@@ -1,9 +1,12 @@
+import { BUDI_MARK_PATH } from "@/lib/brand";
 import { ImageResponse } from "next/og";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-/** Apple touch icon — official black × gold mark. */
+const BRAND_PATHS = [BUDI_MARK_PATH];
+
+/** Apple touch icon — new identity: black wireframe cube on the paper tile. */
 export default function AppleIcon(): ImageResponse {
   return new ImageResponse(
     (
@@ -14,34 +17,23 @@ export default function AppleIcon(): ImageResponse {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0b0b0c",
+          background: "#faf9f6",
           borderRadius: 40,
-          border: "5px solid #d4af37",
-          position: "relative",
         }}
       >
-        <div
-          style={{
-            color: "#e9ce7a",
-            fontSize: 104,
-            fontWeight: 900,
-            fontFamily: "sans-serif",
-            lineHeight: 1,
-          }}
-        >
-          B
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            width: 26,
-            height: 26,
-            borderRadius: 999,
-            background: "#d4af37",
-          }}
-        />
+        <svg width="140" height="140" viewBox="0 0 58 84">
+          <g
+            stroke="none"
+            strokeWidth="19"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="#0A0A0A"
+          >
+            {BRAND_PATHS.map((d) => (
+              <path key={d} d={d} fillRule="evenodd" />
+            ))}
+          </g>
+        </svg>
       </div>
     ),
     { ...size },

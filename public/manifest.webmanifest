@@ -1,13 +1,13 @@
 {
   "name": "BUDI — Full-Stack Developer",
   "short_name": "BUDI",
-  "description": "BUDI portfolio + console — install it for prayer, birthday and site notifications.",
+  "description": "BUDI (Mohamed Abdallah) — Full-Stack Developer from Suez, Egypt. Fast, modern, secure web platforms with React, Next.js and TypeScript.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#050505",
-  "theme_color": "#0a0a0b",
+  "background_color": "#faf9f6",
+  "theme_color": "#faf9f6",
   "dir": "ltr",
   "lang": "en",
   "icons": [

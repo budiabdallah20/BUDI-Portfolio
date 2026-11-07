@@ -16,6 +16,8 @@ interface LanguageValue {
   t: Dictionary;
   setLang: (lang: Lang) => void;
   toggle: () => void;
+  /** Hard switch — persist + full reload to /{lang} (fresh open, like a first visit). */
+  switchLanguage: (next: Lang) => void;
 }
 
 const LanguageContext = createContext<LanguageValue | null>(null);
@@ -34,7 +36,8 @@ export function LanguageProvider({ children }: { children: ReactNode }): React.J
   // 1) Adopt the boot script's pre-paint choice ONCE after mount.
   //    Boot already resolved localStorage → <html lang>, so DOM is source of truth.
   useEffect(() => {
-    const fromDoc = isLang(document.documentElement.lang)
+    const pathLang = window.location.pathname.split("/")[1];
+    const fromDoc = isLang(pathLang) ? pathLang : isLang(document.documentElement.lang)
       ? document.documentElement.lang
       : null;
     let stored: string | null = null;
@@ -94,17 +97,38 @@ export function LanguageProvider({ children }: { children: ReactNode }): React.J
     };
   }, []);
 
-  const setLang = useCallback((next: Lang): void => {
-    setLangState(next);
+
+
+  /**
+   * Language lives in the URL path (/en, /fr). Switching must feel like a
+   * fresh open — persist the choice, then let the browser do a real
+   * navigation (full reload), never a soft in-place re-render.
+   */
+  const switchLanguage = useCallback((next: Lang): void => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      /* private mode — the path itself carries the choice */
+    }
+    try {
+      const secure = location.protocol === "https:" ? ";Secure" : "";
+      document.cookie = `${STORAGE_KEY}=${next};max-age=31536000;path=/;SameSite=Lax${secure}`;
+    } catch {
+      /* cookies blocked — the path itself carries the choice */
+    }
+    try { window.sessionStorage.removeItem("budi-seen"); } catch { /* Navigation still works without storage. */ }
+    window.location.assign(`/${next}`);
   }, []);
+
+  const setLang = switchLanguage;
 
   const toggle = useCallback((): void => {
-    setLangState((prev) => (prev === "en" ? "fr" : "en"));
-  }, []);
+    switchLanguage(lang === "en" ? "fr" : "en");
+  }, [lang, switchLanguage]);
 
   const value = useMemo<LanguageValue>(
-    () => ({ lang, t: dictionaries[lang], setLang, toggle }),
-    [lang, setLang, toggle],
+    () => ({ lang, t: dictionaries[lang], setLang, toggle, switchLanguage }),
+    [lang, setLang, toggle, switchLanguage],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

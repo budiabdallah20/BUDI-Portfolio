@@ -1125,7 +1125,7 @@ export function BirthdayOpen({ preview }: { preview: boolean }): React.JSX.Eleme
           </p>
 
         <div className="mt-6 flex justify-center">
-          <Logo />
+          <Logo tile className="h-16 w-16 rounded-2xl" />
         </div>
 
         <div className="mt-6">

@@ -15,6 +15,10 @@ import type { AdminProject } from "@/components/admin/store";
 import { siteLikesKey } from "@/components/admin/store";
 import { cn } from "@/lib/utils";
 
+import { canonicalTechnology, skillMatchesTech } from "@/lib/skill-usage";
+import { selectTechnology } from "@/lib/project-filter";
+import { projectCovers } from "@/data/project-covers";
+
 type Filter = "all" | "completed" | "in-progress" | "opensource";
 type SortMode = "featured" | "loved" | "updated";
 
@@ -22,11 +26,7 @@ type SortMode = "featured" | "loved" | "updated";
 const PAGE_SIZE = 6;
 
 /** Cover art per project — swap any file in public/images/projects/ to reskin. */
-const COVERS: Record<string, string> = {
-  kayan: "/images/projects/zaker-logo.svg",
-  massar: "/images/projects/analytics.svg",
-  "budi-s-": "/images/projects/budi-portfolio-logo.svg",
-};
+const COVERS = projectCovers;
 
 /** Plain-language role of each technology — shown as tooltips on tech chips. */
 const TECH_USAGE: Record<string, { en: string; fr: string }> = {
@@ -59,18 +59,18 @@ interface ProjectExtra {
 
 /** Live case-brief layer — real shipped projects, real demo links. */
 const EXTRAS: Record<string, ProjectExtra> = {
-  kayan: {
-    demo: "https://budiabdallah20.github.io/kayan/",
+  raqib: {
+    demo: "https://raqibdev.vercel.app/",
     brief: {
       en: [
-        "Bilingual study companion: AI assistant, Pomodoro focus sessions, flashcards and smart notes.",
-        "Tasks, lectures, prayer times and performance analytics — a full student OS in one app.",
-        "Result: live and used — open the demo, switch AR/EN, try a focus session.",
+        "Academic operations for students, professors and administrators.",
+        "QR attendance, lecture management, scheduling and grades with GPA tracking.",
+        "The project remains in progress; a live preview is available.",
       ],
       fr: [
-        "Compagnon d'étude bilingue : assistant IA, sessions Pomodoro, flashcards et notes intelligentes.",
-        "Tâches, cours, prières et analyses — un OS étudiant complet dans une app.",
-        "Résultat : en ligne et utilisé — ouvrez la démo, changez AR/EN, testez une session.",
+        "Gestion académique pour étudiants, enseignants et administrateurs.",
+        "Présence par QR, cours, emplois du temps et notes avec suivi GPA.",
+        "Le projet est en cours ; un aperçu en ligne est disponible.",
       ],
     },
   },
@@ -90,7 +90,7 @@ const EXTRAS: Record<string, ProjectExtra> = {
     },
   },
   "budi-s-": {
-    demo: "https://budi-six.vercel.app",
+    demo: "https://budi-portfolio-dev.vercel.app/",
     brief: {
       en: [
         "My previous portfolio platform: contact hub, donation block and live status dashboards.",
@@ -141,6 +141,12 @@ export default function Projects({
 }): React.JSX.Element {
   const { t, lang } = useLanguage();
   const reduced = useReducedMotion();
+  const [technology, setTechnology] = useState("");
+  useEffect(() => {
+    const sync = (): void => { setTechnology(new URL(window.location.href).searchParams.get("technology") ?? ""); setFilter("all"); setQuery(""); setVisibleCount(PAGE_SIZE); };
+    sync(); window.addEventListener("budi:technology", sync); window.addEventListener("popstate", sync);
+    return () => { window.removeEventListener("budi:technology", sync); window.removeEventListener("popstate", sync); };
+  }, []);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<SortMode>("featured");
   const [liked, setLiked] = useState<Record<string, boolean>>({});
@@ -291,6 +297,7 @@ export default function Projects({
   const allVisible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = list.filter((item) => {
+      if (technology && !item.tech.some(tech => skillMatchesTech(technology, tech))) return false;
       if (filter === "opensource" ? !item.opensource : filter !== "all" && item.status !== filter)
         return false;
       if (q === "") return true;
@@ -314,10 +321,10 @@ export default function Projects({
     }
     return [...rows].sort((a, b) => (b.featured === true ? 1 : 0) - (a.featured === true ? 1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, filter, sort, liked, query]);
+  }, [list, filter, sort, liked, query, technology]);
 
   /** Spotlight takes the first row when browsing the full gallery. */
-  const showSpotlight = filter === "all" && query.trim() === "" && sort === "featured" && allVisible.length > 0;
+  const showSpotlight = !technology && filter === "all" && query.trim() === "" && sort === "featured" && allVisible.length > 0;
   const spotlight = showSpotlight ? allVisible[0] : null;
   const rest = showSpotlight ? allVisible.slice(1) : allVisible;
   const visible = rest.slice(0, visibleCount);
@@ -500,6 +507,17 @@ export default function Projects({
           </div>
         </div>
 
+        {/* Technology filter shares the exact matcher used for skill counts. */}
+        <div className="evolution-technology-filter mt-6 flex flex-wrap items-center justify-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-muted">{fr ? "Technologie" : "Technology"}
+            <select aria-label={fr ? "Filtrer par technologie" : "Filter by technology"} value={technology} onChange={e => selectTechnology(e.target.value)} className="max-w-[190px] rounded-lg border border-border bg-surface px-3 py-2 text-foreground">
+              <option value="">{fr ? "Toutes" : "All technologies"}</option>
+              {technology && !list.some(p => p.tech.some(t => canonicalTechnology(t) === technology)) && <option value={technology}>{technology}</option>}
+              {Array.from(new Map(list.flatMap(p => p.tech).map(t => [canonicalTechnology(t),t])).entries()).sort((a,b) => a[1].localeCompare(b[1])).map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </label>
+          {technology && <button type="button" onClick={() => selectTechnology("")} className="evolution-action">{fr ? "Réinitialiser" : "Reset technology filter"}</button>}
+        </div>
         {/* ——— Search + count ——— */}
         <div className="mt-8 flex flex-col items-center gap-3">
           <label className="flex w-full max-w-xl items-center gap-2 border border-border bg-surface/60 px-4 py-2.5 transition-colors focus-within:border-accent/60">
@@ -718,7 +736,8 @@ export default function Projects({
                   >
                     {copiedKey === key ? <Check className="h-4 w-4 text-accent" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
                   </button>
-                  {extra && extra.brief[fr ? "fr" : "en"].length > 0 && (
+                  <button type="button" className="evolution-action mt-4" onClick={()=>setDetailKey(key)} aria-haspopup="dialog">{fr ? "Détails du projet" : "Project details"}<ExternalLink className="h-3.5 w-3.5"/></button>
+                        {extra && extra.brief[fr ? "fr" : "en"].length > 0 && (
                     <button
                       type="button"
                       onClick={() => setBriefKey(briefOpen ? null : key)}
@@ -765,6 +784,7 @@ export default function Projects({
               onClick={() => {
                 setQuery("");
                 setFilter("all");
+                selectTechnology("");
                 resetPage();
               }}
               className="border border-accent/50 px-5 py-2 text-sm font-bold text-accent transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
@@ -774,7 +794,7 @@ export default function Projects({
           </div>
         ) : (
           <>
-            <motion.div layout={reduced ? false : true} className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <motion.div layout={reduced ? false : true} className="project-editorial-grid mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
               <AnimatePresence mode="popLayout" initial={false}>
                 {visible.map((item, i) => {
                   const key = item.github || item.title;
@@ -959,9 +979,9 @@ export default function Projects({
                             target="_blank"
                             rel="noreferrer"
                             aria-label={`${t.projects.code} — ${item.title}`}
-                            className="flex h-9 w-9 items-center justify-center bg-foreground text-background transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
+                            className="flex h-9 items-center justify-center gap-2 px-3 text-xs font-semibold border border-border text-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
                           >
-                            <FolderGit className="h-4 w-4" aria-hidden="true" />
+                            <FolderGit className="h-4 w-4" aria-hidden="true" /> Repo
                           </a>
                           <button
                             type="button"
@@ -991,7 +1011,7 @@ export default function Projects({
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {item.tech.slice(0, 4).map((tech) => (
+                          {item.tech.map((tech) => (
                             <span
                               key={tech}
                               title={`${tech} — ${(() => { const u = TECH_USAGE[tech]; return u ? (fr ? u.fr : u.en) : tech; })()}`}
@@ -1000,7 +1020,7 @@ export default function Projects({
                               {tech}
                             </span>
                           ))}
-                          {item.tech.length > 4 && (
+                          {false && item.tech.length > 4 && (
                             <span className="font-mono text-[9px] text-faint tabular-nums">+{item.tech.length - 4}</span>
                           )}
                         </div>

@@ -174,10 +174,8 @@ export function SiteVerifiedBadge({
         className,
       )}
     >
-      <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-background">
-        <span className="scale-[0.55]">
-          <Logo />
-        </span>
+      <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-white">
+        <Logo variant="mark" className="h-4 w-4" />
       </span>
       <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
       {lang === "fr" ? "Vérifié · BUDI" : "Verified · BUDI"}
@@ -201,10 +199,8 @@ export function SponsoredBadge({
         className,
       )}
     >
-      <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-background">
-        <span className="scale-[0.45]">
-          <Logo />
-        </span>
+      <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white">
+        <Logo variant="mark" className="h-3.5 w-3.5" />
       </span>
       {lang === "fr" ? "Sponsorisé · BUDI" : "Sponsored · BUDI"}
     </span>

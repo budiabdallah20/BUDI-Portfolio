@@ -1,3 +1,5 @@
+import { previewMode, previewState } from "@/lib/preview-content";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { supabaseAnon } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -64,7 +66,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       stamp(certs.data),
       stamp(settings.data),
     ].reduce((max, s) => (s > max ? s : max), "");
-    return NextResponse.json({ at, counts, likes: likesSum });
+    const preview = previewMode ? createHash("sha256").update(JSON.stringify(await previewState())).digest("hex") : "";
+    return NextResponse.json({ at, counts, likes: likesSum, preview });
   } catch (e) {
     console.error("[api/content-hash] unreachable:", e instanceof Error ? e.message : e);
     return NextResponse.json({ error: "Content unavailable" }, { status: 500 });

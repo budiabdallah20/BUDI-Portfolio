@@ -26,7 +26,7 @@ export default function GlobalSplash({ workspaces, onComplete }: GlobalSplashPro
   return (
     <CinematicLoader
       word="Control Center"
-      subtitle="BUDI OS · Mission Control"
+      subtitle="BUDI / PRIVATE WORKSPACE"
       label="Opening control center"
       trackLabel="Opening control center"
       bootLines={BOOT_LINES}

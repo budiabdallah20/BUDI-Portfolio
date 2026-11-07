@@ -43,6 +43,7 @@ function lanDevOrigins(): string[] {
 const SECURITY_HEADERS = buildSecurityHeaders({ dev: IS_DEV, secure: IS_SECURE });
 
 const nextConfig: NextConfig = {
+  experimental: { agentUpgrade: "security" },
   poweredByHeader: false,
   reactStrictMode: true,
   // Dev-only allow-list: the LAN/Wi-Fi hosts `next dev` advertises. Without

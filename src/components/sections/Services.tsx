@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { additionalServices } from "@/data/service-offerings";
+import { museumServiceAllowed } from "@/lib/museum-content";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import {
@@ -51,7 +53,7 @@ const ICONS = [
 ] as const;
 
 /** How many cards render per page — scales to 100+ without a endless scroll. */
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 3;
 
 /** Signature color per craft — icon tiles, washes, glows and ignite bars. */
 const CAT_COLORS: Record<
@@ -179,7 +181,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
     /** Database wins whenever it is wired in — an empty list is a real state
      *  (a deleted service must disappear). Baked-in dictionary is only the
      *  no-database fallback. */
-    const source: ServiceView[] = useMemo(() => {
+    const baseSource: ServiceView[] = useMemo(() => {
       if (remote !== undefined) {
       return remote
         .filter((r) => r.visible !== false)
@@ -211,7 +213,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
         points: item.points,
         category: item.category,
         bestFor: fr ? meta.bestFor.fr : meta.bestFor.en,
-        timeline: fr ? meta.timeline.fr : meta.timeline.en,
+        timeline: "",
         icon: "",
         iconImage: "",
         startingPrice: "",
@@ -225,6 +227,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
     });
   }, [remote, fr, t]);
 
+  const source = useMemo(() => baseSource.filter(item => museumServiceAllowed({ title: item.title, titleFr: item.title })).sort((a,b) => a.title.localeCompare(b.title)), [baseSource]);
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
     () =>
@@ -408,7 +411,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
         )}
 
         {/* ——— Compact cards: 3-per-row, built for 100+ ——— */}
-        <motion.div layout={reduced ? false : true} className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <motion.div layout={reduced ? false : true} className="evolution-services-grid service-showcase mt-8 grid grid-cols-1 gap-6">
           <AnimatePresence mode="popLayout" initial={false}>
             {items.map((item, i) => {
               const globalIndex = source.indexOf(item);
@@ -433,11 +436,12 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                   })}
                   onMouseMove={(e) => {
                     onSpotMove(e);
-                    onTiltMove(e);
+
                   }}
                   style={{ "--cat": cat.bg } as React.CSSProperties}
                   className={cn(
-                    "group relative flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border bg-surface/70 p-6 backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1.5",
+                    "group relative flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border bg-surface/70 p-0 backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1.5",
+
                     expanded ? "border-accent/60 shadow-[0_24px_70px_-28px_var(--accent)]" : "hover:border-accent/40",
                   )}
                   onMouseEnter={(e) => {
@@ -448,6 +452,8 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                     onTiltLeave(e);
                   }}
                 >
+                  <div className="service-photo"><SmartImage src={item.iconImage && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(item.iconImage) ? item.iconImage : "/images/services/"+(additionalServices.find(a=>a.title===item.title||a.titleFr===item.title)?.image ?? (item.category==="design"?"branding":"web"))+".jpg"} alt={item.title} fill fit="cover" sizes="(max-width:767px) 100vw, 520px"/><span className="service-photo-label">{String(globalIndex+1).padStart(2,"0")} / {t.services.filters.find(f=>f.id===item.category)?.label}</span></div>
+                  <div className="service-card-content">
                   {/* Craft wash + spotlight + ignite bar + ghost number */}
                   <span
                     aria-hidden="true"
@@ -588,6 +594,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                     )}
                   </div>
 
+                  <div className="service-primary-actions"><button type="button" onClick={() => setDetailTitle(item.title)} aria-haspopup="dialog" className="service-explore">{fr ? "Découvrir le service" : "Explore service"}<ArrowUpRight className="h-4 w-4" aria-hidden="true"/></button><a href="#contact" className="service-talk">{fr ? "Parlons de votre projet" : "Let's talk about your project"}</a></div>
                   {/* Engagement facts — one compact line each */}
                   <div className="relative mt-3 space-y-1.5">
                     <p className="flex items-center gap-1.5 truncate text-xs font-semibold text-foreground">
@@ -596,7 +603,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                     </p>
                     <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-muted uppercase tabular-nums">
                       <Clock className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
-                      <span className="truncate">{item.timeline}</span>
+                      <span className="truncate">{item.timeline || (fr ? "Périmètre défini ensemble" : "Scope defined together")}</span>
                     </p>
                   </div>
 
@@ -711,6 +718,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                       </motion.div>
                     )}
                   </AnimatePresence>
+                  </div>
                 </motion.article>
               );
             })}
@@ -949,7 +957,7 @@ export default function Services({ remote }: { remote?: AdminService[] }): React
                   </p>
                   <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white/70 tabular-nums">
                     <span className="tracking-[0.2em] text-white/40 uppercase">Timeline · </span>
-                    {s.timeline}
+                    {s.timeline || (fr ? "À définir ensemble" : "Discuss your scope")}
                   </p>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">

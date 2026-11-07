@@ -58,6 +58,7 @@ import {
   Zap,
 } from "lucide-react";
 import { skillProjectUsage } from "@/lib/skill-usage";
+import { getProjectAvailability, projectPublicTags, setProjectAvailability, setProjectPublicTags, type ProjectAvailability } from "@/lib/project-availability";
 import { grantBirthdayPreview } from "@/lib/birthday";
 import Logo from "@/components/Logo";
 import { availabilityFromSettings, formatBadgeDate, workDeadlineSuffix, workLabel } from "@/components/WorkStatus";
@@ -1237,7 +1238,7 @@ function ProjectMiniPreview({
 }: {
   title: string;
   tech: string[];
-  status: AdminProject["status"];
+  status: ProjectAvailability;
   visible: boolean;
   image?: string;
 }): React.JSX.Element {
@@ -2063,8 +2064,9 @@ export default function Dashboard({
   const previewSrc = preview === null ? "" : bustPreview(preview, previewNonce);
 
   return (
-    <div className="relative isolate flex min-h-svh bg-[#081426] text-white">
+    <div className="admin-studio relative isolate flex min-h-svh bg-[#081426] text-white">
       <GizaBackdrop />
+      {process.env.NODE_ENV === "development" && <div className="preview-mode-label">LOCAL PREVIEW · Saves stay on this computer</div>}
       {/* Sidebar */}
       <aside className="fixed inset-x-0 top-0 z-[110] border-b border-white/10 bg-[#0a1526]/95 backdrop-blur-xl lg:inset-y-0 lg:right-auto lg:w-60 lg:border-r lg:border-b-0">
         <div className="group flex items-center gap-2.5 px-4 py-3 lg:px-5 lg:py-5">
@@ -2074,7 +2076,7 @@ export default function Dashboard({
                 <SmartImage src={workspaceLogo} alt="" fill fit="contain" sizes="40px" />
               </span>
             ) : (
-              <Logo />
+              <Logo variant="full" className="h-10 w-14 text-[#e5c582]" />
             )}
           </span>
           <div className="min-w-0">
@@ -2084,7 +2086,7 @@ export default function Dashboard({
             <p className="font-mono text-[9px] tracking-[0.3em] text-white/40 uppercase">
               Admin ·{" "}
               <span className={remote?.synced && !remote.empty ? "text-emerald-400" : "text-amber-300"}>
-                {remote ? (remote.empty ? "Empty cloud DB" : remote.synced ? "Cloud ✓" : "Local only") : "Connecting…"}
+                {process.env.NODE_ENV === "development" ? "Local preview" : remote ? (remote.empty ? "Empty cloud DB" : remote.synced ? "Cloud ✓" : "Local only") : "Connecting…"}
               </span>
             </p>
           </div>
@@ -2198,7 +2200,7 @@ export default function Dashboard({
                         </span>
                       ) : (
                         <span className="scale-[0.8] text-white">
-                          <Logo />
+                          <Logo tile className="h-full w-full rounded-lg" />
                         </span>
                       )}
                       {ws.kind === "external" && (
@@ -2227,7 +2229,7 @@ export default function Dashboard({
       </aside>
 
       {/* Main */}
-      <main className="w-full px-4 pt-32 pb-10 sm:px-6 lg:pt-8 lg:pl-64">
+      <main className="w-full px-4 pt-32 pb-10 sm:px-6 lg:pt-8 lg:pl-64"><header className="studio-topbar"><div><p className="studio-kicker">BUDI / CONTENT STUDIO</p><h1>{TABS.find(item=>item.id===tab)?.label ?? "Overview"}</h1><p>Shape your portfolio. Keep every detail connected.</p></div><a href="/" target="_blank" rel="noreferrer">Preview website <ExternalLink className="h-4 w-4" /></a></header>
         <div className="mx-auto max-w-5xl">
           {tab === "home" && (
             <HomeTab
@@ -4464,6 +4466,7 @@ const SKILL_CAT_META: Record<AdminSkill["cat"], { label: string; color: string }
   frontend: { label: "Frontend", color: "#d7fd44" },
   backend: { label: "Backend", color: "#38bdf8" },
   tools: { label: "Tools & Design", color: "#a78bfa" },
+  life: { label: "Life skills", color: "#f0c979" },
 };
 
 const PROOF_ICON: Record<AdminSkill["proof"], typeof Flame> = {
@@ -4514,7 +4517,7 @@ function SkillsTab({
     db.skills.length === 0
       ? 0
       : Math.round(db.skills.reduce((n, s) => n + s.level, 0) / db.skills.length);
-  const groups = (Object.keys(SKILL_CAT_META) as AdminSkill["cat"][]).map((c) => {
+  const groups = (Object.keys(SKILL_CAT_META) as AdminSkill["cat"][]).filter(c => c !== "life").map((c) => {
     const items = db.skills.filter((s) => s.cat === c);
     const avg =
       items.length === 0 ? 0 : Math.round(items.reduce((n, s) => n + s.level, 0) / items.length);
@@ -4743,7 +4746,7 @@ function ProjectsTab({
   onSafeDelete: (from: string, to: string) => void;
 }): React.JSX.Element {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"all" | "completed" | "in-progress">("all");
+  const [status, setStatus] = useState<"all" | ProjectAvailability>("all");
   const [pcat, setPcat] = useState<string>("all");
   const [sort, setSort] = useState<"curated" | "newest" | "az" | "loved">("curated");
   const q = query.trim().toLowerCase();
@@ -4760,7 +4763,7 @@ function ProjectsTab({
     id === "__none__" ? p.category.trim() === "" : p.category === id;
   const filtered = db.projects.filter(
     (p) =>
-      (status === "all" || p.status === status) &&
+      (status === "all" || getProjectAvailability(p).state === status) &&
       (pcat === "all" || inGroup(p, pcat)) &&
       (q === "" ||
         p.title.toLowerCase().includes(q) ||
@@ -4872,21 +4875,22 @@ function ProjectsTab({
               ]}
             />
           </div>
-          <ChipRow<"all" | "completed" | "in-progress">
+          <ChipRow<"all" | ProjectAvailability>
             value={status}
             onPick={setStatus}
             options={[
               { id: "all", label: "All", count: db.projects.length },
-              { id: "completed", label: "Completed", count: db.projects.filter((p) => p.status === "completed").length, color: "#34d399" },
-              { id: "in-progress", label: "In progress", count: db.projects.filter((p) => p.status === "in-progress").length, color: "#fbbf24" },
+              { id: "available", label: "Available", count: db.projects.filter((p) => getProjectAvailability(p).state === "available").length, color: "#34d399" },
+              { id: "maintenance", label: "Maintenance", count: db.projects.filter((p) => getProjectAvailability(p).state === "maintenance").length, color: "#fb7185" },
+              { id: "in-progress", label: "In progress", count: db.projects.filter((p) => getProjectAvailability(p).state === "in-progress").length, color: "#fbbf24" },
             ]}
           />
           {status !== "all" && (
             <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
               <span className="w-full font-mono text-[10px] tracking-[0.18em] text-white/40 uppercase">Bulk — {status}</span>
-              <button type="button" onClick={() => onBulk((x) => (x as unknown as AdminProject).status === status, "show")} className="cursor-pointer rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-400/20">Publish all</button>
-              <button type="button" onClick={() => onBulk((x) => (x as unknown as AdminProject).status === status, "hide")} className="cursor-pointer rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-400/20">Hide all</button>
-              <button type="button" onClick={() => onBulk((x) => (x as unknown as AdminProject).status === status, "delete")} className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20">Delete all</button>
+              <button type="button" onClick={() => onBulk((x) => getProjectAvailability(x as unknown as AdminProject).state === status, "show")} className="cursor-pointer rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-400/20">Publish all</button>
+              <button type="button" onClick={() => onBulk((x) => getProjectAvailability(x as unknown as AdminProject).state === status, "hide")} className="cursor-pointer rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-400/20">Hide all</button>
+              <button type="button" onClick={() => onBulk((x) => getProjectAvailability(x as unknown as AdminProject).state === status, "delete")} className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20">Delete all</button>
             </div>
           )}
           {sorted.length === 0 && (
@@ -4932,7 +4936,7 @@ function ProjectsTab({
             p.visible ? "border-white/10 hover:border-white/25" : "border-dashed border-white/15 opacity-60",
           )}
         >
-          <span aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: p.status === "completed" ? "linear-gradient(135deg, rgba(52,211,153,0.10) 0%, transparent 55%)" : "linear-gradient(135deg, rgba(251,191,36,0.10) 0%, transparent 55%)" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: getProjectAvailability(p).state === "available" ? "linear-gradient(135deg, rgba(52,211,153,0.10) 0%, transparent 55%)" : getProjectAvailability(p).state === "maintenance" ? "linear-gradient(135deg, rgba(251,113,133,0.10) 0%, transparent 55%)" : "linear-gradient(135deg, rgba(251,191,36,0.10) 0%, transparent 55%)" }} />
           {!p.visible && (
             <p className="relative mb-3 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-200">
               <EyeOff className="h-3.5 w-3.5 shrink-0" />
@@ -4955,9 +4959,10 @@ function ProjectsTab({
                 <LiveBadge visible={p.visible} />
               </p>
               <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <span className={cn("rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-black tracking-[0.12em] uppercase", p.status === "completed" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-amber-400/40 bg-amber-400/10 text-amber-300")}>
-                  {p.status}
+                <span className={cn("rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-black tracking-[0.12em] uppercase", getProjectAvailability(p).state === "available" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : getProjectAvailability(p).state === "maintenance" ? "border-rose-400/40 bg-rose-400/10 text-rose-300" : "border-amber-400/40 bg-amber-400/10 text-amber-300")}>
+                  {getProjectAvailability(p).state}
                 </span>
+                {getProjectAvailability(p).deadline && <span className="rounded-full border border-white/20 px-2.5 py-0.5 font-mono text-[10px] text-white/60">Due {getProjectAvailability(p).deadline}</span>}
                 {p.sponsored && (
                   <span className="rounded-full border border-[#ff3d00]/50 bg-[#ff3d00]/10 px-2.5 py-0.5 font-mono text-[10px] font-black tracking-[0.12em] text-[#ff3d00] uppercase">★ Sponsored</span>
                 )}
@@ -6753,7 +6758,7 @@ function SkillEditor({
         <div>
           <span className="mb-1.5 block font-mono text-[10px] font-bold tracking-[0.22em] text-white/55 uppercase">Category — where it lives on the site</span>
           <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(SKILL_CAT_META) as AdminSkill["cat"][]).map((c) => {
+            {(Object.keys(SKILL_CAT_META) as AdminSkill["cat"][]).filter(c => c !== "life").map((c) => {
               const meta = SKILL_CAT_META[c];
               const active = form.cat === c;
               return (
@@ -6956,6 +6961,7 @@ function ProjectEditor({
     },
   );
   const [errors, setErrors] = useState<string[]>([]);
+  const projectAvailability = getProjectAvailability(form);
   const set = <K extends keyof AdminProject>(k: K, v: AdminProject[K]): void => {
     setForm((f) => ({ ...f, [k]: v }));
     setErrors([]);
@@ -6982,6 +6988,7 @@ function ProjectEditor({
     }
     const keepCat = form.category;
     const keepStatus = form.status;
+    const keepAvailability = projectAvailability.state;
     onSave({ ...form, title: form.title.trim() }, true);
     setForm({
       id: uid("proj"),
@@ -7013,7 +7020,7 @@ function ProjectEditor({
       clientName: "",
       clientLogo: "",
       teamSize: 1,
-      tags: [],
+      tags: keepAvailability === "maintenance" ? ["@budi:maintenance"] : [],
       featured: false,
       progress: 0,
       version: "",
@@ -7029,7 +7036,7 @@ function ProjectEditor({
         <ProjectMiniPreview
           title={form.title}
           tech={form.tech}
-          status={form.status}
+          status={projectAvailability.state}
           visible={form.visible}
           image={form.image}
         />
@@ -7095,11 +7102,15 @@ function ProjectEditor({
         <Field label="Period (e.g. 01/2024 — 06/2024)">
           <input value={form.period} onChange={(e) => set("period", e.target.value)} className={inputCls} maxLength={40} />
         </Field>
-        <Field label="Status">
-          <select value={form.status} onChange={(e) => set("status", e.target.value as AdminProject["status"])} className={cn(inputCls, "bg-black")}>
-            <option value="completed">Completed</option>
+        <Field label="Availability on site">
+          <select value={projectAvailability.state} onChange={(e) => setForm(f => setProjectAvailability(f, e.target.value as ProjectAvailability, getProjectAvailability(f).deadline))} className={cn(inputCls, "bg-black")}>
+            <option value="available">Available</option>
+            <option value="maintenance">Maintenance</option>
             <option value="in-progress">In progress</option>
           </select>
+        </Field>
+        <Field label="Expected availability date" hint="Shown on the project exhibit when set">
+          <input type="date" value={projectAvailability.deadline} onChange={(e) => setForm(f => setProjectAvailability(f, getProjectAvailability(f).state, e.target.value))} className={inputCls} />
         </Field>
         <Field label="GitHub URL">
           <input value={form.github} onChange={(e) => set("github", e.target.value)} dir="ltr" className={inputCls} maxLength={200} />
@@ -7166,7 +7177,7 @@ function ProjectEditor({
             <input value={form.seoDesc} onChange={(e) => set("seoDesc", e.target.value)} className={inputCls} maxLength={320} />
           </Field>
           <Field label="Tags — one per line">
-            <textarea value={form.tags.join("\n")} onChange={(e) => set("tags", lines(e.target.value))} rows={2} className={inputCls} />
+            <textarea value={projectPublicTags(form.tags).join("\n")} onChange={(e) => setForm(f => setProjectPublicTags(f, lines(e.target.value)))} rows={2} className={inputCls} />
           </Field>
           <Field label="Changelog — one per line">
             <textarea value={form.changelog.join("\n")} onChange={(e) => set("changelog", lines(e.target.value))} rows={2} className={inputCls} />

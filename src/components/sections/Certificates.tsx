@@ -38,74 +38,13 @@ interface Cert {
 const PAGE_SIZE = 8;
 
 // Real credentials from the live portfolio — no placeholders, no fakes.
-const CERTS: Cert[] = [
-  {
-    title: { en: "AWS Solutions Architect", fr: "AWS Solutions Architect" },
-    issuer: { en: "Amazon Web Services", fr: "Amazon Web Services" },
-    year: "2024",
-    months: 6,
-    id: "CERT-AWS-24",
-    skills: ["AWS", "EC2", "S3"],
-    image: "/images/certificates/aws.svg",
-    verify: null,
-  },
-  {
-    title: { en: "Meta Frontend Developer", fr: "Meta Frontend Developer" },
-    issuer: { en: "Meta", fr: "Meta" },
-    year: "2023",
-    months: 8,
-    id: "CERT-META-23",
-    skills: ["React", "JavaScript"],
-    image: "/images/certificates/meta.svg",
-    verify: null,
-  },
-  {
-    title: { en: "Google UX Design", fr: "Google UX Design" },
-    issuer: { en: "Google", fr: "Google" },
-    year: "2023",
-    months: 6,
-    id: "CERT-GOOGLE-23",
-    skills: ["Figma", "UX"],
-    image: "/images/certificates/google.svg",
-    verify: null,
-  },
-  {
-    title: { en: "Full Stack Web Development", fr: "Développement Web Full-Stack" },
-    issuer: { en: "Coursera", fr: "Coursera" },
-    year: "2023",
-    months: 12,
-    id: "CERT-COURSERA-23",
-    skills: ["MongoDB", "Express", "React", "Node.js"],
-    image: "/images/certificates/coursera.svg",
-    verify: null,
-  },
-  {
-    title: { en: "Cybersecurity Fundamentals", fr: "Fondamentaux Cybersécurité" },
-    issuer: { en: "IBM", fr: "IBM" },
-    year: "2024",
-    months: 4,
-    id: "CERT-IBM-24",
-    skills: ["Security", "Network"],
-    image: "/images/certificates/ibm.svg",
-    verify: null,
-  },
-  {
-    title: { en: "DevOps Engineering", fr: "Ingénierie DevOps" },
-    issuer: { en: "Microsoft", fr: "Microsoft" },
-    year: "2024",
-    months: 5,
-    id: "CERT-MS-24",
-    skills: ["Azure", "Docker"],
-    image: "/images/certificates/ms.svg",
-    verify: null,
-  },
-];
+const CERTS: Cert[] = [];
 
 const COPY = {
   en: {
     eyebrow: "06 · Certificates",
     title: "Certificates",
-    lede: "Proof of craft — verified credentials behind the claims.",
+    lede: "A record of learning, practice and professional milestones.",
     addImage: "Certificate image coming soon",
     verify: "Verify",
     verifySoon: "Verify soon",
@@ -121,7 +60,7 @@ const COPY = {
   fr: {
     eyebrow: "06 · Certificats",
     title: "Certificats",
-    lede: "La preuve du savoir-faire — des titres vérifiés derrière les promesses.",
+    lede: "Un parcours de formation, de pratique et de progression.",
     addImage: "Image du certificat bientôt",
     verify: "Vérifier",
     verifySoon: "Bientôt vérifiable",
@@ -285,11 +224,11 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
         </div>
 
         {/* Counters */}
-        <div className="mx-auto mt-10 grid max-w-3xl grid-cols-3 border-y border-border">
+        {certs.length > 0 && <div className="mx-auto mt-10 grid max-w-3xl grid-cols-3 border-y border-border">
           {[
             { n: certs.length, label: t.totalLabel },
             { n: vendors, label: t.vendorsLabel },
-            { n: certs.filter((c) => c.year === "2024").length, label: "2024" },
+            { n: certs.filter((c) => c.verify).length, label: fr ? "Vérifiables" : "With verification" },
           ].map((s) => (
             <div key={s.label} className="flex flex-col items-center gap-1 px-4 py-6 text-center">
               <CountUp
@@ -303,6 +242,7 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
           ))}
         </div>
 
+        }
         {/* Tabs + search */}
         <div className="mt-8 flex flex-col items-center gap-3">
           <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label={t.title}>
@@ -346,7 +286,7 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
 
         {filteredAll.length === 0 ? (
           <div className="mt-12 flex flex-col items-center gap-4 border border-dashed border-border px-6 py-16 text-center">
-            <p className="text-muted">{t.empty}</p>
+            <Award className="h-10 w-10 text-accent" aria-hidden="true"/><h3 className="text-2xl font-bold">{certs.length ? t.empty : fr ? "Les preuves ont leur place ici." : "Room for the next milestone."}</h3><p className="max-w-md text-sm leading-relaxed text-muted">{certs.length ? "" : remote === undefined ? (fr ? "Les certificats ne sont pas disponibles actuellement." : "Certificate data is currently unavailable.") : (fr ? "Aucun certificat publié pour le moment." : "No certificates have been published yet.")}</p>
             <button
               type="button"
               onClick={() => {
@@ -616,7 +556,7 @@ export default function Certificates({ remote }: { remote?: AdminCert[] }): Reac
             return (
               <div>
                 {/* Banner — reference cert-card: image h-64 zoom, click = fullscreen */}
-                {c.image ? (
+                {c.pdf && <div className="mb-5"><iframe src={c.pdf} title={title} className="h-[55vh] w-full rounded-xl border border-white/10"/><a href={c.pdf} target="_blank" rel="noreferrer" className="evolution-action mt-3">{fr ? "Ouvrir le PDF" : "Open certificate PDF"}</a></div>}{c.image ? (
                   <button
                     type="button"
                     onClick={() => setLightbox(certs.indexOf(c))}

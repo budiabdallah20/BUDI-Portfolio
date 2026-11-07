@@ -1,8 +1,9 @@
+import { previewRows } from "@/lib/preview-content";
 import { NextResponse } from "next/server";
 import { supabaseAnon } from "@/lib/supabase/server";
 
 /** Public aggregated content — dashboard sync + health checks read this. */
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
   try {
@@ -25,11 +26,11 @@ export async function GET(): Promise<NextResponse> {
       return NextResponse.json({ error: "Content unavailable" }, { status: 500 });
     }
     return NextResponse.json({
-      services: services.data ?? [],
-      skills: skills.data ?? [],
-      projects: projects.data ?? [],
-      certs: certs.data ?? [],
-      settings: settings.data ?? null,
+      services: await previewRows("services", services.data ?? []),
+      skills: await previewRows("skills", skills.data ?? []),
+      projects: await previewRows("projects", projects.data ?? []),
+      certs: await previewRows("certs", certs.data ?? []),
+      settings: (await previewRows("settings", settings.data ? [settings.data] : []))[0] ?? null,
       visitsTotal: (visits.data ?? []).reduce((n, r) => n + (r.count ?? 0), 0),
       likes: Object.fromEntries((likes.data ?? []).map((r) => [r.id, r.count ?? 0])),
     });

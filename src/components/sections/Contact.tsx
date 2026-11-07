@@ -4,23 +4,17 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
 import {
-  BadgeCheck,
   Check,
   ChevronDown,
-  Clock,
   Copy,
   Download,
   ExternalLink,
-  HeartHandshake,
   Lock,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
   Send,
-  ShieldCheck,
-  Sparkles,
-  Zap,
 } from "lucide-react";
 import { profile, socialLinks } from "@/data/portfolio";
 import Logo from "@/components/Logo";
@@ -40,10 +34,6 @@ import { cn } from "@/lib/utils";
 const VODA_DONATE_URL = "https://vodafonecash.vodafone.com.eg/";
 const TAPTAP_URL = "https://www.taptapsend.com/";
 const WHATSAPP_URL = "https://wa.me/201065228072";
-
-const PRO_LINKS = (["LinkedIn", "GitHub"] as const)
-  .map((label) => socialLinks.find((s) => s.label === label))
-  .filter((s): s is NonNullable<typeof s> => s !== undefined);
 
 /** Brand glyphs as inline SVG — <img> can't inherit currentColor, inline can. */
 function WhatsAppGlyph({ className }: { className?: string }): React.JSX.Element {
@@ -228,8 +218,7 @@ export default function Contact({
   const reduced = useReducedMotion();
   const [copied, setCopied] = useState<string | null>(null);
   const [contactCardOpen, setContactCardOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [supportOpen, setSupportOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const c = lang === "fr" ? COPY.fr : COPY.en;
   /** Dashboard-owned contact email wins — portfolio address is the fallback. */
   const email = emailProp || profile.email;
@@ -258,16 +247,16 @@ export default function Contact({
   const withNumber = (steps: readonly string[]): string[] =>
     steps.map((s) => s.replaceAll("01065228072", pay.vodafone.account || "01065228072"));
 
-  const copyText = (key: string, text: string): void => {
+  const copyText = async (key: string, text: string): Promise<void> => {
     try {
-      void navigator.clipboard?.writeText(text)?.catch(() => undefined);
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      window.setTimeout(() => {
+        setCopied((cur) => (cur === key ? null : cur));
+      }, 1600);
     } catch {
-      /* clipboard unavailable */
+      setCopied(null);
     }
-    setCopied(key);
-    window.setTimeout(() => {
-      setCopied((cur) => (cur === key ? null : cur));
-    }, 1600);
   };
 
   /** Every card is a REAL action — tap the card itself to call, chat or email. */
@@ -405,19 +394,12 @@ export default function Contact({
       rail: pay.instapay,
     },
   ];
-  const methodNames = donateRails.map((r) =>
-    r.rail.state === "active"
-      ? r.name
-      : r.rail.state === "soon"
-        ? `${r.name} (${c.soon})`
-        : `${r.name} (${lang === "fr" ? "Maintenance" : "Maintenance"})`,
-  );
 
   return (
     <section
       id="contact"
       aria-labelledby="contact-heading"
-      className="relative overflow-clip border-t border-border py-24 sm:py-32"
+      className="contact-reimagined relative overflow-clip border-t border-border py-24 sm:py-32"
     >
       <div
         aria-hidden="true"
@@ -448,7 +430,7 @@ export default function Contact({
         </>
       )}
 
-      <div className="relative mx-auto w-full max-w-7xl px-5 sm:px-8">
+      <div className="contact-stage relative mx-auto w-full max-w-7xl px-5 sm:px-8">
         <div className="flex flex-col items-center text-center">
           <p className="flex items-center gap-4 font-mono text-xs tracking-[0.35em] text-faint uppercase">
             <span
@@ -473,7 +455,7 @@ export default function Contact({
         </div>
 
         {/* ——— ① Identity banner: hire-ready at a glance ——— */}
-        <div className="relative mt-12 overflow-hidden rounded-2xl p-[1.5px]">
+        <div className="contact-identity relative mt-12 overflow-hidden rounded-2xl p-[1.5px]">
           <span
             aria-hidden="true"
             className="absolute inset-0"
@@ -491,17 +473,11 @@ export default function Contact({
                   "radial-gradient(ellipse 60% 80% at 15% 20%, rgba(37,211,102,0.10), transparent 60%), radial-gradient(ellipse 60% 80% at 85% 30%, rgba(255,61,0,0.10), transparent 60%)",
               }}
             />
-            {/* Site logo avatar — the real BUDI mark, no photo */}
-            <span className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-accent/40 bg-background text-foreground shadow-[0_0_32px_rgba(215,253,68,0.25)]">
-              <span className="scale-[2.1]">
-                <Logo />
-              </span>
-              <span className="absolute inset-2 rounded-xl border border-white/15" />
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#25d366] shadow-[0_0_12px_rgba(37,211,102,0.9)]">
-                <span className="h-2 w-2 rounded-full bg-white" />
-              </span>
+            <span className="contact-portrait-frame relative block shrink-0 overflow-hidden rounded-2xl">
+              <Logo variant="full" className="contact-brand-logo relative z-10 w-[72%] text-[#f7eed9]" />
             </span>
-            <div className="relative min-w-0 flex-1">
+            <div className="contact-identity-details relative flex min-w-0 flex-1 flex-col justify-center gap-4">
+            <div className="contact-identity-copy relative min-w-0">
               <p className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 {/* ① Work badge — dashboard master switch, read-only on site */}
                 <AvailabilityBadge
@@ -510,10 +486,6 @@ export default function Contact({
                   availableText={c.openLabel}
                   unavailableText={c.busyLabel}
                 />
-                <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-                  <Clock className="h-3 w-3 text-accent" aria-hidden="true" />
-                  {c.repliesLabel}
-                </span>
               </p>
               <p className="font-display mt-2 flex flex-wrap items-center justify-center gap-2 text-2xl font-bold text-foreground sm:justify-start">
                 {profile.name}
@@ -537,29 +509,10 @@ export default function Contact({
               </p>
               <p className="mt-2 text-sm leading-relaxed text-muted">{t.contact.motto}</p>
             </div>
-            <div className="relative flex shrink-0 flex-wrap items-center justify-center gap-2">
-              {PRO_LINKS.map(({ label, href, badgeColor, image, icon: Icon, bleachGlyph, external }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  title={label}
-                  {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-                  style={{ backgroundColor: badgeColor }}
-                  className="flex h-10 w-10 items-center justify-center rounded-md border border-white/15 text-white transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-                >
-                  {image ? (
-                    <Image
-                      src={image}
-                      alt=""
-                      width={18}
-                      height={18}
-                      loading="lazy"
-                      className={bleachGlyph ? "glyph-white h-[18px] w-[18px]" : "block h-[18px] w-[18px]"}
-                    />
-                  ) : Icon ? (
-                    <Icon className="h-[18px] w-[18px]" />
-                  ) : null}
+            <div className="contact-identity-actions relative flex shrink-0 flex-wrap items-center justify-center gap-2">
+              {socialLinks.filter((s) => s.label === "LinkedIn" || s.label === "GitHub").map((s) => (
+                <a key={s.label} href={s.href} target="_blank" rel="noreferrer" aria-label={s.label} title={s.label} style={{ backgroundColor: s.badgeColor }} className="contact-brand-social flex h-10 w-10 items-center justify-center rounded-lg border border-white/25 transition-transform hover:-translate-y-1">
+                  {s.image ? <Image src={s.image} alt="" width={20} height={20} className={s.bleachGlyph ? "glyph-white h-5 w-5" : "h-5 w-5"} /> : s.icon ? <s.icon className="h-5 w-5" /> : null}
                 </a>
               ))}
               <button
@@ -573,43 +526,12 @@ export default function Contact({
                 <span className="text-xs font-bold whitespace-nowrap">{t.contact.vcard}</span>
               </button>
             </div>
+            </div>
           </div>
         </div>
 
-        {/* ——— ② The one big action an HR actually clicks ——— */}
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative mt-4 overflow-hidden rounded-2xl border border-[#25d366]/30"
-          style={{
-            background:
-              "linear-gradient(120deg, rgba(37,211,102,0.16) 0%, rgba(37,211,102,0.05) 40%, rgba(255,61,0,0.08) 100%)",
-          }}
-        >
-          <Sparkles className="absolute -top-3 right-6 h-20 w-20 text-[#25d366]/15" aria-hidden="true" />
-          <div className="relative flex flex-col items-center gap-4 px-6 py-8 text-center sm:flex-row sm:justify-between sm:px-10 sm:text-left">
-            <div>
-              <h3 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-                {c.ctaTitle}
-              </h3>
-              <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">{c.ctaSub}</p>
-            </div>
-            <a
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-[#25d366] px-7 py-3.5 text-sm font-bold text-[#062d1a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_44px_-12px_rgba(37,211,102,0.8)]"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              {c.ctaBtn}
-            </a>
-          </div>
-        </motion.div>
-
         {/* ——— ③ Ranked channels — every card is one big REAL button ——— */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="contact-channels mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {infoCards.map((card, i) => {
             const Fallback = card.fallbackIcon;
             const CtaIcon = card.ctaIcon;
@@ -698,7 +620,7 @@ export default function Contact({
                   </p>
                   <p
                     dir={card.valueDir}
-                    className="relative mt-1 truncate text-base font-bold text-foreground transition-colors group-hover:text-accent"
+                    className="relative mt-1 break-words text-base font-bold text-foreground transition-colors group-hover:text-accent"
                   >
                     {card.value}
                   </p>
@@ -749,54 +671,19 @@ export default function Contact({
           })}
         </div>
 
-        {/* ——— ④ Trust features ——— */}
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {(
-            [
-              { icon: Zap, title: c.featFast, sub: c.featFastSub, color: "#d7fd44" },
-              { icon: ShieldCheck, title: c.featDirect, sub: c.featDirectSub, color: "#38bdf8" },
-              { icon: BadgeCheck, title: c.featNospam, sub: c.featNospamSub, color: "#a78bfa" },
-            ] as const
-          ).map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.title}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface/60 px-5 py-4 backdrop-blur-md transition-colors duration-300 hover:border-accent/40"
-              >
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
-                  style={{ borderColor: `${f.color}55`, backgroundColor: `${f.color}14`, color: f.color }}
-                >
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{f.title}</p>
-                  <p className="text-xs text-muted">{f.sub}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
         {/* ——— ⑤ All channels marquee ——— */}
-        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-surface/40 px-4 py-4">
+        <div className="contact-social mt-4 overflow-hidden rounded-xl border border-border bg-surface/40 px-4 py-4">
           <p className="text-center font-mono text-[10px] tracking-[0.3em] text-faint uppercase">
             {c.allChannels}
           </p>
-          <div
-            aria-label={c.allChannels}
-            className="marquee relative mt-3 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
-          >
-            <div className="marquee-track flex w-max items-center gap-2.5">
-              {[...socialLinks, ...socialLinks].map((s, i) => (
+          <div aria-label={c.allChannels} className="contact-social-rail mt-3">
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              {socialLinks.map((s) => (
                 <a
-                  key={`${s.label}-${i}`}
+                  key={s.label}
                   href={s.href}
                   aria-label={s.label}
                   title={s.label}
-                  aria-hidden={i >= socialLinks.length ? true : undefined}
-                  tabIndex={i >= socialLinks.length ? -1 : 0}
                   {...(s.external ? { target: "_blank", rel: "noreferrer" } : {})}
                   style={{ backgroundColor: s.badgeColor }}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/15 text-white transition-transform duration-200 hover:scale-110"
@@ -820,7 +707,7 @@ export default function Contact({
         </div>
 
         {/* ——— ⑥ Quick answers FAQ ——— */}
-        <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-surface/40">
+        <div className="contact-faq mt-4 overflow-hidden rounded-2xl border border-border bg-surface/40">
           <p className="border-b border-border px-6 py-4 text-center font-mono text-[11px] tracking-[0.3em] text-faint uppercase">
             {t.contact.faqTitle}
           </p>
@@ -862,7 +749,7 @@ export default function Contact({
         </div>
 
         {/* ——— ⑦ Support — unmissable emerald/gold donation gate ——— */}
-        <div className="relative mt-6 overflow-hidden rounded-3xl p-[2px] shadow-[0_0_70px_-14px_rgba(37,211,102,0.45)]">
+        <div className="contact-payment relative mt-6 overflow-hidden rounded-3xl p-[2px]" role="region" aria-label={lang === "fr" ? "Moyens de paiement" : "Payment methods"}>
           <span
             aria-hidden="true"
             className="absolute inset-0"
@@ -892,69 +779,14 @@ export default function Contact({
               />
             </>
           )}
-          <button
-            type="button"
-            onClick={() => setSupportOpen((v) => !v)}
-            aria-expanded={supportOpen}
-            className="group/gate relative flex w-full cursor-pointer items-center justify-between gap-4 overflow-hidden px-6 py-5 text-left"
-          >
-            <span
-              aria-hidden="true"
-              className="animate-glare pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/[0.06] blur-md"
-            />
-            <span className="relative flex min-w-0 items-center gap-4">
-              <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[#062d1a] shadow-[0_0_28px_rgba(37,211,102,0.65)] transition-transform duration-300 group-hover/gate:scale-110 group-hover/gate:-rotate-6"
-                style={{ background: "linear-gradient(135deg, #25d366 0%, #d7fd44 100%)" }}
-              >
-                <HeartHandshake className="h-6 w-6" aria-hidden="true" />
-                {!reduced && (
-                  <span className="animate-ping-soft absolute inset-0 rounded-2xl border-2 border-[#25d366]" />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[10px] tracking-[0.3em] text-emerald-300/90 uppercase">
-                    {c.donateEyebrow}
-                  </span>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-2 py-px font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
-                    {c.optional}
-                  </span>
-                  {/* Payment states only — availability lives in the identity banner above */}
-                  <PayRailBadge state={pay.vodafone.state} lang={lang} at={pay.vodafone.at} />
-                  <PayRailBadge state={pay.taptap.state} lang={lang} at={pay.taptap.at} />
-                  <PayRailBadge state={pay.instapay.state} lang={lang} at={pay.instapay.at} />
-                </span>
-                <span
-                  className="font-display mt-1 block truncate text-xl font-black tracking-tight sm:text-2xl"
-                  style={{
-                    background: "linear-gradient(100deg, #a7f3d0 10%, #fde68a 50%, #fdba74 90%)",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                  }}
-                >
-                  {c.donateTitle}
-                </span>
-                <span className="mt-0.5 block truncate text-[13px] text-muted">
-                  {c.donateSub}
-                </span>
-              </span>
-            </span>
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-300/50 bg-amber-300/10 text-amber-200 transition-all duration-300 group-hover/gate:border-amber-300 group-hover/gate:shadow-[0_0_20px_rgba(251,191,36,0.5)]">
-              <ChevronDown
-                className={`h-5 w-5 transition-transform duration-300 ${supportOpen ? "rotate-180" : ""}`}
-                aria-hidden="true"
-              />
-            </span>
-          </button>
           <div
-            className={`grid transition-all duration-300 ease-in-out ${supportOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            className="support-methods-open"
           >
             <div className="overflow-hidden">
               <div className="border-t border-emerald-300/15 px-6 py-6">
-                <p className="mx-auto max-w-lg text-center text-[13px] leading-relaxed text-muted">{c.donateSub}</p>
+                <div className="support-methods-heading"><p className="eyebrow">{c.donateEyebrow}</p><h3>{lang === "fr" ? "Moyens de paiement" : "Payment methods"}</h3><p>{c.donateSub}</p></div>
                 {/* 3 independent rails — active = live, soon = amber teaser, off = locked */}
-                <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <div className="payment-methods mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
                   {donateRails.map((item, i) => {
                     const st = item.rail.state;
                     const locked = st === "off";
@@ -964,18 +796,20 @@ export default function Contact({
                     return (
                       <motion.div
                         key={item.key}
-                        initial={reduced ? false : { opacity: 0, y: 16 }}
+                        initial={false}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: "-40px" }}
                         transition={{ duration: 0.4, ease: "easeOut", delay: i * 0.06 }}
+                        data-payment={item.key}
                         className={cn(
-                          "group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5",
+                          "payment-vault-card group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5",
                           st === "active" &&
                             "border-emerald-300/20 bg-background/70 shadow-[0_0_40px_-16px_rgba(37,211,102,0.35)] hover:border-emerald-300/50",
                           soon && "border-amber-300/25 bg-amber-300/[0.04] hover:border-amber-300/50",
                           locked && "border-white/10 bg-white/[0.02] opacity-95 hover:border-white/25",
                         )}
                       >
+                        <div className="payment-invoice-head" aria-hidden="true"><span>SUPPORT RECEIPT / {String(i + 1).padStart(2, "0")}</span><span>BUDI</span></div>
                         <span
                           aria-hidden="true"
                           className="absolute top-0 left-0 h-[3px] w-0 transition-all duration-500 group-hover:w-full"
@@ -1000,21 +834,22 @@ export default function Contact({
                               alt=""
                               width={36}
                               height={36}
-                              loading="lazy"
+                              loading="eager"
                               className={cn("block h-full w-full object-contain", locked && "grayscale")}
                             />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-display truncate text-base font-bold text-foreground">
+                            <h4 className="font-display text-base font-bold text-foreground">
                               {item.name}
                             </h4>
-                            <p className="truncate text-[13px] text-muted">{item.sub}</p>
+                            <p className="text-[13px] text-muted">{item.sub}</p>
                           </div>
                           <PayRailBadge state={st} lang={lang} at={item.rail.at} />
                         </div>
 
                         {st === "active" && !isInsta && (
                           <>
+                            <p className="payment-step-label">{lang === "fr" ? "Comment contribuer" : "How to contribute"}</p>
                             <ol className="mt-4 space-y-1.5">
                               {item.steps.map((step, si) => (
                                 <li key={step} className="flex items-start gap-2.5 text-[13px] text-foreground">
@@ -1025,12 +860,10 @@ export default function Contact({
                                 </li>
                               ))}
                             </ol>
-                            <p
-                              className="mt-3 font-mono text-[10px] tracking-[0.18em] text-faint uppercase tabular-nums"
-                              dir="ltr"
-                            >
-                              {c.walletLabel}: {pay.vodafone.account}
-                            </p>
+                            {item.key === "vodafone" && pay.vodafone.account && <div className="payment-identifier mt-3 flex flex-wrap items-center gap-2">
+                              <p className="min-w-0 break-all font-mono text-xs text-foreground tabular-nums" dir="ltr">{c.walletLabel}: {pay.vodafone.account}</p>
+                              <button type="button" onClick={() => copyText("vodafone", pay.vodafone.account)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-current/40 px-3 py-2 text-xs font-bold transition-transform hover:-translate-y-0.5" aria-label={`${c.copyNumber} — Vodafone Cash`}>{copied === "vodafone" ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}{copied === "vodafone" ? c.copied : c.copyNumber}</button>
+                            </div>}
                             <a
                               href={item.href}
                               target="_blank"
@@ -1088,12 +921,7 @@ export default function Contact({
                   })}
                 </div>
 
-                {methodNames.length > 0 && (
-                  <p className="mt-4 flex items-center justify-center gap-1.5 text-center font-mono text-[10px] tracking-[0.2em] text-faint uppercase">
-                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                    {methodNames.join(" · ")}
-                  </p>
-                )}
+
               </div>
             </div>
           </div>

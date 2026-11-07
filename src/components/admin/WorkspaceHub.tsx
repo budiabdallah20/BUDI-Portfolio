@@ -176,7 +176,7 @@ export default function WorkspaceHub({
   };
 
   return (
-    <div className="min-h-svh bg-[#0a0a0b] text-white">
+    <div className="admin-hub min-h-svh bg-[#0a0a0b] text-white">
       <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8">
         <div className="flex flex-col items-center text-center">
           <span className="relative flex h-16 w-16 items-center justify-center">
@@ -191,7 +191,7 @@ export default function WorkspaceHub({
             />
             <span aria-hidden="true" className="absolute inset-[3px] rounded-full bg-[#0a0a0b]" />
             <span className="relative scale-125">
-              <Logo />
+              <Logo variant="full" className="h-11 w-16 text-[#e5c582]" />
             </span>
           </span>
           <h1 className="font-display mt-4 text-3xl font-black tracking-tight sm:text-4xl">
@@ -282,7 +282,7 @@ export default function WorkspaceHub({
                         <SmartImage src={ws.logo} alt="" fill fit="contain" sizes="56px" />
                       ) : (
                         <span className="scale-125">
-                          <Logo />
+                          <Logo variant="full" className="h-11 w-16 text-[#e5c582]" />
                         </span>
                       )}
                     </span>

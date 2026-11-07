@@ -3,20 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowUp,
   ArrowUpRight,
-  Cake,
   Check,
   Copy,
-  Download,
   Heart,
-  Lock,
   Mail,
   MapPin,
   MessageCircle,
-  PartyPopper,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -25,15 +20,7 @@ import Logo from "@/components/Logo";
 import { EgyptFlag, SuezFlag } from "@/components/Flags";
 import { navLinks, profile, socialLinks, stackChips } from "@/data/portfolio";
 import { TECH_STACK, techLogo } from "@/data/techLogos";
-import { verseOfDay } from "@/data/verses";
 import { useLanguage } from "@/components/providers/LanguageProvider";
-import {
-  daysUntilBirthday,
-  isBirthday,
-  isPreviewHost,
-  nextBirthdayStartMs,
-  splitCountdown,
-} from "@/lib/birthday";
 import { useNow } from "@/hooks/useNow";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import type { SiteAvailability } from "@/components/WorkStatus";
@@ -46,9 +33,6 @@ const COPY = {
     line2: "SOMETHING THAT MATTERS.",
     sub: "Have an idea, a project, or a role in mind? My inbox is always open.",
     cta: "Start a Conversation",
-    wisdom: "Ship work you're proud to sign.",
-    verse: "And say: Work, and Allah will see your work.",
-    verseRef: "Quran 9:105",
     navTitle: "Navigation",
     contactTitle: "Contact",
     socialsTitle: "Socials",
@@ -61,21 +45,6 @@ const COPY = {
     rights: "All rights reserved.",
     top: "Back to top",
     status: "All systems operational",
-    secured: "Secured · HTTPS",
-    securedLocal: "Secure context · Local",
-    securedHttp: "HTTP · Dev only",
-    securedTitle:
-      "HTTPS + HSTS preload + CSP — anonymous stats only, your data stays yours. Open the live security certificate.",
-    bdayToday: "BUDI Vault — open now",
-    bdayPreview: "Vault preview",
-    bdayTitleOpen: "October 24 is here — the BUDI Vault is open.",
-    bdayTitleLocked: "BUDI Vault opens every October 24.",
-    vaultName: "BUDI Vault",
-    vaultOpens: "Opens Oct 24",
-    vaultDaysLeft: "days left",
-    vaultDayLeft: "day left",
-    vaultToday: "Unlocked — step inside",
-    vaultAr: "فاضل كام يوم ويفتح",
   },
   fr: {
     eyebrow: "La dernière image",
@@ -83,9 +52,6 @@ const COPY = {
     line2: "QUELQUE CHOSE QUI COMPTE.",
     sub: "Une idée, un projet ou un poste en tête ? Ma boîte mail est toujours ouverte.",
     cta: "Démarrer une conversation",
-    wisdom: "Livrez un travail que vous êtes fier de signer.",
-    verse: "Et dis : Agissez, et Allah verra vos actes.",
-    verseRef: "Coran 9:105",
     navTitle: "Navigation",
     contactTitle: "Contact",
     socialsTitle: "Réseaux",
@@ -98,27 +64,12 @@ const COPY = {
     rights: "Tous droits réservés.",
     top: "Retour en haut",
     status: "Tous les systèmes sont opérationnels",
-    secured: "Protégé · HTTPS",
-    securedLocal: "Contexte sûr · Local",
-    securedHttp: "HTTP · Dev uniquement",
-    securedTitle:
-      "HTTPS + HSTS preload + CSP — stats anonymes, vos données restent à vous. Ouvrir le certificat de sécurité en direct.",
-    bdayToday: "Coffre BUDI — ouvert",
-    bdayPreview: "Aperçu du coffre",
-    bdayTitleOpen: "Le 24 octobre est là — le coffre est ouvert.",
-    bdayTitleLocked: "Le coffre BUDI ouvre chaque 24 octobre.",
-    vaultName: "Coffre BUDI",
-    vaultOpens: "Ouvre le 24 oct",
-    vaultDaysLeft: "jours restants",
-    vaultDayLeft: "jour restant",
-    vaultToday: "Déverrouillé — entrez",
-    vaultAr: "فاضل كام يوم ويفتح",
   },
 } as const;
 
 /**
- * Footer — Tito-grade finale, BUDI voice: giant CTA, wisdom line,
- * Quranic verse (Arabic + translation), sitemap, live contact card,
+ * Footer — Tito-grade finale, BUDI voice: giant CTA,
+ * sitemap, live contact card,
  * socials and a smart bottom bar. Self-contained bilingual copy.
  */
 export default function Footer({
@@ -141,49 +92,10 @@ export default function Footer({
   const now = useNow(1000);
   const [copied, setCopied] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
-  const [showInstallBtn, setShowInstallBtn] = useState(true);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminPass, setAdminPass] = useState("");
   const [adminChecking, setAdminChecking] = useState(false);
   const [adminError, setAdminError] = useState(false);
-  useEffect(() => {
-    const id = window.setTimeout(() => setShowInstallBtn(false), 60000);
-    return () => window.clearTimeout(id);
-  }, []);
-  /**
-   * Transport badge — resolved AFTER mount so SSR and first paint stay
-   * byte-identical (no hydration mismatch): the pill appears the moment
-   * the browser tells us the real scheme. https → green shield, localhost
-   * → secure-context shield (browsers treat it as secure), plain-LAN http
-   * → honest amber dev-only badge, never a fake green.
-   */
-  const [transport, setTransport] = useState<"https" | "local" | "http" | null>(null);
-  /**
-   * Birthday button — same mount-only pattern: null until the browser tells
-   * us hostname + Cairo date (single source of truth in @/lib/birthday).
-   * Visitors see a locked Oct-24 pill with the live days-left; the owner
-   * (local preview) or Oct 24 itself gets the glowing button.
-   */
-  const [bday, setBday] = useState<{ open: boolean; preview: boolean; days: number } | null>(null);
-  useEffect(() => {
-    try {
-      const host = window.location.hostname;
-      if (window.location.protocol === "https:") {
-        setTransport("https");
-      } else {
-        setTransport(host === "localhost" || host === "127.0.0.1" || host === "::1" ? "local" : "http");
-      }
-      const now = new Date();
-      const preview = isPreviewHost(host);
-      const today = isBirthday(now);
-      setBday({ open: today || preview, preview: preview && !today, days: daysUntilBirthday(now) });
-    } catch (error) {
-      // Never swallow: the badges just stay hidden, but the cause must be visible.
-      console.warn("[footer] badge state unavailable:", error);
-      setTransport(null);
-      setBday(null);
-    }
-  }, []);
   const ctaRef = useRef<HTMLAnchorElement>(null);
   const c = lang === "fr" ? COPY.fr : COPY.en;
   const year = new Date().getFullYear();
@@ -203,9 +115,6 @@ export default function Footer({
       return null;
     }
   }, [now, t.intlLocale]);
-
-  /** Daily verse — epoch fallback pre-mount so SSR and first paint match byte-for-byte. */
-  const verse = useMemo(() => verseOfDay(now ?? new Date(0)), [now]);
 
   /** Fire the navbar ⌘K palette from the footer. */
   const openPalette = (): void => {
@@ -247,7 +156,7 @@ export default function Footer({
   };
 
   return (
-    <footer className="relative overflow-clip border-t border-border">
+    <footer className="footer-museum relative overflow-clip border-t border-border">
       {/* Magic top beam — light runs across the footer crown */}
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px overflow-hidden">
         <span className="animate-bar-shine block h-full w-full bg-gradient-to-r from-transparent via-accent to-transparent" />
@@ -385,33 +294,8 @@ export default function Footer({
               }}
             />
             <a href="#home" className="group relative inline-flex items-center gap-3" aria-label="BUDI — back to home">
-              {/* Official mark — gold aura, calm */}
-              <span className="relative flex h-12 w-12 items-center justify-center">
-                {!reduced && (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      className="animate-spin-conic absolute inset-0 rounded-full opacity-70"
-                      style={{
-                        background:
-                          "conic-gradient(from 0deg, transparent 0%, #d4af37 22%, #f9edb0 38%, transparent 55%, transparent 70%, #d4af37 85%, transparent 100%)",
-                        filter: "blur(5px)",
-                      }}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="animate-ping-soft absolute inset-1 rounded-full border border-[#d4af37]/40"
-                    />
-                  </>
-                )}
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-[3px] rounded-full bg-background shadow-[0_0_26px_rgba(212,175,55,0.45)] transition-shadow duration-300 group-hover:shadow-[0_0_38px_rgba(212,175,55,0.6)]"
-                />
-                <span className="relative transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
-                  <Logo variant="mark" />
-                </span>
-              </span>
+              {/* Official mark — new identity, white tile on dark */}
+              <Logo variant="mark" tile className="h-12 w-12 transition-transform duration-300 group-hover:scale-105" />
               <span className="leading-none">
                 {/* BUDI wordmark — gold gradient inside an engineered frame:
                     four brackets + a liquid-gold light sweep + gold dust. */}
@@ -665,170 +549,7 @@ export default function Footer({
             </span>
             {c.status}
           </p>
-          {transport !== null && (
-            <Link
-              href="/security"
-              title={c.securedTitle}
-              aria-label={
-                (transport === "https" ? c.secured : transport === "local" ? c.securedLocal : c.securedHttp) +
-                " — /security"
-              }
-              className="group/shield relative inline-flex shrink-0 overflow-hidden rounded-full p-[1.5px] transition-transform duration-300 hover:-translate-y-0.5"
-            >
-              {/* Magic frame — a conic crown orbiting the badge, emerald for a
-                  real secure context, amber when plain HTTP is honest about it. */}
-              <span
-                aria-hidden="true"
-                className="animate-spin-conic absolute inset-[-140%] m-auto h-[380%] w-[52%] opacity-80"
-                style={{
-                  background:
-                    transport === "http"
-                      ? "conic-gradient(from 0deg, transparent 0%, #fbbf24 18%, #fde68a 30%, transparent 46%, transparent 66%, #f59e0b 86%, transparent 100%)"
-                      : "conic-gradient(from 0deg, transparent 0%, #34d399 16%, #a7f3d0 28%, #38bdf8 42%, transparent 58%, #34d399 82%, transparent 100%)",
-                  filter: "blur(3.5px)",
-                }}
-              />
-              <span
-                className={`relative flex items-center gap-2 overflow-hidden rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] uppercase backdrop-blur-md ${
-                  transport === "http"
-                    ? "border-amber-400/40 bg-background/95 text-amber-300"
-                    : "border-emerald-400/40 bg-background/95 text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.28)]"
-                }`}
-              >
-                {/* Light runs across the shield — the "always watching" sweep. */}
-                <span aria-hidden="true" className="sheen sheen--shield" />
-                {/* Twinkle dust on the four corners of the pill. */}
-                <span aria-hidden="true" className="magic-sparkle" style={{ top: "-3px", left: "12%", animationDelay: "0s" }} />
-                <span aria-hidden="true" className="magic-sparkle" style={{ top: "-3px", right: "10%", animationDelay: "0.9s" }} />
-                <span aria-hidden="true" className="magic-sparkle" style={{ bottom: "-3px", left: "30%", animationDelay: "1.7s" }} />
-                <span aria-hidden="true" className="magic-sparkle" style={{ bottom: "-3px", right: "26%", animationDelay: "2.3s" }} />
-                <span className="relative flex h-2 w-2">
-                  {!reduced && (
-                    <span
-                      className={`animate-ping-soft absolute inline-flex h-full w-full rounded-full ${
-                        transport === "http" ? "bg-amber-400" : "bg-emerald-400"
-                      }`}
-                    />
-                  )}
-                  <span
-                    className={`relative inline-flex h-2 w-2 rounded-full ${
-                      transport === "http" ? "bg-amber-400" : "bg-emerald-400"
-                    }`}
-                  />
-                </span>
-                <ShieldCheck
-                  className={`h-3.5 w-3.5 transition-transform duration-300 group-hover/shield:scale-110 ${
-                    transport === "http"
-                      ? "drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"
-                      : "drop-shadow-[0_0_8px_rgba(52,211,153,0.9)]"
-                  }`}
-                  aria-hidden="true"
-                />
-                <span className="relative">
-                  {transport === "https"
-                    ? c.secured
-                    : transport === "local"
-                      ? c.securedLocal
-                      : c.securedHttp}
-                  </span>
-                </span>
-            </Link>
-          )}
-          {bday !== null &&
-            (() => {
-              const targetMs = !bday.open && now ? nextBirthdayStartMs(now.getTime()) : 0;
-              const left = !bday.open && now ? splitCountdown(targetMs - now.getTime()) : null;
-              const pad = (n: number): string => String(n).padStart(2, "0");
-              const timer = left ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}` : `${bday.days}d`;
-              const yearProgress = Math.min(100, Math.max(0, ((365 - bday.days) / 365) * 100));
-              if (bday.open) {
-                return (
-                  <span className="flex flex-col items-center gap-1.5">
-                    <a
-                      href="/birthday"
-                      title={c.bdayTitleOpen}
-                      className="flex items-center gap-2 rounded-full border border-[#d4af37]/60 bg-[#d4af37]/10 px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-[#f9edb0] uppercase shadow-[0_0_28px_rgba(212,175,55,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
-                    >
-                      <span className="relative flex h-2 w-2">
-                        {!reduced && (
-                          <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-[#d4af37]" />
-                        )}
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#d4af37]" />
-                      </span>
-                      {bday.preview ? (
-                        <>
-                          <Cake className="h-3.5 w-3.5" aria-hidden="true" />
-                          {c.bdayPreview}
-                        </>
-                      ) : (
-                        <>
-                          <PartyPopper className="h-3.5 w-3.5" aria-hidden="true" />
-                          {c.bdayToday}
-                        </>
-                      )}
-                    </a>
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-[#e9ce7a] uppercase">
-                      {c.vaultToday}
-                    </span>
-                  </span>
-                );
-              }
-              return (
-                <span className="flex flex-col items-center gap-1.5">
-                  <a
-                    href="/birthday"
-                    title={c.bdayTitleLocked}
-                    className="group flex items-center gap-2 rounded-full border border-[#d4af37]/35 bg-surface/70 px-4 py-2 font-mono text-[11px] tracking-[0.18em] text-muted uppercase transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/60 hover:text-[#e9ce7a] hover:shadow-[0_0_28px_rgba(212,175,55,0.35)]"
-                  >
-                    <Lock className="h-3.5 w-3.5 text-[#d4af37]" aria-hidden="true" />
-                    <span className="font-bold text-[#e9ce7a]">{c.vaultName}</span>
-                    <span aria-hidden="true" className="text-faint">
-                      ·
-                    </span>
-                    <span suppressHydrationWarning className="tabular-nums">
-                      {timer}
-                    </span>
-                  </a>
-                  <span className="flex flex-col items-center gap-0.5 text-center">
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-faint uppercase">
-                      {c.vaultOpens} · {bday.days} {bday.days === 1 ? c.vaultDayLeft : c.vaultDaysLeft}
-                    </span>
-                    <span dir="rtl" lang="ar" className="text-[11px] leading-relaxed text-[#e9ce7a]/90">
-                      {c.vaultAr} · فاضل {bday.days} {bday.days === 1 ? "يوم" : "يوم"} ويفتح
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="mt-1 h-[3px] w-36 overflow-hidden rounded-full bg-white/10"
-                    >
-                      <span
-                        className="block h-full rounded-full bg-gradient-to-r from-[#d4af37] via-[#f9edb0] to-[#ff3d00]"
-                        style={{ width: `${yearProgress.toFixed(1)}%` }}
-                      />
-                    </span>
-                  </span>
-                </span>
-              );
-            })()}
-           <div className="flex items-center gap-2">
-            {showInstallBtn && (
-              <button
-                type="button"
-                onClick={() => {
-                  const event = window.__budiInstallPrompt;
-                  if (event) {
-                    void event.prompt?.();
-                    window.__budiInstallPrompt = undefined;
-                  }
-                  setShowInstallBtn(false);
-                }}
-                aria-label="Install app"
-                title="Install BUDI app"
-                className="flex h-10 cursor-pointer items-center gap-1.5 border border-accent/40 bg-accent/10 px-3 font-mono text-[11px] text-accent transition-all duration-200 hover:border-accent hover:bg-accent hover:text-accent-foreground"
-              >
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                Install app
-              </button>
-            )}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={openPalette}
@@ -860,34 +581,7 @@ export default function Footer({
           </div>
         </div>
 
-        {/* ——— Verse ribbon — the very bottom ——— */}
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mt-10 flex flex-col items-center gap-2.5 border-t border-border pt-8 text-center"
-        >
-          <span aria-hidden="true" className="flex items-center gap-2.5">
-            <span className="h-px w-12 bg-gradient-to-r from-transparent to-accent/70 sm:w-20" />
-            <span className="h-1.5 w-1.5 rotate-45 bg-accent shadow-[0_0_10px_rgba(255,61,0,0.8)]" />
-            <span className="h-px w-12 bg-gradient-to-l from-transparent to-accent/70 sm:w-20" />
-          </span>
-          <p className="font-display text-base font-bold text-foreground">
-            &ldquo;{c.wisdom}&rdquo;
-          </p>
-          <p dir="rtl" lang="ar" className="rounded-xl border border-accent/20 bg-accent/[0.04] px-6 py-3 text-lg leading-loose text-accent shadow-[0_0_36px_rgba(255,61,0,0.12)] transition-all duration-500 hover:shadow-[0_0_44px_rgba(255,61,0,0.3)] sm:text-xl">
-            {verse.ar}
-          </p>
-          <p className="max-w-md text-xs leading-relaxed text-muted">
-            &ldquo;{lang === "fr" ? verse.fr : verse.en}&rdquo; —{" "}
-            <span className="font-mono text-[10px] tracking-[0.2em] uppercase">{verse.ref}</span>
-          </p>
-        </motion.div>
-
-
-
-        {/* ——— Finale: verse → BUDI → slim tech strip, organized ——— */}
+        {/* ——— Finale: BUDI → slim tech strip, organized ——— */}
         {/* BUDI finale — giant gold outline like the 07 ghost numeral, now
             framed: breathing corner brackets, a liquid-gold sweep and a halo
             that breathes behind it. Decorative only (aria-hidden). */}

@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 
 /**
- * Scroll-spy for the navbar. Observes whichever section anchors
- * actually exist in the DOM (future sections mount later without
- * breaking the current nav), falling back to "home" at the top.
+ * Scroll-spy for the navbar. Position-based, not intersection-based:
+ * deterministic even when several sections overlap the viewport — the
+ * active item is the section occupying the most of the readable viewport.
+ * This keeps the highlight aligned with what the visitor actually sees
+ * while moving between the museum's tall exhibition rooms. Reaching the page bottom always
+ * lands on the final section (contact), and the very top is "home".
+ * rAF-throttled, passive listeners — no scroll jank.
  *
  * Pure in-memory spy — nothing is persisted. Every visit starts fresh
  * at the top like the first time.
@@ -22,19 +26,40 @@ export function useScrollSpy(ids: string[]): string {
 
     if (targets.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActive(entry.target.id);
-          }
-        }
-      },
-      { rootMargin: "-40% 0px -55% 0px", threshold: 0 },
-    );
+    let raf = 0;
+    const compute = (): void => {
+      const top = Math.min(90, window.innerHeight * 0.12);
+      const bottom = window.innerHeight * 0.88;
+      let current = list[0];
+      let bestVisible = 0;
+      for (const el of targets) {
+        const rect = el.getBoundingClientRect();
+        const visible = Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top));
+        if (visible > bestVisible) { bestVisible = visible; current = el.id; }
+        else if (bestVisible === 0 && rect.top <= top) current = el.id;
+      }
+      // Bottom of page — always pin the last section, whatever the math says.
+      const doc = document.documentElement;
+      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 8) {
+        current = targets[targets.length - 1].id;
+      }
+      setActive((prev) => (prev === current ? prev : current));
+    };
+    const onScroll = (): void => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(compute);
+    };
 
-    targets.forEach((target) => observer.observe(target));
-    return (): void => observer.disconnect();
+    compute();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("hashchange", onScroll);
+    return (): void => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("hashchange", onScroll);
+    };
   }, [key]);
 
   return active;

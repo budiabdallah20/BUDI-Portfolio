@@ -176,7 +176,7 @@ const TABLES: Record<string, Record<string, Field>> = {
   },
   skills: {
     name: { k: "str", max: 40, empty: false },
-    cat: { k: "enum", values: ["frontend", "backend", "tools"] },
+    cat: { k: "enum", values: ["frontend", "backend", "tools", "life"] },
     level: { k: "int", min: 10, max: 100 },
     proof: { k: "enum", values: ["daily", "portfolio", "client", "learning"] },
     logo: { k: "image" },
@@ -219,7 +219,7 @@ const TABLES: Record<string, Record<string, Field>> = {
     clientName: S(80),
     clientLogo: { k: "image" },
     teamSize: { k: "int", min: 1, max: 50 },
-    tags: OPT_ARR(12, 30),
+    tags: OPT_ARR(14, 30),
     featured: { k: "bool" },
     progress: { k: "int", min: 0, max: 100 },
     version: S(20),

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import { ArrowUpRight, Sparkles, X } from "lucide-react";
-import Logo from "@/components/Logo";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { profile } from "@/data/portfolio";
@@ -140,9 +140,7 @@ export default function WelcomeToast(): React.JSX.Element {
             </button>
 
             <div className="flex items-start gap-3 p-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-accent/30 bg-accent/[0.08] shadow-[0_0_18px_rgba(215,253,68,0.25)]">
-                <Logo className="h-7 w-7" />
-              </span>
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/40 bg-[#101114] shadow-[0_0_20px_rgba(215,253,68,0.15)]"><Image src="/brand/budi-icon-light.svg" width={26} height={36} alt="BUDI" className="h-8 w-auto" /></span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.22em] text-accent uppercase">
                   <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />

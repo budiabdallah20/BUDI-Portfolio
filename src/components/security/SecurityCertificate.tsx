@@ -92,7 +92,7 @@ const COPY = {
       path: "Path traversal — files isolated to project",
       rate: "Rate limiting per IP",
       timeouts: "Time limits on every outbound call",
-      data: "No sensitive data stored",
+      data: "Visitor data minimized",
       cert: "Trusted local TLS certificate",
     } as Record<string, string>,
     email: {
@@ -114,9 +114,9 @@ const COPY = {
       why: "With SPF + DMARC (p=reject) spoofed mail is refused before it reaches anyone's inbox.",
     },
     footnoteLocal:
-      "Measured on this running server just now. Local mode shows the self-signed CA trusted on this machine; the deployed site shows platform-managed TLS (auto-renew). Only anonymous counters are stored — never passwords, tokens or payment data.",
+      "Measured on this running server just now. Local mode shows the local TLS certificate; the deployed site shows platform-managed TLS. Visitor counters are anonymous. Owner push keys are stored in protected server-side tables.",
     footnoteEdge:
-      "TLS terminates at the hosting edge (certificate auto-renewed); the app layer above still enforces HSTS, CSP and every guard. Only anonymous counters are stored — never passwords, tokens or payment data.",
+      "TLS terminates at the hosting edge; the app layer enforces HSTS, CSP and route guards. Visitor counters are anonymous. Owner push keys are stored in protected server-side tables.",
   },
   fr: {
     back: "Retour au portfolio",
@@ -144,7 +144,7 @@ const COPY = {
       path: "Path traversal — fichiers isolés au projet",
       rate: "Limitation du débit par IP",
       timeouts: "Délais sur tous les appels sortants",
-      data: "Aucune donnée sensible stockée",
+      data: "Données visiteurs minimisées",
       cert: "Certificat TLS local de confiance",
     } as Record<string, string>,
     email: {
@@ -166,9 +166,9 @@ const COPY = {
       why: "Avec SPF + DMARC (p=reject), un e-mail usurpé est refusé avant d'atteindre la moindre boîte.",
     },
     footnoteLocal:
-      "Mesuré à l'instant sur ce serveur. En local, le certificat auto-signé est approuvé sur cette machine ; le site déployé utilise le TLS de la plateforme (renouvelé automatiquement). Seuls des compteurs anonymes sont stockés — jamais de mots de passe, jetons ou données de paiement.",
+      "Mesuré à l'instant sur ce serveur. Le mode local utilise un certificat TLS local ; le site déployé utilise celui de la plateforme. Les compteurs visiteurs sont anonymes. Les clés push du propriétaire restent dans des tables protégées côté serveur.",
     footnoteEdge:
-      "Le TLS est terminé à la périphérie de l'hébergeur (certificat renouvelé automatiquement) ; la couche applicative impose toujours HSTS, CSP et toutes les protections. Seuls des compteurs anonymes sont stockés — jamais de mots de passe, jetons ou données de paiement.",
+      "Le TLS est terminé à la périphérie de l'hébergeur ; l'application impose HSTS, CSP et les contrôles d'accès. Les compteurs visiteurs sont anonymes. Les clés push du propriétaire restent dans des tables protégées côté serveur.",
   },
 } as const;
 
@@ -286,7 +286,7 @@ function buildChecks(status: StatusResponse, h: Headers, L: Copy): CheckView[] {
     {
       id: "data",
       pass: status.data.sensitiveUserData === false,
-      value: "Supabase Postgres · public reads via anon + RLS · writes via service_role only — no passwords, tokens or payment data",
+      value: "No visitor accounts or payment records · owner push keys kept in server-only, RLS-protected tables",
       source: "policy",
     },
     {

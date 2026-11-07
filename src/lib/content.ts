@@ -1,3 +1,5 @@
+import { previewRows } from "./preview-content";
+import { museumServiceAllowed, museumSkillAllowed } from "./museum-content";
 import type {
   AdminCert,
   AdminProject,
@@ -48,22 +50,14 @@ export async function fetchContent(): Promise<RemoteContent | null> {
     ) {
       return null;
     }
-    if (
-      (services.data?.length ?? 0) === 0 &&
-      (skills.data?.length ?? 0) === 0 &&
-      (projects.data?.length ?? 0) === 0 &&
-      (certs.data?.length ?? 0) === 0
-    ) {
-      return null;
-    }
     const onlyLive = <T extends { visible?: boolean }>(rows: T[]): T[] =>
       rows.filter((r) => r.visible !== false);
     return {
-      services: onlyLive((services.data ?? []) as AdminService[]),
-      skills: onlyLive((skills.data ?? []) as AdminSkill[]),
-      projects: onlyLive((projects.data ?? []) as AdminProject[]),
-      certs: onlyLive((certs.data ?? []) as AdminCert[]),
-      settings: (settings.data ?? null) as AdminSettings | null,
+      services: onlyLive(await previewRows("services", (services.data ?? []) as AdminService[])).filter(museumServiceAllowed),
+      skills: onlyLive(await previewRows("skills", (skills.data ?? []) as AdminSkill[])).filter(museumSkillAllowed),
+      projects: onlyLive(await previewRows("projects", (projects.data ?? []) as AdminProject[])),
+      certs: onlyLive(await previewRows("certs", (certs.data ?? []) as AdminCert[])),
+      settings: (await previewRows("settings", settings.data ? [settings.data as AdminSettings] : []))[0] ?? null,
       visitsTotal: (visits.data ?? []).reduce((n, r) => n + (r.count ?? 0), 0),
       likes: Object.fromEntries((likes.data ?? []).map((r) => [r.id, r.count ?? 0])),
     };

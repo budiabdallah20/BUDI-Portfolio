@@ -1,3 +1,4 @@
+import { previewMode, previewWrite } from "@/lib/preview-content";
 import { NextResponse } from "next/server";
 import { checkAdmin } from "../_guard";
 import { purgeContentCache } from "../_revalidate";
@@ -63,6 +64,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   try {
+    if (previewMode) { await previewWrite(table, res.clean as Record<string, unknown> & { id: string }); purgeContentCache(); return NextResponse.json({ok:true,revalidated:true,preview:true,at:Date.now()}); }
     // Resilient: unknown (not-yet-migrated) columns are dropped + retried
     // instead of 500ing the whole save — see _db.ts.
     const saved = await upsertResilient(table, res.clean);

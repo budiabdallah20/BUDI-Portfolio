@@ -28,7 +28,7 @@ export default function AdminLoadingScreen({ onComplete }: AdminLoadingScreenPro
   return (
     <CinematicLoader
       word="Dashboard"
-      subtitle="BUDI Portfolio Console"
+      subtitle="BUDI / CONTENT STUDIO"
       label="Loading BUDI dashboard"
       trackLabel="Loading dashboard"
       bootLines={BOOT_LINES}

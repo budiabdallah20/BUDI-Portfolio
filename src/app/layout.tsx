@@ -71,11 +71,11 @@ export const metadata: Metadata = {
     images: ["/images/general/hero.jpg"],
   },
   alternates: {
-    canonical: siteConfig.url,
+    canonical: `${siteConfig.url}/en`,
     languages: {
-      en: siteConfig.url,
-      fr: `${siteConfig.url}?lang=fr`,
-      ar: `${siteConfig.url}?lang=ar`,
+      en: `${siteConfig.url}/en`,
+      fr: `${siteConfig.url}/fr`,
+      "x-default": `${siteConfig.url}/en`,
     },
   },
   verification: {
@@ -144,8 +144,8 @@ const JSON_LD = {
   ],
 };
 
-/** Runs before first paint — no flash, no hydration mismatch. ASCII only. */
-const BOOT_SCRIPT = `(function(){try{var d=document.documentElement;var l=null;try{l=localStorage.getItem('budi-lang')}catch(e){}if(l!=='en'&&l!=='fr'){try{var m=document.cookie.match(/(?:^|; )budi-lang=(en|fr)/);if(m){l=m[1]}}catch(e){}}if(l!=='en'&&l!=='fr'){l='en'}d.setAttribute('lang',l)}catch(e){}})();`;
+/** The path is the source of truth: /en or /fr prefix owns the language. */
+const BOOT_SCRIPT = `(function(){try{var d=document.documentElement;var l=null;var m=location.pathname.match(/^\\/(en|fr)(\\/|$)/);if(m){l=m[1]}if(l!=='en'&&l!=='fr'){try{l=localStorage.getItem('budi-lang')}catch(e){}}if(l!=='en'&&l!=='fr'){try{var c=document.cookie.match(/(?:^|; )budi-lang=(en|fr)/);if(c){l=c[1]}}catch(e){}}if(l!=='en'&&l!=='fr'){l='en'}d.setAttribute('lang',l)}catch(e){}})();`;
 
 /**
  * LAYER 4 — loader failsafe, zero framework dependency. If Next.js JS itself

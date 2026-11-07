@@ -102,7 +102,7 @@ export const projectSchema = z.object({
   clientName: z.string().trim().max(80).default(""),
   clientLogo: z.string().trim().max(1500000).default(""),
   teamSize: z.coerce.number().int().min(1).max(50).default(1),
-  tags: strArr(12, 30, "tags"),
+  tags: strArr(14, 30, "tags"),
   featured: z.boolean().default(false),
   progress: z.coerce.number().int().min(0).max(100).default(0),
   version: z.string().trim().max(20).default(""),

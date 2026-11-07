@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import LoadingScreen from "@/components/LoadingScreen";
 import WelcomeToast from "@/components/home/WelcomeToast";
-import InstallBanner from "@/components/home/InstallBanner";
+import SecurityQuickLink from "@/components/security/SecurityQuickLink";
 import ConsoleWelcome from "@/components/home/ConsoleWelcome";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/home/Hero";
@@ -15,10 +15,7 @@ import About from "@/components/sections/About";
 import AboutManifesto from "@/components/sections/AboutManifesto";
 import ScrollPlay from "@/components/sections/ScrollPlay";
 import { useLanguage } from "@/components/providers/LanguageProvider";
-import Services from "@/components/sections/Services";
-import Projects from "@/components/sections/Projects";
-import Skills from "@/components/sections/Skills";
-import Certificates from "@/components/sections/Certificates";
+import Museum from "@/components/museum/Museum";
 import Contact from "@/components/sections/Contact";
 import Footer from "@/components/layout/Footer";
 
@@ -51,7 +48,6 @@ function shouldSkipIntro(): boolean {
 export default function HomeShell({ content }: { content: RemoteContent | null }): React.JSX.Element {
   const showLoader = content?.settings?.showLoader !== false;
   const maintenance = content?.settings?.maintenance === true;
-  const likesEnabled = content?.settings?.likesEnabled !== false;
   const contactEmail = content?.settings?.contactEmail || undefined;
   /** Dashboard-owned badges — one switch drives navbar, footer, about, contact. */
   const availability = availabilityFromSettings(content?.settings ?? null);
@@ -130,7 +126,7 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
     // No cloud content ⇒ the database is unconfigured/unreachable, so the
     // counter route can only answer 503. Skip the ping entirely instead of
     // painting a red failed request in every visitor's console.
-    if (!dbReadyRef.current) return;
+    if (!dbReadyRef.current || ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)) return;
     try {
       if (sessionStorage.getItem("budi-visit-sent")) return;
       sessionStorage.setItem("budi-visit-sent", "1");
@@ -209,16 +205,13 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
       )}
       <Navbar visible={!loading} availability={availability} />
       {!loading && <WelcomeToast />}
-      {!loading && <InstallBanner />}
+      {!loading && <SecurityQuickLink />}
       <main id="content">
         <Hero start={!loading} image={content?.settings?.heroImage || undefined} />
         <About availability={availability} image={content?.settings?.aboutImage || undefined} />
         <AboutManifesto />
         <ScrollPlay />
-        <Services remote={content?.services} />
-        <Projects remote={content?.projects} remoteLikes={content?.likes} likesEnabled={likesEnabled} />
-        <Skills remote={content?.skills} projects={content?.projects} />
-        <Certificates remote={content?.certs} />
+        <Museum content={content} />
         <Contact email={contactEmail} availability={availability} payments={payments} siteVerified={siteVerified} verificationBadges={verificationBadges} />
       </main>
       <Footer email={contactEmail} availability={availability} />

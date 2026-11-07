@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="budi-icon-title">
+  <title id="budi-icon-title">Budi Dental</title>
+  <rect width="64" height="64" rx="15" fill="#0A0A0A" />
+  <g fill="#FFFFFF" fill-rule="evenodd">
+    <g transform="translate(18 12) scale(0.1666667) translate(-120 -100)">
+      <path d="M120 100H228C262 100 282 120 282 156C282 184 270 200 252 206C274 212 288 232 288 264C288 306 262 340 226 340H120V100ZM172 150H226C244 150 252 160 252 180C252 198 244 208 226 208H172V150ZM172 242H236C258 242 268 252 268 270C268 290 258 300 236 300H172V242Z" />
+    </g>
+  </g>
+</svg>

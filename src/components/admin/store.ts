@@ -15,7 +15,7 @@ import { SKILLS as SITE_SKILLS } from "@/components/sections/Skills";
 export interface AdminSkill {
   id: string;
   name: string;
-  cat: "frontend" | "backend" | "tools";
+  cat: "frontend" | "backend" | "tools" | "life";
   level: number;
   proof: "daily" | "portfolio" | "client" | "learning";
   logo: string;

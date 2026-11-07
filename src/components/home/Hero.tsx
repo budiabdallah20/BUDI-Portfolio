@@ -185,7 +185,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
       id="home"
       aria-labelledby="hero-heading"
       onMouseMove={onSpotMove}
-      className="relative flex min-h-svh items-center overflow-clip"
+      className="hero-museum relative flex min-h-svh items-center overflow-clip"
     >
       {/* Backdrop — dark color-graded wash + grid + drifting lights */}
       <div className="hero-wash absolute inset-0" aria-hidden="true" />

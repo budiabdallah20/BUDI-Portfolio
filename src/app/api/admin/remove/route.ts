@@ -1,3 +1,4 @@
+import { previewMode, previewWrite } from "@/lib/preview-content";
 import { NextResponse } from "next/server";
 import { checkAdmin } from "../_guard";
 import { purgeContentCache } from "../_revalidate";
@@ -50,6 +51,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   try {
+    if (previewMode) { await previewWrite(table, { id, __deleted: true }); purgeContentCache(); return NextResponse.json({ok:true,revalidated:true,preview:true,at:Date.now()}); }
     const sb = supabaseService();
     const { error } = await sb.from(table).delete().eq("id", id);
     if (error) {

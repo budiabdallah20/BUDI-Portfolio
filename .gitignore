@@ -50,6 +50,7 @@ blob-report/
 # AI agent scratch (never push local agent workspaces)
 .claude/
 .agent/
+work/
 
 # supabase local dev artifacts (cloud schema in supabase/*.sql stays tracked)
 supabase/.branches/

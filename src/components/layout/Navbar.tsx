@@ -8,10 +8,10 @@ import { workDeadlineSuffix, workLabel, type SiteAvailability } from "@/componen
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
 import LangFlag from "./LangFlag";
+import { dictionaries, type Lang } from "@/i18n/dictionaries";
 import Logo from "@/components/Logo";
 import UtilityBar from "./UtilityBar";
 
@@ -19,6 +19,7 @@ interface NavbarProps {
   visible: boolean;
   availability?: SiteAvailability;
 }
+const LANGUAGE_OPTIONS = Object.keys(dictionaries) as Lang[];
 
 /** Per-letter rollover — the reference navbar's signature hover. */
 function RollText({ label, rollClassName }: { label: string; rollClassName?: string }): React.JSX.Element {
@@ -45,22 +46,48 @@ function RollText({ label, rollClassName }: { label: string; rollClassName?: str
 }
 
 function LangButton({ onToggle }: { onToggle?: () => void }): React.JSX.Element {
-  const { lang, t, toggle } = useLanguage();
-  const actionLabel = lang === "en" ? t.controls.switchToFrench : t.controls.switchToEnglish;
+  const { lang, switchLanguage } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionsRef = useRef<Array<HTMLButtonElement | null>>([]);
+  const languages = LANGUAGE_OPTIONS;
+  const names: Record<Lang, string> = { en: "English", fr: "Français" };
+  useEffect(() => {
+    if (!open) return;
+    optionsRef.current[languages.indexOf(lang)]?.focus();
+    const outside = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [open, lang, languages]);
+  const onMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const index = optionsRef.current.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === "ArrowDown" ? (index + 1) % languages.length : event.key === "ArrowUp" ? (index - 1 + languages.length) % languages.length : event.key === "Home" ? 0 : event.key === "End" ? languages.length - 1 : -1;
+    if (next >= 0) { event.preventDefault(); optionsRef.current[next]?.focus(); }
+  };
   return (
+    <div ref={rootRef} className="relative">
     <button
+      ref={triggerRef}
       type="button"
       onClick={() => {
-        toggle();
-        onToggle?.();
+        setOpen(value => !value);
       }}
-      aria-label={actionLabel}
-      title={actionLabel}
+      aria-label={lang === "fr" ? "Choisir la langue" : "Choose language"}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      title={lang === "fr" ? "Choisir la langue" : "Choose language"}
       className="flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 font-mono text-[11px] tracking-[0.12em] text-muted uppercase transition-colors duration-200 hover:text-foreground"
     >
       <LangFlag lang={lang} />
       <span aria-hidden="true">{lang.toUpperCase()}</span>
     </button>
+    {open && <div role="menu" aria-label={lang === "fr" ? "Langues" : "Languages"} onKeyDown={onMenuKeyDown} className="absolute end-0 top-full z-[90] mt-3 min-w-44 rounded-2xl border border-sky-300/25 bg-[#121b29]/95 p-1.5 shadow-[0_20px_55px_#000a,0_0_25px_#75b8e32b] backdrop-blur-xl">
+      {languages.map((option, index) => <button key={option} ref={element => { optionsRef.current[index] = element; }} type="button" role="menuitemradio" aria-checked={lang === option} onClick={() => { setOpen(false); onToggle?.(); if (option !== lang) switchLanguage(option); else triggerRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm text-foreground hover:bg-sky-300/10 focus-visible:bg-sky-300/15 focus-visible:outline-none"><LangFlag lang={option}/><span className="flex-1">{names[option]}</span>{lang === option && <span className="text-sky-300" aria-hidden="true">✓</span>}</button>)}
+    </div>}
+    </div>
   );
 }
 
@@ -107,7 +134,6 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   const toggleRef = useRef<HTMLButtonElement>(null);
   const { t, lang } = useLanguage();
   const active = useScrollSpy(navLinks.map((l) => l.id));
-  const reduced = useReducedMotion();
   /** Dashboard-owned availability — every navbar badge flips with one switch. */
   const avail: SiteAvailability = availability ?? { status: "available", note: "", noteFr: "", until: "" };
   const availLabel =
@@ -119,24 +145,49 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   const topLabel = lang === "fr" ? "Retour en haut" : "Back to top";
 
   useEffect(() => {
+    let raf = 0;
+    let scheduled = false;
     const onScroll = (): void => {
-      const y = window.scrollY;
-      setScrolled(y > 24);
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? Math.min(1, Math.max(0, y / max)) : 0);
-      // Smart hide — glides away scrolling down, returns on the way up.
-      // State flips only on direction change, never every frame.
-      const prev = lastY.current;
-      if (y > prev + 6 && y > 180 && !open) setHidden(true);
-      else if (y < prev - 6 || y < 180) setHidden(false);
-      lastY.current = y;
+      if (scheduled) return;
+      scheduled = true;
+      raf = window.requestAnimationFrame(() => {
+        scheduled = false;
+        const y = window.scrollY;
+        setScrolled(y > 24);
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        setProgress(max > 0 ? Math.min(1, Math.max(0, y / max)) : 0);
+        // Smart hide — glides away scrolling down, returns on the way up.
+        // State flips only on direction change, never every frame.
+        const prev = lastY.current;
+        if (y > prev + 6 && y > 180 && !open) setHidden(true);
+        else if (y < prev - 6 || y < 180) setHidden(false);
+        lastY.current = y;
+      });
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return (): void => {
+      window.cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [open ]);
+  }, [open]);
+
+  // The address bar always tells the truth about where you stand:
+  // /{lang}#{section} — updated in place (no history spam). A deep link
+  // that the page hasn't honored yet is never stomped while the page
+  // sits untouched at the top.
+  useEffect(() => {
+    try {
+      const current = window.location.hash.replace("#", "");
+      if (current === active) return;
+      const untouchedDeepLink =
+        navLinks.some((l) => l.id === current) && window.scrollY < 8;
+      if (untouchedDeepLink) return;
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#${active}`);
+    } catch {
+      /* history unavailable — the spy still works, the URL just stays put */
+    }
+  }, [active]);
 
   // Global ⌘K / Ctrl+K toggles the command palette.
   useEffect(() => {
@@ -182,32 +233,13 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
           <a
             href="#home"
             onClick={() => setOpen(false)}
-            className={cn(
-              "group relative flex items-center rounded-xl transition-all duration-300",
-              solid && "drop-shadow-[0_0_14px_rgba(212,175,55,0.4)]",
-            )}
+            className="group relative flex items-center rounded-xl transition-transform duration-300 hover:scale-[1.02]"
             aria-label="BUDI — back to home"
           >
-            <span className={cn("relative inline-flex", !reduced && "logo-magic-glow")}>
-              <span
-                className={cn(
-                  "inline-flex transition-transform duration-300 group-hover:scale-[1.02]",
-                  !reduced && "animate-logo-in",
-                )}
-              >
-                <span className="inline-flex">
-                  <Logo variant="full" />
-                </span>
-              </span>
-              {!reduced && (
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
-                >
-                  <span className="logo-sheen absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-                </span>
-              )}
-            </span>
+            <Logo
+              variant="full"
+              className="h-9 w-auto rounded-xl transition-transform duration-300 group-hover:scale-[1.03] sm:h-10"
+            />
           </a>
 
           <ul className="hidden items-center gap-0.5 lg:flex">
@@ -219,13 +251,20 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
                     href={link.href}
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
-                      "group relative block rounded-full px-3.5 py-2 text-[15px] font-medium transition-all duration-200",
-                      isActive
-                        ? "bg-accent/10 text-foreground shadow-[0_0_20px_rgba(255,61,0,0.28)]"
-                        : "text-muted hover:bg-white/[0.04] hover:text-foreground",
+                      "group relative block rounded-full px-3.5 py-2 text-[15px] font-medium transition-colors duration-200",
+                      isActive ? "text-foreground" : "text-muted hover:text-foreground",
                     )}
                   >
-                    <RollText label={t.nav[link.id]} rollClassName="text-accent" />
+                    {isActive && (
+                      <motion.span
+                        layoutId="nav-active-pill"
+                        transition={{ type: "spring", bounce: 0.18, duration: 0.55 }}
+                        className="absolute inset-0 rounded-full border border-accent/25 bg-accent/10 shadow-[0_0_20px_rgba(255,61,0,0.28)]"
+                      />
+                    )}
+                    <span className="relative">
+                      <RollText label={t.nav[link.id]} rollClassName="text-accent" />
+                    </span>
                     <span
                       aria-hidden="true"
                       className={cn(
@@ -233,17 +272,12 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
                         isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
                       )}
                     />
-                    {isActive && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute top-1/2 left-1 h-1 w-1 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_8px_rgba(255,61,0,0.9)]"
-                      />
-                    )}
                   </a>
                 </li>
               );
             })}
           </ul>
+
 
           <div className="hidden items-center gap-2.5 lg:flex">
             {/* Live availability — the navbar breathes with the site */}

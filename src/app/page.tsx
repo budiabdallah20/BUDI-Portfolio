@@ -1,25 +1,36 @@
 import type { Metadata } from "next";
-import HomeShell from "@/components/home/HomeShell";
-import { siteConfig } from "@/config/site";
-import { fetchContent } from "@/lib/content";
-
-/**
- * ALWAYS fresh — zero stale cache, by owner demand: every dashboard edit
- * (skill hide, badge, hero/about image, anything) must appear on the live
- * site within seconds, no refresh. So this page renders on every request
- * straight from Supabase instead of serving ISR snapshots.
- * Cost: one server render + a few DB reads per visit — negligible at
- * portfolio traffic, and crawlers still get full SSR HTML for SEO.
- */
-export const dynamic = "force-dynamic";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: siteConfig.title,
-  description: siteConfig.description,
-  alternates: { canonical: siteConfig.url },
+  title: "BUDI — Mohamed Abdallah",
+  robots: { index: false, follow: false },
 };
 
-export default async function HomePage(): Promise<React.JSX.Element> {
-  const content = await fetchContent();
-  return <HomeShell content={content} />;
+/**
+ * The root opens the localized home — the URL carries the language:
+ * /en or /fr (like holden.io style locales). Priority:
+ *  1. legacy ?lang=fr links → /fr (permanent habit fix)
+ *  2. stored budi-lang cookie → that language
+ *  3. English (default)
+ */
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string | string[] }>;
+}): Promise<never> {
+  const { lang: legacyParam } = await searchParams;
+  const legacy = Array.isArray(legacyParam) ? legacyParam[0] : legacyParam;
+  if (legacy === "en" || legacy === "fr") {
+    redirect(`/${legacy}`);
+  }
+  let preferred = "en";
+  try {
+    const store = await cookies();
+    const saved = store.get("budi-lang")?.value;
+    if (saved === "en" || saved === "fr") preferred = saved;
+  } catch {
+    /* no cookie store — default English */
+  }
+  redirect(`/${preferred}`);
 }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="128" viewBox="0 0 216 64" fill="none" role="img" aria-label="RAQIB">
+  <g stroke="#1C74BC" stroke-width="8" stroke-linecap="round" fill="none" transform="rotate(-12 32 32)">
+    <path d="M39.65 21.36A16 16 0 1 1 8.68 25.43"/>
+    <path d="M24.35 42.64A16 16 0 1 1 55.32 38.57"/>
+  </g>
+  <g transform="translate(60 10)">
+    <text x="0" y="40" textLength="150" lengthAdjust="spacingAndGlyphs" font-family="Georgia,'Times New Roman',Times,serif" font-weight="700" font-size="42" fill="#1C74BC">RAQIB</text>
+  </g>
+</svg>

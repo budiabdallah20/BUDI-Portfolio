@@ -61,7 +61,7 @@ export default function WorkspaceWelcome({
             </span>
           ) : (
             <span className="scale-150">
-              <Logo />
+              <Logo tile className="h-20 w-20 rounded-2xl" />
             </span>
           )}
         </span>

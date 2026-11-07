@@ -2,49 +2,32 @@
 
 import { useLanguage } from "@/components/providers/LanguageProvider";
 
-/** Route-level fallback — official black × gold identity, giant drawn B. */
+/** Route-level fallback — light paper curtain, black mark (new identity). */
 export default function RouteLoading(): React.JSX.Element {
   const { lang } = useLanguage();
   return (
     <div
       role="status"
       aria-label={lang === "fr" ? "Chargement de la page" : "Loading page"}
-      className="flex min-h-svh items-center justify-center overflow-hidden bg-[#050505]"
+      className="flex min-h-svh items-center justify-center overflow-hidden bg-[#faf9f6]"
     >
-      <div className="flex flex-col items-center text-center">
-        <svg
-          width="192"
-          height="192"
-          viewBox="0 0 200 200"
-          aria-hidden="true"
-          className="block h-44 w-44 sm:h-48 sm:w-48"
-          style={{ filter: "drop-shadow(0 0 26px rgba(212,175,55,0.35))" }}
-        >
-          <circle
-            cx="100"
-            cy="100"
-            r="90"
-            fill="none"
-            stroke="rgba(245,238,214,0.14)"
-            strokeWidth="1"
-            strokeDasharray="2 8"
-          />
-          <path
-            d="M68 52 H102 C120 52 128 64 128 78 C128 90 120 98 108 100 C122 102 132 112 132 128 C132 146 120 156 100 156 H68 Z"
-            fill="transparent"
-            stroke="#f5e6b8"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            pathLength={1}
-            className="load-luxe-b"
-          />
-        </svg>
-        <span
-          aria-hidden="true"
-          className="mt-5 block h-px w-28 bg-gradient-to-r from-transparent via-[#d4af37]/80 to-transparent"
-        />
-      </div>
+      <svg
+        width="132"
+        height="132"
+        viewBox="0 0 240 240"
+        aria-hidden="true"
+        className="block h-28 w-28 animate-pulse sm:h-32 sm:w-32"
+      >
+        <g stroke="#0A0A0A" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <path d="M120 14 L214 69 L120 124 L26 69 Z" />
+          <path d="M26 69 L26 170 L120 225 L120 124" />
+          <path d="M214 69 L214 170 L120 225" />
+          <path d="M120 41.5 L167 69 L120 96.5 L73 69 Z" />
+          <path d="M73 96.5 L73 197.5" />
+          <path d="M167 96.5 L167 197.5" />
+          <path d="M26 119.5 L120 174.5 L214 119.5" />
+        </g>
+      </svg>
     </div>
   );
 }

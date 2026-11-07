@@ -22,7 +22,7 @@ interface PaletteItem {
 }
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps): React.JSX.Element {
-  const { t, lang, toggle } = useLanguage();
+  const { t, lang, switchLanguage } = useLanguage();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -47,8 +47,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
         hint: lang === "en" ? "FR" : "EN",
         icon: "lang" as const,
         run: (): void => {
-          toggle();
-          onClose();
+          switchLanguage(lang === "en" ? "fr" : "en");
         },
       },
       {
@@ -82,7 +81,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
         },
       },
     ];
-  }, [t, lang, toggle, onClose, copied]);
+  }, [t, lang, switchLanguage, onClose, copied]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

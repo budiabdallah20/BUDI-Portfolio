@@ -261,10 +261,10 @@ export default function Login({
 
   const filled = digits.filter((d) => d !== "").length;
   const pinPct = Math.round((filled / 4) * 100);
-  const accent = "#ff3d00";
+  const accent = "#dfbc70";
 
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0a0b] px-5 py-10">
+    <div className="admin-login relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0a0b] px-5 py-10">
       <AdminBackdrop />
       <a
         href="/"
@@ -278,7 +278,7 @@ export default function Login({
           <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-[#bef264]" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#bef264]" />
         </span>
-        Encrypted
+        Private workspace
       </p>
 
       <div key={shake} className={cn("relative z-10 w-full max-w-sm", shake > 0 && "animate-shake")}>
@@ -288,7 +288,7 @@ export default function Login({
             className="animate-spin-conic absolute inset-[-60%] m-auto h-[220%] w-[60%]"
             style={{
               background:
-                "conic-gradient(from 0deg, transparent 0%, #ff3d00 12%, #bef264 25%, transparent 38%, transparent 55%, #22d3ee 68%, #8b5cf6 80%, transparent 92%)",
+                "linear-gradient(130deg, #e5c58255, transparent 45%, #e5c58222)",
               filter: "blur(6px)",
               opacity: 0.85,
             }}
@@ -319,7 +319,7 @@ export default function Login({
               </span>
             </div>
             <div className="relative mt-4 flex justify-center">
-              <Logo />
+              <Logo variant="full" className="h-20 w-32 text-[#e5c582]" />
             </div>
             <h1 className="font-display relative mt-3 text-2xl font-bold text-[#f4f4ef]">
               Control Center Access

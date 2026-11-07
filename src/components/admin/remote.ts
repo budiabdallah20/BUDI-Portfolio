@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Dashboard → Supabase bridge. Reads are public (anon, via /api/content);
- * every write carries the admin secret verified server-side.
+ * Dashboard → Supabase bridge. Full reads and writes carry the admin secret;
+ * the public content endpoint remains limited to visible exhibits.
  * The secret lives in sessionStorage (this tab only, cleared on logout).
  */
 
@@ -48,7 +48,7 @@ const chains = new Map<string, Promise<unknown>>();
 function enqueue<T>(key: string, job: () => Promise<T>): Promise<T> {
   const prev = chains.get(key) ?? Promise.resolve();
   const next = prev.catch(() => undefined).then(job);
-  chains.set(key, next.catch(() => undefined));
+  chains.set(key, next);
   void next.catch(() => undefined).finally(() => {
     if (chains.get(key) === next) chains.delete(key);
   });
@@ -148,7 +148,7 @@ function isLocalHost(hostname: string): boolean {
 
 async function revalidateProd(): Promise<boolean> {
   try {
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined" || isLocalHost(window.location.hostname)) return false;
     let target: URL;
     try {
       target = new URL(PROD_ORIGIN, window.location.href);
@@ -245,7 +245,7 @@ export interface RemoteSnapshot {
 }
 
 export async function fetchSnapshot(): Promise<RemoteSnapshot> {
-  const res = await fetch("/api/content", { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+  const res = await fetch("/api/admin/snapshot", { headers: { "x-admin-secret": adminSecret() }, cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error("Content unreachable");
   return (await res.json()) as RemoteSnapshot;
 }

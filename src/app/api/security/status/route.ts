@@ -130,8 +130,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       store: "Supabase Postgres — public reads via anon + RLS, writes via service_role only",
       sensitiveUserData: false,
       notes: [
-        "No visitor accounts, passwords, tokens or payment data — nothing sensitive to breach.",
-        "Anonymous engagement counters only (visit counts, likes); voters are never identified.",
+        "No visitor accounts or payment records. Anonymous engagement counters store no voter identity.",
+        "Owner push-subscription endpoint and encryption keys are stored server-side in RLS-protected tables; they are sensitive and require admin access.",
         "Admin surface is a shared secret (timing-safe compare) behind per-IP lockout + audit log.",
       ],
     },

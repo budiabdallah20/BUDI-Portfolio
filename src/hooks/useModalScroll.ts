@@ -18,17 +18,28 @@ export function useModalScroll<T extends HTMLElement>(open: boolean): {
     if (!open) return;
     const el = ref.current;
     if (!el) return;
+    const previous = document.activeElement;
     try {
       el.focus({ preventScroll: true });
     } catch {
       /* older browsers */
     }
+    return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true }); };
   }, [open]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<T>) => {
       const el = ref.current;
       if (!el) return;
+      if (e.key === "Tab") {
+        const targets = Array.from(el.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]')).filter(n => n.getClientRects().length > 0);
+        const first = targets[0]; const last = targets[targets.length - 1];
+        if (!first) { e.preventDefault(); el.focus(); return; }
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === el)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || document.activeElement === el)) { e.preventDefault(); first.focus(); }
+        return;
+      }
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, button, a, [contenteditable="true"]')) return;
       const page = Math.max(el.clientHeight * 0.85, 120);
       switch (e.key) {
         case "ArrowDown":
@@ -49,19 +60,19 @@ export function useModalScroll<T extends HTMLElement>(open: boolean): {
           break;
         case "PageDown":
         case " ":
-          el.scrollBy({ top: page, behavior: "smooth" });
+          el.scrollBy({ top: page, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
           e.preventDefault();
           break;
         case "PageUp":
-          el.scrollBy({ top: -page, behavior: "smooth" });
+          el.scrollBy({ top: -page, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
           e.preventDefault();
           break;
         case "Home":
-          el.scrollTo({ top: 0, behavior: "smooth" });
+          el.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
           e.preventDefault();
           break;
         case "End":
-          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+          el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
           e.preventDefault();
           break;
       }

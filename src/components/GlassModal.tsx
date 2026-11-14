@@ -21,6 +21,7 @@ export default function GlassModal({
   label,
   accent = "#ff3d00",
   wide,
+  onPanelKeyDown,
   children,
 }: {
   open: boolean;
@@ -28,6 +29,7 @@ export default function GlassModal({
   label: string;
   accent?: string;
   wide?: boolean;
+  onPanelKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   children: React.ReactNode;
 }): React.JSX.Element {
   const reduced = useReducedMotion();
@@ -59,7 +61,7 @@ export default function GlassModal({
             onClick={(e) => e.stopPropagation()}
             ref={scroll.ref}
             tabIndex={-1}
-            onKeyDown={scroll.onKeyDown}
+            onKeyDown={event => { onPanelKeyDown?.(event); if (!event.defaultPrevented) scroll.onKeyDown(event); }}
             className={cn(
               // Reference recipe: rounded-3xl + border-white/10 + bg-black/40 + backdrop-blur-xl
               "group/modal relative max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-white/10 bg-black/40 shadow-[0_10px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl focus:outline-none",

@@ -173,7 +173,7 @@ export default function AboutManifesto(): React.JSX.Element {
     <section
       ref={rootRef}
       aria-label={t.sectionLabel}
-      className="relative overflow-clip border-t border-border"
+      className="museum-manifesto relative overflow-clip border-t border-border"
     >
       <div
         aria-hidden="true"
@@ -239,7 +239,7 @@ export default function AboutManifesto(): React.JSX.Element {
                 <span className="display block text-2xl font-bold tracking-tight text-foreground transition-transform duration-300 group-hover:translate-x-1 sm:text-4xl">
                   {row.title}
                 </span>
-                <span className="mt-1 block truncate text-sm text-muted sm:text-base">
+                <span className="mt-1 block text-sm text-muted sm:text-base">
                   {row.desc}
                 </span>
               </span>
@@ -262,7 +262,7 @@ export default function AboutManifesto(): React.JSX.Element {
             >
               <CountUp
                 end={stat.value}
-                className="display text-5xl font-bold text-accent tabular-nums"
+                className="master-stat display text-5xl font-bold text-accent tabular-nums"
               />
               <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
                 {stat.label}
@@ -304,7 +304,7 @@ export default function AboutManifesto(): React.JSX.Element {
               )}
               {/* Logos of the social channels */}
               {si === 2 && (
-                <span className="mt-2.5 flex max-w-full flex-wrap items-center justify-center gap-1.5">
+                <span className="social-gold-rail mt-2.5">
                   {socialLinks.map((s) => (
                     <a
                       key={s.label}
@@ -314,7 +314,7 @@ export default function AboutManifesto(): React.JSX.Element {
                       title={s.label}
                       aria-label={s.label}
                       className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/50"
-                      style={{ backgroundColor: s.badgeColor }}
+                      style={{ "--social-brand": s.badgeColor } as React.CSSProperties} data-social-vitrine=""
                     >
                       {s.image ? (
                         <Image src={s.image} alt="" width={14} height={14} loading="lazy" className="block h-3.5 w-3.5 object-contain brightness-0 invert" />

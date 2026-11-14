@@ -41,6 +41,16 @@ export default function WelcomeToast(): React.JSX.Element {
   const t = lang === "fr" ? COPY.fr : COPY.en;
   const dismiss = (): void => setVisible(false);
 
+  useEffect(() => {
+    // Welcome belongs to the entrance; never cover exhibits after navigation.
+    const leaveEntrance = () => {
+      if (window.scrollY > window.innerHeight * 0.5) setVisible(false);
+    };
+    leaveEntrance();
+    window.addEventListener("scroll", leaveEntrance, { passive: true });
+    return () => window.removeEventListener("scroll", leaveEntrance);
+  }, []);
+
   const clearTimer = (): void => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);

@@ -1,0 +1,251 @@
+@font-face {
+  font-family: Cairo;
+  src: url("/fonts/cairo-arabic.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+#budi-museum {
+  --royal-ink: #050505;
+  --royal-ivory: #f8f6f0;
+  --royal-gold: #d4af37;
+  --royal-bright: #ffd66a;
+  --royal-burgundy: #5a1f2f;
+  --royal-line: #d4af375a;
+  --royal-metal: linear-gradient(105deg, #664619, #d4af37 24%, #ffe2a1 50%, #9c6a13 73%, #d4af37);
+  --royal-inset: clamp(1rem, 4vw, 3.6rem);
+}
+
+#budi-museum :is(#about, #contact, .footer-museum) {
+  color: var(--royal-ivory);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background-color: var(--royal-ink);
+}
+#budi-museum :is(#about, #contact, .footer-museum):lang(ar) { font-family: Cairo, system-ui, sans-serif; }
+#budi-museum :is(#about, #contact, .footer-museum) :is(a, button, input, textarea):focus-visible {
+  outline: 2px solid var(--royal-bright);
+  outline-offset: 4px;
+}
+
+#budi-museum .royal-identity-monument {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--royal-inset);
+  max-inline-size: 76rem;
+  padding: var(--royal-inset);
+  border: 1px solid var(--royal-line);
+  border-block-start: 6px solid transparent;
+  border-image: var(--royal-metal) 1;
+  background: radial-gradient(ellipse at 80% 10%, #5a1f2f5c, transparent 56%), linear-gradient(140deg,#21180f,#090909 52%);
+  box-shadow: inset 0 0 0 5px #080808, 0 30px 60px #000a;
+}
+#budi-museum .royal-identity-monument > * { min-inline-size: 0; }
+#budi-museum .royal-portrait {
+  width: min(100%, 340px);
+  justify-self: center;
+  align-self: start;
+  padding: 12px;
+  border-inline: 1px solid var(--royal-line);
+  background: radial-gradient(ellipse at 50% 0%, #d4af3738, #09080700 78%);
+}
+#budi-museum .royal-academic-archive {
+  position: relative;
+  max-inline-size: 76rem;
+  padding: var(--royal-inset);
+  background: linear-gradient(110deg, #401a24, #171013 42%, #101010);
+  border: 1px solid var(--royal-line);
+  box-shadow: inset 0 0 0 5px #0808089c, 0 24px 48px #0008;
+}
+#budi-museum .royal-academic-archive .museum-education {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 1px;
+  padding: 0;
+  background: var(--royal-line);
+  border: 1px solid var(--royal-line);
+}
+#budi-museum .royal-academic-archive figure {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: .75rem;
+  padding: clamp(.75rem, 3vw, 1.5rem);
+  background: radial-gradient(ellipse at 50% 0,#69422c,#151112 72%);
+  text-align: center;
+}
+#budi-museum .royal-academic-archive figure img {
+  width: 76px;
+  height: 76px;
+  padding: 5px;
+  background: var(--royal-ivory);
+  object-fit: contain;
+}
+#budi-museum .royal-academic-archive figure:hover { background: radial-gradient(ellipse at 50% 0,#886438,#151112 72%); }
+
+#budi-museum #contact > .room-scene img { opacity: .5; object-position: 50% 22%; }
+#budi-museum #contact > .room-scene::after {
+  background: linear-gradient(#05050555,#050505d9 48%,#050505 92%);
+}
+#budi-museum #contact .contact-stage { display: grid; }
+#budi-museum #contact .contact-channels article {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 0;
+  padding: clamp(.85rem,2vw,1.4rem);
+  background: linear-gradient(140deg,#302317e6,#111011ed 57%);
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+#budi-museum #contact .contact-channels :is(button,a), #budi-museum #contact .payment-vault-card :is(button,a) { min-height: 44px; }
+#budi-museum #contact .contact-channels article > div:last-child { flex-wrap: wrap; }
+#budi-museum #contact .contact-payment {
+  margin-block-start: 2.5rem;
+  border-radius: 0;
+  background: var(--royal-metal);
+}
+#budi-museum #contact .contact-payment > span { display: none; }
+#budi-museum #contact .contact-payment > div {
+  border-radius: 0;
+  background: radial-gradient(ellipse at 50% 0,#5a1f2f68,transparent 68%),#0a0809 !important;
+}
+#budi-museum #contact .payment-vault-card {
+  min-width: 0;
+  border-radius: 0;
+  overflow-wrap: anywhere;
+  box-shadow: inset 0 0 0 3px #0606068f, 0 14px 32px #0008;
+}
+#budi-museum #contact .payment-vault-index::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: conic-gradient(from 45deg,#aa7024,#fff0b1,#8b612f,#f9d679,#aa7024);
+  transform: rotate(45deg);
+  flex: none;
+}
+#budi-museum #contact .payment-vault-card > div.flex { flex-wrap: wrap; }
+
+#budi-museum .footer-museum { border-block-start: 5px solid var(--royal-gold); }
+#budi-museum .footer-museum > .room-scene img { opacity: .65; object-position: 50% 18%; }
+#budi-museum .footer-museum > .room-scene::after { background: linear-gradient(#050505b5,#050505d6 40%,#050505 88%); }
+#budi-museum .footer-museum::before {
+  height: 22px;
+  background: repeating-linear-gradient(125deg,#3c1b21 0 8px,#523e25 8px 10px,#1a1210 10px 18px);
+  border-block-end: 1px solid var(--royal-line);
+}
+#budi-museum .royal-footer-finale {
+  display: grid;
+  grid-template-columns: minmax(0, .68fr) minmax(0, 1.32fr);
+  align-items: center;
+  gap: var(--royal-inset);
+  padding: var(--royal-inset);
+  border: 1px solid var(--royal-line);
+  background: linear-gradient(110deg,#5a1f2f68,#100e0bd9 45%,#0b0a0ad9);
+  box-shadow: inset 0 0 0 5px #0009, 0 20px 55px #0009;
+}
+#budi-museum .royal-footer-cartouche { width: min(100%,240px); margin-inline: auto; }
+#budi-museum .royal-footer-cartouche > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center 33%;
+  border: 3px solid var(--royal-gold);
+  border-radius: 48% 48% 0 0 / 27% 27% 0 0;
+  box-shadow: 0 14px 28px #0009;
+}
+#budi-museum .royal-footer-wordmark { display: block; width: 62%; margin: 1.1rem auto 0; color: var(--royal-ivory); }
+#budi-museum .royal-footer-inscription { min-inline-size: 0; overflow-wrap: anywhere; }
+#budi-museum .royal-footer-index {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: clamp(1rem,3vw,2.4rem);
+  border-block-start: 4px double var(--royal-line);
+}
+#budi-museum .royal-footer-index > div { min-width: 0; overflow-wrap: anywhere; }
+#budi-museum .royal-footer-index :is(a,button) { min-height: 44px; }
+
+#budi-museum .astra-galleries .museum-collection-count {
+  justify-self: center;
+  padding: .7rem 1rem;
+  border: 1px solid var(--royal-gold);
+  color: var(--royal-bright);
+  background: linear-gradient(145deg,#733044,var(--royal-burgundy) 48%,#281018) !important;
+  box-shadow: inset 0 0 0 2px #1a0d11, 0 8px 24px #0009;
+}
+#budi-museum .astra-galleries .museum-collection-count small { color: var(--royal-ivory); }
+
+@media (max-width: 980px) {
+  #budi-museum .royal-footer-index { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 700px) {
+  #budi-museum :is(.royal-identity-monument,.royal-footer-finale) { grid-template-columns: minmax(0,1fr); }
+  #budi-museum .royal-portrait { grid-row: 1; }
+  #budi-museum .royal-footer-cartouche { width: min(65%,170px); }
+  #budi-museum .royal-footer-inscription { text-align: center; }
+  #budi-museum .royal-footer-inscription > p:first-child { justify-content: center; }
+  #budi-museum :is(#about h2,#contact h2) { font-size: clamp(2.3rem,10vw,3.5rem); overflow-wrap: anywhere; }
+}
+@media (max-width: 490px) {
+  #budi-museum .royal-footer-index { grid-template-columns: minmax(0,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #budi-museum :is(.royal-identity-monument,.royal-academic-archive,#contact,.footer-museum) * {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  #budi-museum #about { overflow: visible; }
+  #budi-museum .royal-portrait { position: sticky; inset-block-start: 8rem; }
+}
+#budi-museum #contact .contact-channels { grid-template-columns: repeat(4,minmax(0,1fr)); }
+#budi-museum #contact .royal-support-vault {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,15rem),1fr));
+  gap: 0;
+  padding: 5px;
+  border: 1px solid var(--royal-line);
+  background: #070605;
+  box-shadow: inset 0 0 30px #000,0 18px 40px #0008;
+}
+#budi-museum #contact .royal-support-vault .payment-vault-card {
+  padding: clamp(1rem,2vw,1.6rem);
+  border: 1px solid #cba0614a;
+  background:
+    linear-gradient(135deg,transparent 68%,color-mix(in srgb,var(--rail-accent,#d4af37) 13%,transparent)),
+    linear-gradient(160deg,#242018,#11100f 65%);
+}
+#budi-museum #contact .royal-support-vault .payment-vault-card:is(:hover,:focus-within) {
+  border-color: var(--rail-accent,var(--royal-gold));
+  box-shadow: inset 0 1px 18px #ffe3a114;
+}
+#budi-museum #contact .payment-vault-index {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  color: #e9ce91;
+  padding-block-end: .7rem;
+  margin-block-end: 1rem;
+  border-block-end: 1px solid #e4b94f39;
+  font: .7rem var(--font-mono),monospace;
+  letter-spacing: .16em;
+}
+#budi-museum #contact .payment-vault-index span:nth-child(2) { margin-inline-start: auto; }
+@media (max-width: 1023px) {
+  #budi-museum #contact .contact-channels { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 490px) {
+  #budi-museum #contact .contact-channels { grid-template-columns: minmax(0,1fr); }
+}
+
+@media (max-width: 420px) {
+  #budi-museum .hero-museum { overflow-x: clip; }
+  #budi-museum #contact .royal-support-vault .payment-vault-card > div.flex > :last-child { margin-inline-start: auto; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
@@ -38,12 +38,9 @@ interface RoleColor {
   soft: string;
 }
 
-/** Per-role signature palette — ember-dark theme, orange leads. */
+/** Approved museum foreground hues, independent of the role typing cycle. */
 const ROLE_COLORS: RoleColor[] = [
-  { bg: "#ff3d00", fg: "#1a0e05", glow: "rgba(255,61,0,0.55)", soft: "rgba(255,61,0,0.08)" },
-  { bg: "#38bdf8", fg: "#082f49", glow: "rgba(56,189,248,0.55)", soft: "rgba(56,189,248,0.08)" },
-  { bg: "#fb7185", fg: "#4c0519", glow: "rgba(251,113,133,0.55)", soft: "rgba(251,113,133,0.08)" },
-  { bg: "#a78bfa", fg: "#2e1065", glow: "rgba(167,139,250,0.55)", soft: "rgba(167,139,250,0.08)" },
+  ...["#EF8585", "#91DDA9", "#85C4FF"].map(bg => ({ bg, fg: "#0D0D0C", glow: `${bg}33`, soft: `${bg}16` })),
 ];
 
 type DayPart = "morning" | "afternoon" | "evening" | "night";
@@ -59,19 +56,25 @@ const DAY_ICON = { morning: Sunrise, afternoon: Sun, evening: Sunset, night: Moo
 
 export default function Hero({ start, image }: HeroProps): React.JSX.Element {
   const rootRef = useRef<HTMLElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
-  const hireRef = useRef<HTMLAnchorElement>(null);
   const reduced = useReducedMotion();
   const { t, lang } = useLanguage();
   const fr = lang === "fr";
   const { text: typed, index: roleIndex } = useTypewriter(t.hero.roles.map((r) => r.title));
   const activeRole = t.hero.roles[roleIndex % t.hero.roles.length] ?? t.hero.roles[0];
 
-  // ——— Role = Color: ember palette follows the active role ———
+  const [hueIndex, setHueIndex] = useState(0);
+  useEffect(() => {
+    if (reduced) return;
+    let inView = true;
+    const observer = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; });
+    if (rootRef.current) observer.observe(rootRef.current);
+    const timer = window.setInterval(() => { if (inView && document.visibilityState === "visible") setHueIndex(i => (i + 1) % ROLE_COLORS.length); }, 5000);
+    return () => { clearInterval(timer); observer.disconnect(); };
+  }, [reduced]);
+
+  // Only foreground color changes; backgrounds and layout remain stable.
   const roleColor: RoleColor =
-    ROLE_COLORS[roleIndex % ROLE_COLORS.length] ?? ROLE_COLORS[0]!;
-  const exploreColor: RoleColor =
-    ROLE_COLORS[(roleIndex + 1) % ROLE_COLORS.length] ?? ROLE_COLORS[1]!;
+    ROLE_COLORS[(reduced ? 0 : hueIndex) % ROLE_COLORS.length] ?? ROLE_COLORS[0]!;
 
   // ——— Live Suez clock. Null pre-mount → static fallback, zero hydration mismatch ———
   const now = useNow(1000);
@@ -110,13 +113,13 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
     if (!root) return;
 
     if (reduced) {
-      gsap.set(root.querySelectorAll("[data-hero-reveal]"), { clearProps: "all", opacity: 1 });
+      gsap.set(root.querySelectorAll(".atrium-portrait"), { clearProps: "all", opacity: 1 });
       return;
     }
 
     const ctx = gsap.context(() => {
       if (!start) {
-        gsap.set("[data-hero-reveal]", { autoAlpha: 0, y: 28 });
+        gsap.set(".atrium-portrait", { autoAlpha: 1, y: 0 });
         gsap.set("[data-hero-scroll]", { autoAlpha: 0 });
         return;
       }
@@ -124,13 +127,13 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
       // fromTo (not to): cleanup reverts the pre-hidden state, so the
       // entrance must declare its own starting values to actually play.
       tl.fromTo(
-        "[data-hero-reveal]",
-        { autoAlpha: 0, y: 28 },
+        ".atrium-portrait",
+        { autoAlpha: 1, y: 12 },
         {
           autoAlpha: 1,
           y: 0,
-          duration: 0.85,
-          stagger: 0.09,
+          duration: 0.45,
+          stagger: 0.035,
         },
       ).fromTo("[data-hero-scroll]", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, "-=0.3");
     }, root);
@@ -141,42 +144,23 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
   }, [start, reduced]);
 
   /** Cursor spotlight — direct CSS-var writes, no re-renders. Fine pointer only. */
+  const pointerFrame = useRef<number | null>(null);
+  const pointer = useRef({ x: 0, y: 0 });
+  useEffect(() => () => {
+    if (pointerFrame.current !== null) cancelAnimationFrame(pointerFrame.current);
+  }, []);
   const onSpotMove = (event: React.MouseEvent<HTMLElement>): void => {
-    if (reduced) return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
-    const el = rootRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    el.style.setProperty("--mx", `${(event.clientX - rect.left).toFixed(0)}px`);
-    el.style.setProperty("--my", `${(event.clientY - rect.top).toFixed(0)}px`);
-  };
-
-  /** Magnetic pull for the primary CTA — direct DOM writes, no re-renders. */
-  const onHireMove = (event: React.MouseEvent<HTMLAnchorElement>): void => {
     if (reduced || !window.matchMedia("(pointer: fine)").matches) return;
-    const el = hireRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const dx = event.clientX - (rect.left + rect.width / 2);
-    const dy = event.clientY - (rect.top + rect.height / 2);
-    el.style.transform = `translate(${(dx * 0.18).toFixed(1)}px, ${(dy * 0.22).toFixed(1)}px)`;
-  };
-  const onHireLeave = (): void => {
-    if (hireRef.current) hireRef.current.style.transform = "";
-  };
-
-  /** Gentle pointer tilt for the portrait — direct DOM writes, no re-renders. */
-  const onFrameMove = (event: React.MouseEvent<HTMLDivElement>): void => {
-    if (reduced || !window.matchMedia("(pointer: fine)").matches) return;
-    const el = frameRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width - 0.5;
-    const py = (event.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `rotateX(${(-py * 7).toFixed(2)}deg) rotateY(${(px * 9).toFixed(2)}deg)`;
-  };
-  const onFrameLeave = (): void => {
-    if (frameRef.current) frameRef.current.style.transform = "";
+    pointer.current = { x: event.clientX, y: event.clientY };
+    if (pointerFrame.current !== null) return;
+    pointerFrame.current = requestAnimationFrame(() => {
+      pointerFrame.current = null;
+      const el = rootRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${pointer.current.x - rect.left}px`);
+      el.style.setProperty("--my", `${pointer.current.y - rect.top}px`);
+    });
   };
 
   return (
@@ -187,46 +171,27 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
       onMouseMove={onSpotMove}
       className="hero-museum relative flex min-h-svh items-center overflow-clip"
     >
-      {/* Backdrop — dark color-graded wash + grid + drifting lights */}
-      <div className="hero-wash absolute inset-0" aria-hidden="true" />
-      <div className="bg-blueprint absolute inset-0" aria-hidden="true" />
-      {/* Cursor spotlight tinted by the active role */}
-      {!reduced && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `radial-gradient(480px circle at var(--mx, 72%) var(--my, 22%), ${roleColor.soft}, transparent 65%)`,
-          }}
-        />
-      )}
-      {!reduced && (
-        <>
-          <div
-            aria-hidden="true"
-            className="animate-drift-a absolute top-[8%] right-[8%] h-[380px] w-[380px] rounded-full will-transform transition-[background] duration-700"
-            style={{
-              background: `radial-gradient(circle, ${roleColor.bg}22 0%, transparent 65%)`,
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="animate-drift-b absolute bottom-[5%] left-[2%] h-[320px] w-[320px] rounded-full will-transform"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(215,253,68,0.08) 0%, transparent 65%)",
-            }}
-          />
-        </>
-      )}
-      <div
-        aria-hidden="true"
-        className="text-stroke display pointer-events-none absolute -right-6 top-16 hidden text-[22vw] leading-none opacity-[0.07] select-none lg:block"
-      >
-        B
+      <div className="refined-temple" aria-hidden="true">
+        <svg viewBox="0 0 1440 850" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="temple-stone" x2="1" y2="0"><stop stopColor="#0b0908"/><stop offset=".55" stopColor="#2b2016"/><stop offset="1" stopColor="#120e0b"/></linearGradient>
+            <pattern id="temple-carving" width="30" height="48" patternUnits="userSpaceOnUse"><path d="M8 4v36m7-34v20m7-22v36M3 44h24" fill="none" stroke="#d8ad61" strokeOpacity=".23"/></pattern>
+          </defs>
+          <g fill="url(#temple-stone)" stroke="#c89648" strokeOpacity=".35">
+            <path d="M740 625 763 240h433l38 385zM806 598l17-314h319l20 314z" fillRule="evenodd"/>
+            <path d="M664 690l42-542h553l52 542zM752 638l28-404h401l35 404z" fillRule="evenodd"/>
+            <path d="M558 773 620 54h746l61 719zM686 682l40-529h532l48 529z" fillRule="evenodd"/>
+            <path d="M610 94h766l-6-32H614zM698 174h568l8 28H694z"/>
+            <path d="M572 769h855v22H563zM643 728h723v18H632zM709 686h601v15H700z"/>
+          </g>
+          <path d="M631 113h51l-47 581h-58zM1296 113h47l51 581h-58z" fill="url(#temple-carving)"/>
+          <path d="M935 116q54-58 108 0m-82 0 28-29 28 29m-82 0h-53m161 0h53" fill="none" stroke="#d4af37" strokeOpacity=".6"/>
+          <path d="M767 686 450 850m760-164 178 164M895 683l-112 167m273-167 44 167" fill="none" stroke="#d4af37" strokeOpacity=".23"/>
+        </svg>
+        <span className="refined-temple-haze" />
       </div>
-
-      <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-5 pt-28 pb-24 sm:px-8 lg:grid-cols-12 lg:gap-8 lg:pt-36">
+      <span className="refined-pointer-light" aria-hidden="true" style={{ "--pointer-hue": roleColor.soft } as React.CSSProperties} />
+      <div className="atrium-layout relative mx-auto grid w-full max-w-7xl gap-12 px-5 pt-28 pb-24 sm:px-8 lg:grid-cols-12 lg:gap-8 lg:pt-36">
         {/* ——— Content ——— */}
         <div className="flex flex-col justify-center lg:col-span-7">
           {/* Time-aware greeting — day-part glows in the active role color, clock stays live */}
@@ -249,7 +214,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
                   />
                 </span>
                 <span
-                  className="inline-flex items-center gap-1.5 font-semibold transition-colors duration-700"
+                  className="inline-flex items-center gap-1.5 font-semibold transition-colors duration-500"
                   style={{ color: roleColor.bg, textShadow: `0 0 18px ${roleColor.glow}` }}
                 >
                   <DayIcon className="h-4 w-4" aria-hidden="true" />
@@ -273,7 +238,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
           </p>
 
           <h1
-            id="hero-heading"
+            id="hero-heading" tabIndex={-1}
             data-hero-reveal
             className="display mt-3 text-[clamp(2.6rem,8.5vw,5.5rem)] font-bold text-foreground"
           >
@@ -286,7 +251,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
             className="mt-4 flex min-h-[2.75rem] items-center text-[clamp(1.35rem,3.4vw,2.1rem)] sm:min-h-[3.25rem]"
           >
             <span
-              className="display font-bold transition-colors duration-700"
+              className="display font-bold transition-colors duration-500"
               style={{ color: roleColor.bg, textShadow: `0 0 26px ${roleColor.glow}` }}
               aria-hidden="true"
             >
@@ -299,7 +264,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
           </p>
 
           {/* Bio follows the active role — fixed height guards against CLS */}
-          <div data-hero-reveal className="mt-5 min-h-[8rem] max-w-xl sm:min-h-[6rem]">
+          <div data-hero-reveal className="atrium-bio mt-5 min-h-[8rem] max-w-xl sm:min-h-[6rem]" style={{ "--atrium-hue": roleColor.bg } as React.CSSProperties}>
             {reduced ? (
               <p className="text-base leading-relaxed text-muted sm:text-lg">{activeRole.bio}</p>
             ) : (
@@ -341,40 +306,11 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
           </div>
 
           <div data-hero-reveal className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <a
-              ref={hireRef}
-              href={heroCopy.primaryCta.href}
-              onMouseMove={onHireMove}
-              onMouseLeave={onHireLeave}
-              className="group relative flex items-center justify-center gap-2 overflow-hidden bg-accent px-6 py-3.5 text-sm font-bold text-accent-foreground transition-all duration-200 hover:shadow-[0_12px_44px_-10px_var(--accent)]"
-            >
-              <span
-                aria-hidden="true"
-                className="absolute inset-y-0 left-0 w-1/2 -skew-x-12 -translate-x-[180%] bg-black/25 blur-md transition-transform duration-700 group-hover:translate-x-[380%]"
-              />
-              <span className="relative">{t.hero.hireMe}</span>
-              <ArrowUpRight
-                className="relative h-4 w-4 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 text-[var(--icon-color)] group-hover:text-[var(--hover-color)]"
-                style={{ "--icon-color": roleColor.bg, "--hover-color": "#22d3ee", filter: `drop-shadow(0 0 6px ${roleColor.glow})` } as React.CSSProperties}
-                aria-hidden="true"
-              />
+            <a href={heroCopy.primaryCta.href} className="hero-glass-action hero-glass-hire">
+              <span>{t.hero.hireMe}</span><ArrowUpRight size={17} aria-hidden="true" />
             </a>
-            <a
-              href={heroCopy.secondaryCta.href}
-              className="group relative flex items-center justify-center gap-2 overflow-hidden border border-border-strong px-6 py-3.5 text-sm font-semibold text-foreground"
-            >
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 origin-left scale-x-0 bg-accent transition-transform duration-300 group-hover:scale-x-100"
-              />
-              <span className="relative transition-colors duration-300 group-hover:text-accent-foreground">
-                {t.hero.explore}
-              </span>
-              <ArrowRight
-                className="relative h-4 w-4 transition-all duration-300 group-hover:translate-x-1 text-[var(--icon-color)] group-hover:text-[var(--hover-color)]"
-                style={{ "--icon-color": exploreColor.bg, "--hover-color": "#34d399", filter: `drop-shadow(0 0 6px ${exploreColor.glow})` } as React.CSSProperties}
-                aria-hidden="true"
-              />
+            <a href={heroCopy.secondaryCta.href} className="hero-glass-action hero-glass-projects">
+              <span>{t.hero.explore}</span><ArrowRight size={17} aria-hidden="true" />
             </a>
             <a
               href={heroCopy.tertiaryCta.href}
@@ -405,7 +341,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
               {t.hero.follow}
             </span>
             <span className="h-px w-10 bg-border" aria-hidden="true" />
-            <ul className="flex flex-wrap items-center gap-2" aria-label={t.hero.socials}>
+            <ul className="social-gold-rail" aria-label={t.hero.socials}>
               {socialLinks.map(({ label, href, badgeColor, image, icon: Icon, bleachGlyph, external }) => (
                 <li key={label}>
                   <a
@@ -413,7 +349,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
                     aria-label={label}
                     title={label}
                     {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-                    style={{ backgroundColor: badgeColor }}
+                    style={{ "--social-brand": badgeColor } as React.CSSProperties} data-social-vitrine=""
                     className="flex h-10 w-10 items-center justify-center rounded-md border border-white/15 text-white transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
                   >
                     {image ? (
@@ -435,89 +371,13 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
         </div>
 
         {/* ——— Portrait ——— */}
-        <div data-hero-reveal className="flex items-center max-lg:order-first lg:col-span-5">
-          <div className="w-full [perspective:1200px]" onMouseMove={onFrameMove} onMouseLeave={onFrameLeave}>
-            <div
-              ref={frameRef}
-              className="group relative transition-transform duration-200 ease-out will-change-transform"
-            >
-              {/* Offset echo layer */}
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 translate-x-4 translate-y-4 rounded-3xl border border-accent/40 bg-accent/5"
-              />
-              {/* Photo */}
-              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-border bg-surface">
-                <SmartImage
-                  src={heroImage}
-                  alt={t.hero.photoAlt}
-                  fill
-                  priority
-                  quality={90}
-                  sizes="(max-width: 1024px) 80vw, 420px"
-                  className="object-cover"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"
-                />
-                {/* Inner hairline */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-3 rounded-[20px] border border-white/20"
-                />
-                {/* Periodic glare sweep — cinematic sheen every few seconds */}
-                {!reduced && (
-                  <span
-                    aria-hidden="true"
-                    className="animate-glare pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                  />
-                )}
-                {/* Edge highlights ignite on hover — tinted by the active role */}
-                <span
-                  aria-hidden="true"
-                  className="absolute top-0 left-0 h-[3px] w-full origin-left scale-x-0 rounded-full transition-transform duration-500 group-hover:scale-x-100"
-                  style={{ backgroundImage: `linear-gradient(to right, ${roleColor.bg}, transparent)` }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute bottom-0 left-0 h-[3px] w-full origin-right scale-x-0 rounded-full transition-transform duration-500 group-hover:scale-x-100"
-                  style={{ backgroundImage: `linear-gradient(to left, ${roleColor.bg}, transparent)` }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute top-0 left-0 h-full w-[3px] origin-top scale-y-0 rounded-full transition-transform duration-500 group-hover:scale-y-100"
-                  style={{ backgroundImage: `linear-gradient(to bottom, ${roleColor.bg}, transparent)` }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute top-0 right-0 h-full w-[3px] origin-bottom scale-y-0 rounded-full bg-gradient-to-t transition-transform duration-500 group-hover:scale-y-100"
-                  style={{ backgroundImage: `linear-gradient(to top, ${roleColor.bg}, transparent)` }}
-                />
-                {/* Caption */}
-                <p className="absolute bottom-5 left-1/2 -translate-x-1/2 font-mono text-[11px] tracking-[0.22em] whitespace-nowrap text-white/90 uppercase">
-                  {profile.name} — Suez, EG
-                </p>
-              </div>
-
-              {/* Floating role badge — icon wears the active role color */}
-              <motion.div
-                animate={reduced || !start ? undefined : { y: [0, -8, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="glass absolute bottom-10 -left-3 flex items-center gap-2.5 border border-border px-4 py-2.5 sm:-left-7"
-              >
-                <span
-                  className="flex h-8 w-8 items-center justify-center transition-colors duration-700"
-                  style={{ backgroundColor: roleColor.bg, color: roleColor.fg }}
-                >
-                  <Code className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <span className="text-sm font-semibold whitespace-nowrap text-foreground">
-                  {t.hero.roles[0]?.title}
-                </span>
-              </motion.div>
+        <div data-hero-reveal className="atrium-portrait flex items-center lg:col-span-5">
+          <figure className="hero-photo-card">
+            <div className="hero-photo-card-media">
+              <SmartImage src={heroImage} alt={t.hero.photoAlt} fill priority quality={75} sizes="(max-width: 767px) 86vw, 480px" className="object-cover" />
             </div>
-          </div>
+            <figcaption className="hero-photo-card-caption"><Code size={17} aria-hidden="true"/><span><strong>{profile.name}</strong><small>{t.hero.roles[0]?.title} · {t.hero.location}</small></span></figcaption>
+          </figure>
         </div>
 
         {/* ——— Tech marquee ——— */}

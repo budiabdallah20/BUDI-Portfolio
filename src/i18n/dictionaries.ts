@@ -103,17 +103,41 @@ export interface Dictionary {
     };
   };
   code: { roleValue: string; statusValue: string };
+  exhibition: { reset: string; live: string };
   loader: { role: string; loading: string; folio: string; skip: string };
   play: {
     hint: string;
-    goto: string;
-    chapters: { kicker: string; a: string; b: string; body: string }[];
-    finaleKicker: string;
-    finaleA: string;
-    finaleB: string;
-    stats: { tech: string; lang: string; spec: string };
-    cta: string;
-    note: string;
+    museum: string;
+    navLabel: string;
+    skip: string;
+    scrollHint: string;
+    chapterWord: string;
+    enter: string;
+    exploreCollection: string;
+    replay: string;
+    finalLine: string;
+    collectionIntro: string;
+    counts: {
+      skills: [string, string];
+      projects: [string, string];
+      services: [string, string];
+      certificates: [string, string];
+      contact: [string, string];
+    };
+    featuredLabel: string;
+    issued: string;
+    study: string;
+    emailLabel: string;
+    whatsappLabel: string;
+    chapters: {
+      id: string;
+      nav: string;
+      kicker: string;
+      a: string;
+      b: string;
+      body: string;
+      cta: string;
+    }[];
   };
   contact: {
     eyebrow: string;
@@ -273,6 +297,7 @@ const en: Dictionary = {
     },
   },
   code: { roleValue: "full-stack developer", statusValue: "open for work" },
+  exhibition: { reset: "Clear selection", live: "Live Demo" },
   loader: {
     role: "Full-Stack Developer",
     loading: "Loading experience",
@@ -280,58 +305,94 @@ const en: Dictionary = {
     skip: "Click to skip",
   },
   play: {
-    hint: "Scroll to play",
-    goto: "Go to part",
+    hint: "The Living Museum — a scroll-controlled tour",
+    museum: "The Living Museum",
+    navLabel: "Museum chapters",
+    skip: "Skip the tour",
+    scrollHint: "Scroll to move through the museum",
+    chapterWord: "Chapter",
+    enter: "Enter the collection",
+    exploreCollection: "Explore the complete collection",
+    replay: "Replay the tour",
+    finalLine: "Every great creation begins with a conversation.",
+    collectionIntro: "The guided tour ends here. The full exhibition continues below — every hall, every record, every detail.",
+    counts: {
+      skills: ["Skill", "Skills"],
+      projects: ["Project", "Projects"],
+      services: ["Service", "Services"],
+      certificates: ["Certificate", "Certificates"],
+      contact: ["Conversation", "Conversations"],
+    },
+    featuredLabel: "Featured masterpiece",
+    issued: "Issued record",
+    study: "Design study",
+    emailLabel: "Email",
+    whatsappLabel: "WhatsApp",
     chapters: [
       {
-        kicker: "The approach",
-        a: "FAST. CLEAN.",
-        b: "RELIABLE.",
-        body: "Every pixel has a job. Every line has a reason — no bloat, no templates, no shortcuts.",
+        id: "gate",
+        nav: "The Golden Gate",
+        kicker: "Chapter 01 · Entrance",
+        a: "ENTER THE",
+        b: "LIVING MUSEUM.",
+        body: "Welcome to the BUDI Museum — where code becomes art. Scroll to open the gate; stop, and the camera waits for you.",
+        cta: "Enter the first hall",
       },
       {
-        kicker: "01 — Interfaces",
-        a: "SHARP",
-        b: "FRONT-ENDS.",
-        body: "React and Next.js interfaces that feel instant — responsive from a 320px phone to a 4K wall.",
+        id: "skills",
+        nav: "Hall of Skills",
+        kicker: "Chapter 02 · The Skills Vault",
+        a: "TOOLS OF",
+        b: "THE CRAFT.",
+        body: "Every artifact is a technology I use daily. The light finds one at a time, so each craft gets its own moment.",
+        cta: "Open the vault",
       },
       {
-        kicker: "02 — Back-ends",
-        a: "SOLID",
-        b: "FOUNDATIONS.",
-        body: "Clean APIs and typed logic with an engineer's discipline — built to stay maintainable.",
+        id: "projects",
+        nav: "Hall of Masterpieces",
+        kicker: "Chapter 03 · Projects",
+        a: "WORK, FRAMED",
+        b: "AS ART.",
+        body: "Real builds on the pedestal: the problem, the craft and the result. No mockups, no invented clients.",
+        cta: "See the masterpieces",
       },
       {
-        kicker: "03 — Security",
-        a: "SAFE BY",
-        b: "HABIT.",
-        body: "A secure-coding mindset from day one — OWASP-aware and always learning.",
+        id: "services",
+        nav: "Hall of Creation",
+        kicker: "Chapter 04 · Services",
+        a: "FROM IDEA",
+        b: "TO INSTRUMENT.",
+        body: "Each service is a working invention — web platforms, connected systems and the care that keeps them alive.",
+        cta: "Explore the services",
       },
       {
-        kicker: "04 — Motion",
-        a: "ALIVE,",
-        b: "NOT STATIC.",
-        body: "Interfaces that move with intent — choreographed reveals, physical micro-interactions, zero jank.",
+        id: "archive",
+        nav: "Royal Archive",
+        kicker: "Chapter 05 · Certificates",
+        a: "PROOF,",
+        b: "PRESERVED.",
+        body: "Issued credentials and design studies are kept apart and labelled honestly. The archive never pretends.",
+        cta: "Open the archive",
       },
       {
-        kicker: "05 — Systems",
-        a: "CONNECTED",
-        b: "SYSTEMS.",
-        body: "Websites are one layer — I wire interfaces, data, users and automation into one coherent machine: dashboards, CRMs and workflows that run the business.",
+        id: "corridor",
+        nav: "The Final Corridor",
+        kicker: "Chapter 06 · Contact",
+        a: "EVERY CREATION",
+        b: "STARTS WITH A WORD.",
+        body: "Walk to the end of the corridor. Email, WhatsApp or a direct conversation — the door is already open.",
+        cta: "Start a conversation",
       },
       {
-        kicker: "06 — Intelligence",
-        a: "ALIVE WITH",
-        b: "AI.",
-        body: "Practical AI where it pays — assistants, summaries and smart search wired into real products, not just demos.",
+        id: "collection",
+        nav: "The Collection",
+        kicker: "Chapter 07 · Exit",
+        a: "EXPLORE THE",
+        b: "COMPLETE COLLECTION.",
+        body: "The tour ends here; the detailed exhibition begins. Move through the halls at your own pace.",
+        cta: "Explore the complete collection",
       },
     ],
-    finaleKicker: "By the numbers",
-    finaleA: "LET'S BUILD",
-    finaleB: "SOMETHING REAL.",
-    stats: { tech: "Technologies", lang: "Languages", spec: "Specialties" },
-    cta: "Start a project",
-    note: "One developer — full stack.",
   },
   contact: {
     eyebrow: "07 · Contact",
@@ -650,6 +711,7 @@ const fr: Dictionary = {
     },
   },
   code: { roleValue: "développeur full-stack", statusValue: "disponible" },
+  exhibition: { reset: "Effacer la sélection", live: "Voir le projet" },
   loader: {
     role: "Développeur Full-Stack",
     loading: "Chargement en cours",
@@ -657,58 +719,94 @@ const fr: Dictionary = {
     skip: "Cliquez pour passer",
   },
   play: {
-    hint: "Défiler pour explorer",
-    goto: "Aller à la partie",
+    hint: "Le Musée Vivant — une visite guidée par le défilement",
+    museum: "Le Musée Vivant",
+    navLabel: "Chapitres du musée",
+    skip: "Passer la visite",
+    scrollHint: "Faites défiler pour avancer dans le musée",
+    chapterWord: "Chapitre",
+    enter: "Entrer dans la collection",
+    exploreCollection: "Explorer la collection complète",
+    replay: "Revoir la visite",
+    finalLine: "Toute grande création commence par une conversation.",
+    collectionIntro: "La visite guidée s'arrête ici. L'exposition complète continue plus bas — chaque salle, chaque pièce, chaque détail.",
+    counts: {
+      skills: ["Compétence", "Compétences"],
+      projects: ["Projet", "Projets"],
+      services: ["Service", "Services"],
+      certificates: ["Certificat", "Certificats"],
+      contact: ["Conversation", "Conversations"],
+    },
+    featuredLabel: "Chef-d'œuvre en vedette",
+    issued: "Document délivré",
+    study: "Étude visuelle",
+    emailLabel: "E-mail",
+    whatsappLabel: "WhatsApp",
     chapters: [
       {
-        kicker: "L'approche",
-        a: "RAPIDE. PROPRE.",
-        b: "FIABLE.",
-        body: "Chaque pixel a un rôle. Chaque ligne a une raison — ni lourdeur, ni templates, ni raccourcis.",
+        id: "gate",
+        nav: "La Porte Dorée",
+        kicker: "Chapitre 01 · Entrée",
+        a: "ENTREZ DANS",
+        b: "LE MUSÉE VIVANT.",
+        body: "Bienvenue au Musée BUDI — là où le code devient art. Faites défiler pour ouvrir la porte ; arrêtez-vous, la caméra vous attend.",
+        cta: "Entrer dans la première salle",
       },
       {
-        kicker: "01 — Interfaces",
-        a: "INTERFACES",
-        b: "AFFÛTÉES.",
-        body: "Des interfaces React et Next.js instantanées — responsives du téléphone 320px au mur 4K.",
+        id: "skills",
+        nav: "Salle des Compétences",
+        kicker: "Chapitre 02 · La voûte des savoirs",
+        a: "LES OUTILS",
+        b: "DU MÉTIER.",
+        body: "Chaque pièce est une technologie que j'utilise chaque jour. La lumière n'en éclaire qu'une à la fois, pour donner à chaque savoir son moment.",
+        cta: "Ouvrir la voûte",
       },
       {
-        kicker: "02 — Back-ends",
-        a: "BASES",
-        b: "SOLIDES.",
-        body: "Des API propres et une logique typée avec la discipline d'un ingénieur — conçues pour durer.",
+        id: "projects",
+        nav: "Salle des Chefs-d'œuvre",
+        kicker: "Chapitre 03 · Projets",
+        a: "LE TRAVAIL,",
+        b: "COMME UNE ŒUVRE.",
+        body: "De vrais projets sur le socle : le problème, le geste et le résultat. Aucune maquette, aucun client inventé.",
+        cta: "Voir les chefs-d'œuvre",
       },
       {
-        kicker: "03 — Sécurité",
-        a: "SÛR PAR",
-        b: "HABITUDE.",
-        body: "Un réflexe de code sécurisé dès le premier jour — sensibilisé à l'OWASP, toujours en apprentissage.",
+        id: "services",
+        nav: "Salle de la Création",
+        kicker: "Chapitre 04 · Services",
+        a: "DE L'IDÉE",
+        b: "À L'INSTRUMENT.",
+        body: "Chaque service est une invention qui fonctionne — plateformes web, systèmes connectés et l'attention qui les maintient en vie.",
+        cta: "Explorer les services",
       },
       {
-        kicker: "04 — Mouvement",
-        a: "VIVANT,",
-        b: "PAS STATIQUE.",
-        body: "Des interfaces qui bougent avec intention — révélations chorégraphiées, micro-interactions physiques, zéro saccade.",
+        id: "archive",
+        nav: "Les Archives Royales",
+        kicker: "Chapitre 05 · Certificats",
+        a: "LA PREUVE,",
+        b: "PRÉSERVÉE.",
+        body: "Les diplômes délivrés et les études visuelles sont conservés séparément et nommés honnêtement. L'archive ne triche jamais.",
+        cta: "Ouvrir les archives",
       },
       {
-        kicker: "05 — Systèmes",
-        a: "SYSTÈMES",
-        b: "CONNECTÉS.",
-        body: "Le site n'est qu'une couche — je connecte interfaces, données, utilisateurs et automatisations en une machine cohérente : dashboards, CRM et workflows qui font tourner la boîte.",
+        id: "corridor",
+        nav: "Le Couloir Final",
+        kicker: "Chapitre 06 · Contact",
+        a: "TOUTE CRÉATION",
+        b: "COMMENCE PAR UN MOT.",
+        body: "Avancez jusqu'au bout du couloir. E-mail, WhatsApp ou une conversation directe — la porte est déjà ouverte.",
+        cta: "Commencer une conversation",
       },
       {
-        kicker: "06 — Intelligence",
-        a: "VIVANT AVEC",
-        b: "L'IA.",
-        body: "De l'IA concrète là où ça paie — assistants, résumés et recherche intelligente câblés à de vrais produits, pas des démos.",
+        id: "collection",
+        nav: "La Collection",
+        kicker: "Chapitre 07 · Sortie",
+        a: "EXPLOREZ LA",
+        b: "COLLECTION COMPLÈTE.",
+        body: "La visite s'achève ici ; l'exposition détaillée commence. Parcourez les salles à votre rythme.",
+        cta: "Explorer la collection complète",
       },
     ],
-    finaleKicker: "Par les chiffres",
-    finaleA: "CONSTRUISONS",
-    finaleB: "QUELQUE CHOSE DE VRAI.",
-    stats: { tech: "Technologies", lang: "Langues", spec: "Spécialités" },
-    cta: "Démarrer un projet",
-    note: "Un développeur — full-stack.",
   },
   contact: {
     eyebrow: "07 · Contact",

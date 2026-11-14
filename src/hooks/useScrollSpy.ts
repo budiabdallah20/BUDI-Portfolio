@@ -50,11 +50,14 @@ export function useScrollSpy(ids: string[]): string {
       raf = window.requestAnimationFrame(compute);
     };
 
+    const observer = new IntersectionObserver(onScroll, { rootMargin: "-120px 0px -15% 0px", threshold: [0, 0.1, 0.5] });
+    targets.forEach(target => observer.observe(target));
     compute();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     window.addEventListener("hashchange", onScroll);
     return (): void => {
+      observer.disconnect();
       window.cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);

@@ -1,0 +1,226 @@
+/* Architectural presentation, scoped to the public museum. Admin UI is unchanged. */
+#budi-museum {
+  --background:#0b0a09; --surface:#171411; --surface-2:#201a17;
+  --foreground:#f4efe5; --muted:#c5b9a7; --faint:#ac9b83;
+  --accent:#c5a15d; --accent-foreground:#17120c; --ember:#c5a15d;
+  --border:#c5a15d30; --border-strong:#c5a15d70;
+  --museum-gold:#c5a15d; --museum-gold-bright:#e7cb8c; --museum-ink:#f4efe5;
+  --museum-wall:#171411; --museum-line:#c5a15d42; --museum-burgundy:#4d1f2b;
+  --museum-serif:Georgia,"Times New Roman","Noto Naskh Arabic",serif;
+  color:var(--foreground); background:var(--background); isolation:isolate;
+}
+#budi-museum :where(section[id]){scroll-margin-top:110px}
+#budi-museum :where(a,button,input,textarea):focus-visible{outline:2px solid #e7cb8c;outline-offset:5px}
+#budi-museum :where(h1,h2,h3){text-wrap:balance}
+#budi-museum :where(p){text-wrap:pretty}
+#budi-museum :where(.display,h2){font-family:var(--museum-serif);letter-spacing:-.035em;font-weight:400}
+#budi-museum :where(.animate-drift-a,.animate-drift-b,.animate-aurora-a,.animate-aurora-b,.animate-aurora-c,.animate-float-slow,.animate-ping-soft){animation:none}
+#budi-museum :where(.hero-wash,.bg-blueprint,.text-stroke.pointer-events-none){display:none}
+#budi-museum header{border-color:var(--museum-line);background:#100e0ceF;box-shadow:0 4px 24px #0003}
+#budi-museum [role="menu"]{border-color:var(--museum-line);background:#201a17;box-shadow:0 16px 45px #0008;border-radius:3px}
+#budi-museum [role="menu"] button{min-height:44px}
+#budi-museum [role="menuitemradio"][aria-checked="true"]{color:var(--museum-gold-bright);background:#c5a15d12}
+
+/* Colonnades: static vector geometry with a consistent light direction. */
+.egypt-architecture{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0;color:#c5a15d}
+.egypt-architecture svg{width:100%;height:100%;min-height:600px}
+.architecture-stone{fill:#252017}
+.architecture-inlay{stroke:currentColor;stroke-width:1;opacity:.27}
+.architecture-door{fill:#0c0a09;stroke:#c5a15d40}
+.egypt-architecture:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0b0a0990,transparent 50%,#0b0a0920),linear-gradient(0deg,#0b0a09,transparent 22%,transparent 75%,#0b0a0990)}
+#budi-museum .hero-museum{background:radial-gradient(ellipse at 65% 35%,#8b69361a,transparent 65%),#0b0a09;min-height:850px}
+#budi-museum .atrium-layout{padding-block:170px 100px;gap:6%;align-items:center}
+#budi-museum #hero-heading{font:400 clamp(3rem,6.1vw,6.1rem)/1.02 var(--museum-serif);letter-spacing:-.055em;max-width:9ch;color:#f2e6cf}
+#budi-museum .atrium-portrait{position:relative;padding:24px 22px 35px;align-self:center;min-width:0}
+.atrium-portrait:before{content:"";position:absolute;inset:0;border:1px solid #c5a15d60;border-top:9px double #a18554;background:linear-gradient(90deg,#3e3322,#181411 9%,#181411 91%,#3e3322);clip-path:polygon(5% 0,95% 0,100% 100%,0 100%)}
+.atrium-portrait:after{content:"";position:absolute;inset:auto -5px 0;height:18px;border-block:1px solid #c5a15d80;background:#34291d;box-shadow:0 18px 35px #0006}
+#budi-museum .atrium-portrait-window{border-radius:42% 42% 0 0/15% 15% 0 0;border:1px solid #c5a15d90;box-shadow:0 20px 50px #0007}
+#budi-museum .atrium-portrait [class*="translate-x-4"]{display:none}
+#budi-museum .atrium-portrait img{filter:saturate(.75);object-position:center}
+#budi-museum .hero-museum [class*="animate-"]{animation:none}
+#budi-museum .hero-museum .text-emerald-300,#budi-museum .hero-museum .text-cyan-300{color:#e7cb8c;border-color:#c5a15d50;background:#c5a15d0a}
+
+/* Biographical stele and process gallery retain every existing content block. */
+#budi-museum #about{background:linear-gradient(135deg,#201a14,#12100e 60%);border-top:1px solid var(--museum-line)}
+#budi-museum #about>div.relative{border-inline:1px solid #c5a15d20}
+#budi-museum #about blockquote{border-radius:0;border-inline:3px double #c5a15d70;background:#0b0a0950;box-shadow:none}
+#budi-museum #about h2,#budi-museum #contact h2{font:400 clamp(2.5rem,5vw,4.8rem)/1.12 var(--museum-serif);color:#e7cb8c;filter:none;text-shadow:none}
+#budi-museum #about [class*="rounded-3xl"]{border-radius:4px}
+#budi-museum #about [aria-hidden="true"][class*="animate-"]{display:none}
+.museum-education{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;padding:24px;margin-block:24px;background:#100e0c;border-block:1px solid #c5a15d60}
+.museum-education figure{display:flex;align-items:center;gap:14px;max-width:100%;margin:0}
+.museum-education img{width:64px;height:64px;object-fit:contain;background:#fff;padding:5px;border:1px solid #c5a15d}
+.museum-education figcaption{font-size:13px;color:#e7cb8c;max-width:18ch}
+#budi-museum .museum-manifesto{background:#130e0f;border-block:1px solid #c5a15d30}
+#budi-museum .museum-manifesto [data-manifesto-rows]{border-top:3px double #c5a15d50}
+
+/* One gallery route; each collection gets its own physical display grammar. */
+#budi-museum .museum--embedded{background:#0b0a09;color:#f4efe5;overflow:visible}
+#budi-museum .museum:before,#budi-museum .museum:after{display:none}
+#budi-museum .museum--embedded .museum-hall{max-width:1380px;padding:100px clamp(24px,5vw,72px);margin:auto;background:none;border:0;border-radius:0;box-shadow:none;opacity:1;transform:none}
+#budi-museum .museum-hall:before{content:"";position:absolute;inset:0 18px;pointer-events:none;border-inline:1px solid #c5a15d20;background:none;opacity:1;transform:none}
+#budi-museum .museum-hall:after{content:"";position:absolute;inset:0 18px auto;height:15px;background:linear-gradient(#c5a15d55 0 1px,transparent 1px 6px,#c5a15d22 6px 7px,transparent 7px);clip-path:none;transform:none;box-shadow:none}
+#budi-museum .museum-section-heading{display:block;max-width:760px;margin:0 auto 56px;text-align:center;position:relative;padding:0 0 20px;background:none;border:0;box-shadow:none}
+#budi-museum .museum-section-heading h2{font:400 clamp(2.5rem,5vw,4.75rem)/1.12 var(--museum-serif);letter-spacing:-.035em;color:#f2e6cf;margin:18px 0;text-shadow:none;background:none;-webkit-text-fill-color:currentColor;animation:none;filter:none}
+#budi-museum .museum-section-heading h2:after{content:"";display:block;width:70px;height:1px;margin:24px auto;background:#c5a15d80;box-shadow:none}
+#budi-museum .museum-section-heading>p:not(.museum-eyebrow){color:#bdb09d;font-size:16px;line-height:1.75;max-width:48ch;margin:auto}
+#budi-museum .museum-eyebrow{color:#c5a15d;font-size:10px;letter-spacing:.2em;justify-content:center}
+#budi-museum .museum-collection-count{position:static;display:inline-flex;align-items:center;justify-content:center;gap:12px;margin:24px auto 0;padding:10px 22px;border:1px solid #c5a15d40;border-radius:0;background:#c5a15d08;box-shadow:none;color:#e7cb8c;transform:none}
+#budi-museum .museum-collection-count strong{font:30px/1 var(--museum-serif)}
+#budi-museum .museum-collection-count small{font-size:12px;letter-spacing:.04em;color:#c5b9a7}
+#budi-museum .museum-exhibits{gap:32px;max-width:1200px;align-items:stretch}
+#budi-museum .museum-exhibits{border-radius:0;backdrop-filter:none}
+#budi-museum .museum-exhibits:before{display:none}
+#budi-museum .museum-exhibit-frame:before,#budi-museum .museum-exhibit-frame:after{display:none}
+#budi-museum .museum-exhibit-plaque{border-radius:0}
+#budi-museum .museum-exhibit-plaque strong{color:#f2e6cf;text-shadow:none}
+.museum-exhibit-shell{min-width:0;display:flex;flex-direction:column;position:relative}
+#budi-museum .museum-exhibit{width:100%;text-align:start;min-height:0;transition:transform .22s}
+#budi-museum .museum-exhibit{height:auto;border-radius:0}
+#budi-museum .museum-hall{--room:#c5a15d;--room-rgb:197,161,93}
+#budi-museum .museum-exhibit:hover .museum-exhibit-frame{box-shadow:inset 0 0 0 1px #c5a15d80,0 10px 25px #0005}
+#budi-museum .museum-exhibit:hover{transform:translateY(-3px)}
+#budi-museum .museum-exhibit:before,#budi-museum .museum-exhibit:after{display:none}
+#budi-museum .museum-exhibit-spot{display:none}
+#budi-museum .museum-exhibit-plaque{max-width:100%;margin:0;padding:22px 20px;background:#1b1611;border:1px solid #c5a15d35;border-top:3px double #c5a15d60;box-shadow:none;gap:10px}
+#budi-museum .museum-exhibit-plaque strong{font:400 25px/1.25 var(--museum-serif);color:#f2e6cf;overflow-wrap:anywhere}
+#budi-museum .museum-exhibit-plaque small{color:#bca477;line-height:1.5;font-size:9px}
+#budi-museum .museum-exhibit-plaque>span{color:#d2b778;font-size:12px}
+.exhibit-public-info{padding:0 20px 22px;background:#1b1611;border:1px solid #c5a15d35;border-top:0;flex:1;display:flex;flex-direction:column}
+.exhibit-public-info p{font-size:13px;line-height:1.8;color:#c5b9a7;margin:0 0 20px}
+.exhibit-direct-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto}
+.exhibit-direct-links a{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:9px 14px;border:1px solid #c5a15d65;color:#e7cb8c;font-size:12px}
+.exhibit-direct-links a:hover{background:#c5a15d;color:#17120c}
+
+/* Crafts: relief panels with alternate recesses, rather than framed thumbnails. */
+#budi-museum .museum-exhibits-services{grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;padding:0;border:0;background:none;box-shadow:none}
+#budi-museum .museum-exhibits-services .museum-exhibit-frame{aspect-ratio:1.45;border:1px solid #c5a15d40;border-top:7px double #8b6936;border-radius:0;background:#211a13;box-shadow:inset 0 14px 35px #0009}
+#budi-museum .museum-exhibits-services .museum-exhibit-shell:nth-child(3n+2){padding-top:36px}
+#budi-museum .museum-service-photo{opacity:.13;filter:grayscale(1)}
+#budi-museum .service-artwork{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;background:none;box-shadow:none;backdrop-filter:none;opacity:1;filter:sepia(.55);transform:scale(.9)}
+#budi-museum .service-illustration{width:100%;height:100%}
+#budi-museum .service-artwork-caption{display:none}
+
+/* Relics: tall tablets, individual niches, recognisable untouched brand marks. */
+#budi-museum .museum-exhibits-skills{grid-template-columns:repeat(5,minmax(0,1fr));gap:20px;border:0;padding:0;background:none;box-shadow:none}
+#budi-museum .museum-exhibits-skills .museum-exhibit{height:100%;padding:18px 12px 12px;border:1px solid #c5a15d40;border-top:4px double #c5a15d70;background:radial-gradient(ellipse at 50% 0,#c5a15d13,transparent 65%),#15120f;box-shadow:0 12px 18px #0003}
+#budi-museum .museum-exhibits-skills .museum-exhibit-frame{aspect-ratio:1.12;border:0;border-bottom:7px double #6b5332;border-radius:45% 45% 0 0/20% 20% 0 0;background:linear-gradient(90deg,#0c0b09,#292116 48%,#0c0b09);box-shadow:inset 0 0 20px #0008}
+#budi-museum .museum-exhibits-skills .museum-exhibit-shell:nth-child(3n+2) .museum-exhibit-frame{border-radius:0;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%);background:linear-gradient(100deg,#100c0b,#38261d 50%,#17100c)}
+#budi-museum .museum-exhibits-skills .museum-exhibit-shell:nth-child(3n) .museum-exhibit-frame{border-radius:50% 50% 3px 3px/44% 44% 3px 3px;background:radial-gradient(ellipse at 50% 40%,#45351e,#100d09 70%)}
+#budi-museum .museum-skill-icon{width:64px;height:64px;filter:none;padding:8px;background:#f4efe509;border-radius:6px}
+#budi-museum .museum-exhibits-skills .museum-exhibit-plaque{margin:14px 0 0;padding:0;border:0;background:none;text-align:center;align-items:center;min-height:64px}
+#budi-museum .museum-exhibits-skills .museum-exhibit-plaque strong{font-family:var(--font-sans);font-size:15px;font-weight:600}
+#budi-museum .museum-exhibits-skills .museum-exhibit:hover{box-shadow:0 12px 24px #0006;border-color:#c5a15d}
+
+/* Statuary: one monumental leading work, then a useful two-column gallery. */
+#budi-museum .museum-cabinet-heading{background:none;border:0;border-bottom:1px solid #c5a15d40;box-shadow:none;color:#bca477;padding:12px 0;margin-bottom:28px;max-width:1200px}
+#budi-museum .museum-exhibits-projects{grid-template-columns:repeat(2,minmax(0,1fr));gap:48px 32px;padding:0;border:0;background:none;box-shadow:none;max-width:1200px}
+#budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child{grid-column:1/-1;display:grid;grid-template-columns:1.5fr 1fr;align-items:center;background:#1b1611;border:1px solid #c5a15d50}
+#budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child .exhibit-public-info{border:0;padding:32px}
+#budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child .exhibit-public-info p{font-size:16px}
+#budi-museum .museum-exhibits-projects .museum-exhibit{padding:0;border:0;background:none;box-shadow:none;margin:0;min-height:0;display:block}
+#budi-museum .museum-exhibits-projects .museum-exhibit-frame{width:100%;aspect-ratio:1.65;border:12px solid #2b241a;border-top:14px solid #403322;border-bottom:18px solid #403322;background:#100e0c;box-shadow:inset 0 0 0 1px #c5a15d60;border-radius:0}
+#budi-museum .museum-exhibits-projects .museum-exhibit-frame img{object-fit:contain;padding:18px;filter:none}
+#budi-museum .museum-exhibits-projects .museum-exhibit-frame img.museum-art-contain{background:radial-gradient(ellipse at 50% 20%,#35291a,#100e0c 75%);padding:24px}
+#budi-museum .museum-exhibits-projects .museum-exhibit-shell{border-radius:0}
+#budi-museum .museum-exhibits-projects .museum-exhibit-plaque{margin:0;padding:22px;width:100%;border-top:1px solid #c5a15d50;background:#1b1611}
+#budi-museum .museum-exhibits-projects .museum-exhibit-plaque strong{font-size:30px}
+#budi-museum .museum-exhibits-projects .museum-exhibit:hover{background:none;box-shadow:none}
+#budi-museum .museum-project-tags{display:flex;flex-wrap:wrap;gap:6px}
+#budi-museum .museum-project-tag{border:1px solid #c5a15d35;background:#c5a15d08;color:#e0d3bc;border-radius:3px;padding:5px 8px;font:10px var(--font-sans);box-shadow:none}
+#budi-museum .museum-project-tag img{width:13px;height:13px;object-fit:contain}
+
+/* Archives: quiet papyrus mats, slim gilt frames, readable disclosure. */
+#budi-museum .museum-hall--certificates{background:linear-gradient(#0b0a09,#1d1014)!important}
+#budi-museum .museum-learning{background:none;border:0;padding:0;box-shadow:none}
+#budi-museum .museum-learning-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:40px}
+#budi-museum .museum-learning-card{background:#171210;border:0;border-radius:0;box-shadow:none;padding:0}
+#budi-museum .museum-learning-art{aspect-ratio:1.4;padding:22px;border:10px solid #3d2c1c;outline:1px solid #a18554;outline-offset:-5px;background:#d8c49b;box-shadow:inset 0 0 25px #604a3430;border-radius:0}
+#budi-museum .museum-learning-art img{width:100%;height:100%;object-fit:contain;transform:none;filter:none}
+#budi-museum .museum-learning-art{margin:0;border-image:none}
+#budi-museum .museum-learning-art:before,#budi-museum .museum-learning-art:after{display:none}
+#budi-museum .museum-learning-info small{color:#c5a15d}
+#budi-museum .museum-learning-card:before{display:none}
+#budi-museum .museum-learning-description{font:13px/1.7 var(--font-sans);letter-spacing:0;text-transform:none;color:#c5b9a7}
+.museum-archive-viewport{max-height:60vh;overflow:auto;overscroll-behavior:contain}
+.museum-archive-viewport.is-zoomed .museum-study-wood-frame{width:150%;max-width:none}
+#budi-museum [role="dialog"]>div{background:#17120ff5;border:1px solid #c5a15d50;border-radius:4px;backdrop-filter:none}
+#budi-museum .museum-study-wood-frame{border-radius:0}
+#budi-museum .museum-study-detail h2,#budi-museum .museum-detail h2{font-family:var(--museum-serif);font-weight:400}
+#budi-museum .museum-learning-info{padding:24px 22px;background:#171210;gap:10px}
+#budi-museum .museum-learning-info strong{font:400 24px/1.3 var(--museum-serif);color:#f2e6cf}
+#budi-museum .museum-learning-status{background:#c5a15d0a;border-color:#c5a15d40;color:#d9c79f}
+#budi-museum .museum-learning-source{margin:0;padding:14px 22px;border-color:#c5a15d30;color:#c5a15d}
+#budi-museum .museum-learning-intro{background:none;border:0;padding:0 0 25px;color:#c5b9a7}
+
+/* Correspondence: natural content heights and a deliberate directory rhythm. */
+#budi-museum #contact{background:linear-gradient(150deg,#251219,#100c0d 65%);overflow:visible;border-color:#c5a15d40}
+#budi-museum #contact>div[aria-hidden="true"]{display:none}
+#budi-museum #contact .contact-identity{border:1px solid #c5a15d50;border-radius:0;background:#171210;padding:0;box-shadow:none;overflow:visible}
+#budi-museum #contact .contact-identity>div{border-radius:0;background:#171210;box-shadow:none;padding:32px;gap:32px}
+#budi-museum #contact .contact-identity>span,#budi-museum #contact .contact-identity>div>span.absolute{display:none}
+#budi-museum #contact .contact-portrait-frame{width:180px;aspect-ratio:1;flex-shrink:0;border:8px double #8b6936;border-radius:0;background:linear-gradient(135deg,#332417,#100c0d);box-shadow:inset 0 0 35px #0008}
+#budi-museum #contact .contact-portrait-frame:before{border-color:#c5a15d70;border-radius:0;box-shadow:none;inset:10%}
+#budi-museum #contact .contact-brand-logo{filter:none;color:#e7cb8c}
+#budi-museum #contact .contact-identity-details{min-width:0;gap:20px}
+#budi-museum #contact .contact-channels{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:24px}
+#budi-museum #contact .contact-channels article{height:auto;min-height:240px;min-width:0;border:1px solid #c5a15d40;border-radius:3px;background:#1e1715b3;backdrop-filter:none;box-shadow:none;padding:24px;display:flex;flex-direction:column}
+#budi-museum #contact .contact-channels article>div:last-child{margin-top:auto;padding-top:18px}
+#budi-museum #contact .contact-channels article>div:last-child a{background:#c5a15d!important;color:#17120c!important;border-radius:2px;box-shadow:none!important;min-height:44px}
+#budi-museum #contact .contact-channels article:hover{box-shadow:0 12px 25px #0005!important}
+#budi-museum #contact .contact-channels article>span[aria-hidden="true"]{display:none}
+#budi-museum #contact .contact-faq,#budi-museum #contact .contact-social{border-radius:0;border-color:#c5a15d30;background:#160f11}
+#budi-museum #contact .contact-faq button{min-height:60px;text-align:start}
+#budi-museum #contact .payment-vault-card{border-radius:3px;border-color:color-mix(in srgb,var(--rail-accent),transparent 60%);background:linear-gradient(145deg,color-mix(in srgb,var(--rail-accent),#171210 94%),#100e0c);box-shadow:0 10px 25px #0004;min-width:0}
+#budi-museum #contact .payment-invoice-head{border-bottom:1px dashed #c5a15d50;letter-spacing:.12em}
+#budi-museum #contact .payment-vault-card:before{opacity:.15}
+#budi-museum #contact .payment-vault-card:after{box-shadow:none}
+#budi-museum .footer-museum{background:#0e0b09;border-top:6px double #a1855450}
+#budi-museum .footer-museum>.egypt-architecture{opacity:.45}
+#budi-museum .footer-museum h2{font-family:var(--museum-serif);font-weight:400;letter-spacing:-.035em}
+#budi-museum .footer-museum [class*="animate-"]{animation:none}
+
+.egypt-gate{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:#0b0a09;pointer-events:none}
+.egypt-gate-pyramid{position:absolute;width:min(90vw,1000px);height:90vh;opacity:.8}
+.egypt-gate-seal{position:relative;display:grid;justify-items:center;gap:14px;padding:45px;border:1px solid #c5a15d60;background:#0b0a09}
+.egypt-gate-seal svg{width:64px;height:85px;fill:#e7cb8c}
+.egypt-gate-seal svg+svg{width:110px;height:64px}
+.egypt-gate button{position:absolute;bottom:35px;color:#e7cb8c;pointer-events:auto;padding:12px 25px;border:1px solid #c5a15d40}
+
+@media(min-width:1450px){#budi-museum .atrium-layout{max-width:1380px}}
+@media(max-width:1023px){
+  #budi-museum .atrium-layout{grid-template-columns:1.2fr 1fr;padding-block:150px 80px;gap:32px}
+  #budi-museum #hero-heading{font-size:clamp(3rem,6.3vw,5rem)}
+  #budi-museum .museum-exhibits-services{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #budi-museum .museum-exhibits-services .museum-exhibit-shell:nth-child(3n+2){padding-top:0}
+  #budi-museum .museum-exhibits-skills{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child{display:flex}
+}
+@media(max-width:767px){
+  #budi-museum .atrium-layout{grid-template-columns:1fr;padding-block:140px 60px;gap:50px}
+  #budi-museum #hero-heading{font-size:clamp(3.2rem,12vw,5rem);max-width:12ch}
+  #budi-museum .atrium-portrait{width:min(85%,380px);margin-inline:auto}
+  #budi-museum .hero-museum{min-height:auto}
+  #budi-museum .museum--embedded .museum-hall{padding:65px 24px}
+  #budi-museum .museum-hall:before,#budi-museum .museum-hall:after{inset-inline:10px}
+  #budi-museum .museum-section-heading{margin-bottom:30px}
+  #budi-museum .museum-exhibits-skills{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  #budi-museum .museum-exhibits-projects,#budi-museum .museum-learning-grid{grid-template-columns:1fr;gap:30px}
+  #budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child{grid-column:auto}
+  #budi-museum .museum-cabinet-heading{flex-direction:column;gap:8px}
+  #budi-museum #contact .contact-identity>div{flex-direction:column;padding:24px}
+  #budi-museum #contact .contact-channels{grid-template-columns:1fr}
+  #budi-museum #contact .contact-channels article{min-height:230px}
+  #budi-museum #contact .payment-methods{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  #budi-museum .museum-exhibits-services{grid-template-columns:1fr}
+  #budi-museum .museum-exhibits-skills{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #budi-museum .museum-learning-art{padding:12px;border-width:8px}
+  #budi-museum .museum-exhibits-projects .museum-exhibit-shell:first-child .exhibit-public-info{padding:22px}
+  #budi-museum .museum-exhibits-projects .museum-exhibit-plaque strong{font-size:26px}
+}
+@media(prefers-reduced-motion:reduce){
+  #budi-museum *,#budi-museum *:before,#budi-museum *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  #budi-museum [data-hero-reveal],#budi-museum [data-about-fade],#budi-museum [data-manifesto-fade]{opacity:1!important;visibility:visible!important;transform:none!important}
+}

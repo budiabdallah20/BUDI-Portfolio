@@ -129,8 +129,6 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const lastY = useRef(0);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const { t, lang } = useLanguage();
   const active = useScrollSpy(navLinks.map((l) => l.id));
@@ -156,12 +154,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
         setScrolled(y > 24);
         const max = document.documentElement.scrollHeight - window.innerHeight;
         setProgress(max > 0 ? Math.min(1, Math.max(0, y / max)) : 0);
-        // Smart hide — glides away scrolling down, returns on the way up.
-        // State flips only on direction change, never every frame.
-        const prev = lastY.current;
-        if (y > prev + 6 && y > 180 && !open) setHidden(true);
-        else if (y < prev - 6 || y < 180) setHidden(false);
-        lastY.current = y;
+        // Keep the museum compass available throughout the visit.
       });
     };
     onScroll();
@@ -212,7 +205,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
   });
 
   const solid = scrolled || open;
-  const shown = visible && !hidden;
+  const shown = visible;
 
   return (
     <>
@@ -343,7 +336,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="glass fixed inset-0 z-40 lg:hidden"
+            className="royal-wayfinding glass fixed inset-0 z-40 lg:hidden"
           >
             <motion.ul
               initial="closed"

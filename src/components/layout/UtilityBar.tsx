@@ -97,7 +97,7 @@ export default function UtilityBar({
           <span suppressHydrationWarning>{now ? dateFmt.format(now) : "--"}</span>
         </p>
 
-        <p className="flex items-center gap-2.5 text-faint">
+        <div className="flex min-w-0 items-center gap-2.5 text-faint">
           <span
             role="img"
             aria-label={`${t.bar.weatherLabel}: ${weatherText}`}
@@ -109,6 +109,7 @@ export default function UtilityBar({
               {weather ? `${weather.tempC}°C` : "--"}
             </span>
           </span>
+          <span className="weather-engraving" lang="ar" dir="rtl" title="القرآن الكريم، سورة هود، الآية ٨٨">وَمَا تَوْفِيقِي إِلَّا بِاللَّهِ</span>
           <a
             href={profile.locationHref}
             target="_blank"
@@ -125,7 +126,7 @@ export default function UtilityBar({
             />
             <span className="truncate">{availLabel}</span>
           </span>
-        </p>
+        </div>
       </div>
     </div>
   );

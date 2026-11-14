@@ -1,0 +1,58 @@
+[
+  {
+    "name": "great-hall",
+    "source": "https://commons.wikimedia.org/wiki/File:Columns_in_Karnak_Temple.JPG",
+    "author": "OmarShawki",
+    "license": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "corridor",
+    "source": "https://commons.wikimedia.org/wiki/File:Karnak_Temple_Interior.jpg",
+    "author": "F. Malotaux (Frankmnl)",
+    "license": "https://creativecommons.org/licenses/by-sa/2.5/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "monuments",
+    "source": "https://commons.wikimedia.org/wiki/File:Luxor,_Egypt,_Karnak,_Great_Hypostyle_Hall,_Columns.jpg",
+    "author": "Vyacheslav Argenberg",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "reliefs",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Temple_of_Isis_from_Philae,_Ancient_Egypt_reliefs,_Lake_Nasser,_Egypt.jpg",
+    "author": "Vyacheslav Argenberg",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "courtyard",
+    "source": "https://commons.wikimedia.org/wiki/File:Philae_Temple_R05.jpg",
+    "author": "Marc Ryckaert",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "island",
+    "source": "https://commons.wikimedia.org/wiki/File:Philae_Temple_R03.jpg",
+    "author": "Marc Ryckaert",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "changes": "Resized and WebP encoded; displayed with CSS crop and dark lighting overlays. Derivatives retain the source license."
+  },
+  {
+    "name": "identity",
+    "source": "https://commons.wikimedia.org/wiki/File:Dendera_relief.jpg",
+    "author": "Bernard Gagnon",
+    "license": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "changes": "Resized, WebP encoded; CSS crop and lighting. Derivatives retain source license."
+  },
+  {
+    "name": "archive",
+    "source": "https://commons.wikimedia.org/wiki/File:Temple_of_Hathor,_Ceiling,_Dendera,_Egypt.jpg",
+    "author": "Vyacheslav Argenberg",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Resized, WebP encoded; CSS crop and lighting. Derivatives retain source license."
+  }
+]

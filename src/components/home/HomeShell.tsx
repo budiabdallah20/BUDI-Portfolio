@@ -13,7 +13,12 @@ import type { RemoteContent } from "@/lib/content";
 import { availabilityFromSettings, paymentsFromSettings } from "@/components/WorkStatus";
 import About from "@/components/sections/About";
 import AboutManifesto from "@/components/sections/AboutManifesto";
-import ScrollPlay from "@/components/sections/ScrollPlay";
+import "@/components/museum/egyptian.css";
+import "@/components/museum/pharaonic.css";
+import "@/components/museum/royal-chambers.css";
+import "@/components/museum/refinement.css";
+import "@/components/museum/galleries-v5.css";
+import "@/components/museum/master-gallery.css";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import Museum from "@/components/museum/Museum";
 import Contact from "@/components/sections/Contact";
@@ -58,7 +63,11 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
     ? (rawSettings?.verificationBadges as { id: string; labelEn: string; labelFr: string; logo: string }[])
     : [];
   const [loading, setLoading] = useState<boolean>(showLoader);
+  const [gateVisible, setGateVisible] = useState(showLoader);
+  const exitGate = useCallback(() => setGateVisible(false), []);
   const completedRef = useRef(false);
+  /** Hash present at first client render — scroll-spy later rewrites the URL in place. */
+  const initialHashRef = useRef<string>(typeof window !== "undefined" ? window.location.hash : "");
   /** True only when the server actually reached Supabase — gates DB pings. */
   const dbReadyRef = useRef(content !== null);
   const { lang } = useLanguage();
@@ -83,27 +92,11 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
   // render the loader, then this layout effect skips it BEFORE paint —
   // zero mismatch, zero flash, the curtain's own effects never even run.
   useLayoutEffect(() => {
-    if (!showLoader || shouldSkipIntro()) {
+    if (!showLoader || shouldSkipIntro() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setGateVisible(false);
       handleComplete();
     }
   }, [showLoader, handleComplete]);
-
-  // HARD RESET on every (re)mount: the browser loves restoring the old
-  // scroll position on refresh — landing mid-way inside the pinned
-  // ScrollPlay stage while the loader locks the body mis-measures every
-  // ScrollTrigger and the page feels stuck until a second refresh.
-  // Manual restoration + instant top puts every load on the same start
-  // line; the deep-link effect below still honors #hash links after lift.
-  useEffect(() => {
-    try {
-      if ("scrollRestoration" in window.history) {
-        window.history.scrollRestoration = "manual";
-      }
-    } catch {
-      /* older browsers — default behavior stays */
-    }
-    window.scrollTo(0, 0);
-  }, []);
 
   // LAST-RESORT watchdog: the loader curtain has its own 4.5s timer plus
   // a pure-CSS 7s self-dismiss — but those only hide the curtain. If the
@@ -173,7 +166,8 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
   // starts fresh at the top — no last-section memory, like the first time.
   useEffect(() => {
     if (loading) return;
-    const hash = window.location.hash;
+    const hash = initialHashRef.current;
+    initialHashRef.current = "";
     if (hash) {
       const id = hash.replace("#", "");
       const timer = window.setTimeout(() => {
@@ -183,11 +177,11 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
         window.clearTimeout(timer);
       };
     }
-    window.scrollTo(0, 0);
   }, [loading]);
 
   return (
-    <>
+    <div id="budi-museum" className="egyptian-museum">
+      <link rel="preload" href="/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       <RealtimeRefresh />
       <ErrorReporter />
       <ConsoleWelcome />
@@ -197,7 +191,8 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
       >
         {lang === "fr" ? "Aller au contenu" : "Skip to content"}
       </a>
-      {loading && <LoadingScreen onComplete={handleComplete} />}
+      {gateVisible && <LoadingScreen onComplete={handleComplete} onExit={exitGate} />}
+      <noscript><style>{".museum-gate,.egypt-gate{display:none!important}#budi-museum header{opacity:1!important;transform:none!important}"}</style></noscript>
       {maintenance && !loading && (
         <p className="relative z-[105] bg-amber-400 px-4 py-2 text-center font-mono text-[11px] tracking-[0.2em] text-black uppercase">
           {lang === "fr" ? "Mode maintenance — mises à jour en cours" : "Maintenance mode — updates in progress"}
@@ -210,11 +205,10 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
         <Hero start={!loading} image={content?.settings?.heroImage || undefined} />
         <About availability={availability} image={content?.settings?.aboutImage || undefined} />
         <AboutManifesto />
-        <ScrollPlay />
         <Museum content={content} />
         <Contact email={contactEmail} availability={availability} payments={payments} siteVerified={siteVerified} verificationBadges={verificationBadges} />
       </main>
-      <Footer email={contactEmail} availability={availability} />
-    </>
+      <Footer image={content?.settings?.aboutImage || undefined} email={contactEmail} availability={availability} />
+    </div>
   );
 }

@@ -1,0 +1,581 @@
+#budi-museum {
+  --master-brass: linear-gradient(115deg,#6c4c21,#d4af37 28%,#f4d66a 45%,#98711b 75%,#5d411c);
+  --master-ivory: #f8f6f0;
+}
+#budi-museum :is(#about,.museum-manifesto) { font-family: var(--font-sans),Inter,sans-serif; }
+#budi-museum :is(#about,.museum-manifesto):lang(ar) { font-family: Cairo,system-ui,sans-serif; }
+#budi-museum :is(#about,.museum-manifesto) p { line-height: 1.75; }
+#budi-museum #about-heading { font-family: "PT Serif",Georgia,serif; font-weight: 400; }
+#budi-museum #about-heading:lang(ar) { font-family: Cairo,system-ui,sans-serif; }
+#budi-museum :is(#about,.museum-manifesto) .master-stat,
+#budi-museum .astra-galleries .museum-collection-count strong {
+  font-family: "PT Serif",Georgia,serif;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #f4d66a;
+  text-shadow: 0 0 26px #d4af3750;
+}
+#budi-museum .master-stat {
+  display: inline-grid;
+  min-inline-size: 1.9em;
+  place-items: center;
+  padding: .16em .22em;
+  margin-block-end: .2em;
+  border-block-end: 3px double #d4af3780;
+  background: radial-gradient(ellipse at 50% 90%,#78522344,transparent 70%);
+}
+#budi-museum :is(.master-stat,.museum-collection-count strong):lang(ar) { font-family: Cairo,system-ui,sans-serif; }
+
+#budi-museum #services .master-service-relief {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 6px 18px;
+  filter: drop-shadow(0 12px 13px #000a);
+}
+#budi-museum #services .master-relief-object { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion:no-preference) {
+  #budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .master-relief-object { animation: v5-relief-lift 420ms ease-out; }
+}
+#budi-museum #services .v5-altar-crest { top: 5%; opacity: .45; }
+
+.featured-gallery {
+  min-inline-size: 0;
+  padding: clamp(.7rem,2.5vw,2rem);
+  border: 1px solid #a879196b;
+  color: var(--master-ivory);
+  background: radial-gradient(ellipse at 44% 0,#4c302144,transparent 60%),#0d0c0b;
+}
+.featured-controls { display: grid; grid-template-columns: auto minmax(16px,1fr) auto; align-items: center; gap: clamp(.6rem,2vw,1.25rem); margin-block-end: 1.1rem; }
+.featured-position { color: #f4d66a; font: 400 clamp(.95rem,2vw,1.5rem) "PT Serif",Georgia,serif; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.featured-progress { display: block; height: 2px; background: #bda87936; }
+.featured-progress > span { display: block; height: 100%; background: var(--master-brass); transition: inline-size 340ms ease; }
+.featured-arrows { display: flex; gap: 6px; }
+.featured-arrows button {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border: 1px solid #d4af3770;
+  background: #211913;
+  color: #f4d66a;
+}
+.featured-arrows button:hover { background: #5a1f2f; }
+.featured-arrows svg { width: 19px; }
+[dir=rtl] .featured-arrows svg { transform: scaleX(-1); }
+.featured-stage { position: relative; display: grid; grid-template-columns: minmax(0,1fr); gap: clamp(8px,2vw,24px); touch-action: pan-y pinch-zoom; }
+.featured-stage.has-peek { grid-template-columns: minmax(0,1fr) clamp(52px,17%,185px); }
+.featured-artifact { min-inline-size: 0; --enter: 11px; animation: master-artifact-in 340ms ease-out both; }
+.featured-artifact[data-step="-1"],[dir=rtl] .featured-artifact { --enter: -11px; }
+[dir=rtl] .featured-artifact[data-step="-1"] { --enter: 11px; }
+@keyframes master-artifact-in { from { opacity: .52; transform: translateX(var(--enter)); } }
+.featured-peek {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  align-self: center;
+  overflow: hidden;
+  border: 1px solid #d4af3773;
+  color: #efdcaf;
+  background: linear-gradient(#251915,#0e0d0d);
+  text-align: start;
+  box-shadow: 0 14px 24px #0009;
+}
+.featured-peek-art { display: grid; place-items: center; inline-size: 100%; block-size: clamp(106px,18vw,220px); overflow: hidden; opacity: .76; }
+.featured-peek-art img { width: 185%; max-width: none; height: 100%; object-fit: contain; justify-self: start; }
+.featured-peek-label { display: block; width: 100%; padding: .65rem .5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .75rem; }
+.featured-peek:is(:hover,:focus-visible) .featured-peek-art { opacity: 1; }
+.featured-route {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  inset-inline-end: 0;
+  inset-block-start: 20%;
+  inline-size: clamp(70px,20%,220px);
+  block-size: 12%;
+  border-block-start: 1px solid #d4af37ab;
+  border-inline-end: 1px solid #d4af37ab;
+}
+.featured-route::before { content: ""; display: block; height: 2px; background: var(--master-brass); transform-origin: left; animation: master-route 420ms ease-out both; }
+.featured-route[data-step="-1"]::before,[dir=rtl] .featured-route::before { transform-origin: right; }
+[dir=rtl] .featured-route[data-step="-1"]::before { transform-origin: left; }
+@keyframes master-route { from { transform: scaleX(.06); opacity: .3; } }
+.featured-archive { background: radial-gradient(ellipse at 42% 10%,#75512d66,transparent 60%),repeating-linear-gradient(0deg,#b9946620 0 1px,transparent 1px 68px),#251719; border: 5px double #98711b; }
+#budi-museum #certificates .featured-archive .featured-artifact :is(.museum-learning-card,.museum-exhibit-shell) {
+  margin: 0;
+  padding: clamp(.6rem,2vw,1.5rem);
+  border: 1px solid #d4af374f;
+  background: #151011;
+  box-shadow: 0 16px 36px #0008;
+  transform: none;
+}
+#budi-museum #certificates .featured-archive :is(.museum-learning-art,.museum-exhibit-frame) { border-image: var(--master-brass) 1; width: 100%; aspect-ratio: 1.48; max-height: 490px; }
+#budi-museum #certificates .featured-archive :is(.museum-learning-info strong,.museum-learning-description,.museum-learning-source) { color: #f8f6f0; }
+#budi-museum #certificates .featured-archive :is(.museum-learning-info small,.museum-learning-view,.museum-learning-status) { color: #f4d498; }
+#budi-museum #certificates .featured-archive .museum-learning-status { background: #d4af371a; }
+#budi-museum .museum-exhibits-certificates:has(.featured-archive) { display: block; }
+#budi-museum #projects .featured-projects .vitrine {
+  display: grid;
+  grid-template-columns: minmax(0,1.18fr) minmax(0,1fr);
+  gap: 12px;
+  padding: clamp(.7rem,2vw,1.35rem);
+  background: radial-gradient(ellipse at 0 0,#4932217d,transparent 62%),#10100f;
+}
+#budi-museum #projects .featured-projects .vitrine-window { aspect-ratio: 1.58; }
+#budi-museum #projects .featured-projects .vitrine-label { padding-block: .7rem; }
+#budi-museum #projects .featured-projects .vitrine-plinth { grid-column: 1 / -1; }
+#budi-museum #home .atrium-portrait-window {
+  outline: 2px solid #bd934772;
+  outline-offset: 9px;
+  box-shadow: 0 0 0 7px #21160f,0 0 0 12px #070606,0 28px 55px #000b;
+}
+@media (max-width: 820px) {
+  #budi-museum #projects .featured-projects .vitrine { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 480px) {
+  .featured-stage.has-peek { grid-template-columns: minmax(0,1fr) 48px; }
+  #budi-museum #certificates .featured-archive .museum-learning-info { padding-inline: 0; }
+  #budi-museum #certificates .featured-archive .museum-learning-info strong { font-size: clamp(1rem,5vw,1.4rem); }
+  .featured-route { inline-size: 55px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .featured-artifact,.featured-route::before { animation: none; }
+  .featured-progress > span { transition: none; }
+}
+
+.featured-route { inset-block-start: 43%; block-size: 8%; inline-size: clamp(45px,16%,185px); }
+#budi-museum #certificates .featured-archive .featured-peek {
+  border: 4px double #b48940;
+  box-shadow: inset 0 0 0 2px #20140c,0 14px 24px #0009;
+}
+#budi-museum .featured-peek:focus-visible,
+#budi-museum .featured-arrows button:focus-visible {
+  outline: 2px solid #f4d66a;
+  outline-offset: 3px;
+}
+#budi-museum #skills .relic-shell.is-active .relic-label { border-block-start-color: var(--skill-color); }
+#budi-museum #contact .royal-support-vault .payment-vault-card:focus-within { outline: 1px solid var(--rail-accent); outline-offset: -3px; }
+
+#budi-museum #home .throne-silhouette {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  inset: -10% -11% auto;
+  width: 122%;
+  height: 124%;
+  filter: drop-shadow(0 18px 24px #000b);
+}
+#budi-museum #home .atrium-portrait-window {
+  width: 86%;
+  margin-inline: auto;
+  border-color: #e0b768;
+  box-shadow: 0 0 0 4px #21160f,0 0 0 8px #080606,0 24px 42px #000a;
+}
+#budi-museum #home .refined-temple-haze {
+  background: radial-gradient(ellipse at 73% 28%,#b1845555,transparent 44%),radial-gradient(ellipse at 77% 78%,#5a1f2f77,transparent 49%);
+}
+#budi-museum #services .museum-exhibit-frame {
+  box-shadow: inset 0 12px 33px #0009,inset 0 -7px 20px #d4af3712;
+}
+#budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .v5-altar-crest { opacity: .9; }
+#budi-museum #about :is(.master-stat,.royal-identity-monument) {
+  text-rendering: optimizeLegibility;
+}
+#budi-museum .master-stat {
+  border-inline: 1px solid #b38a4e49;
+  box-shadow: inset 0 -6px 15px #d4af3718;
+}
+#budi-museum #skills .relic-shell.is-active .relic-stage { filter: drop-shadow(0 0 9px color-mix(in srgb,var(--skill-color),transparent 67%)); }
+#budi-museum #contact .payment-vault-card:is(:hover,:focus-within) .payment-vault-index::after { box-shadow: 0 0 13px #f4d66a85; }
+.featured-peek-art img { transform: translateX(-7%); }
+[dir=rtl] .featured-peek-art img { transform: translateX(7%); }
+.featured-artifact { --enter: 16px; animation-duration: 290ms; }
+.featured-artifact[data-step="-1"],[dir=rtl] .featured-artifact { --enter: -16px; }
+[dir=rtl] .featured-artifact[data-step="-1"] { --enter: 16px; }
+@media (max-width:600px) {
+  #budi-museum #home .throne-silhouette { inset-inline: -6%; width: 112%; }
+}
+
+@media (max-width:480px) {
+  .featured-peek { align-self: start; margin-block-start: 28px; }
+  .featured-route { inset-block-start: 82px; block-size: 20px; }
+}
+
+.flagship-gate.egypt-gate { background: #050505; transition: background-color 540ms ease; }
+.flagship-gate[data-act=doors],.flagship-gate[data-act=arrival] { background-color: transparent; }
+.flagship-gate[data-act=arrival] { pointer-events: none; }
+.flagship-gate .egypt-gate-seal {
+  opacity: 0;
+  transform: translate(-50%,-50%) scale(.97);
+  transition: opacity 430ms ease,transform 430ms ease;
+}
+.flagship-gate[data-act=seal] .egypt-gate-seal {
+  opacity: 1;
+  transform: translate(-50%,-50%) scale(1);
+}
+.flagship-gate .egypt-gate-pyramid { z-index: 11; opacity: .8; transition: opacity 540ms ease; pointer-events: none; }
+.flagship-gate[data-act=doors] .egypt-gate-pyramid,.flagship-gate[data-act=arrival] .egypt-gate-pyramid { opacity: 0; }
+.flagship-gate .egypt-door {
+  background: repeating-linear-gradient(90deg,transparent 0 32px,#91693c13 32px 34px),linear-gradient(120deg,#0a0908,#20170e 70%,#090807);
+  transition-duration: 1100ms;
+}
+.flagship-gate .egypt-gate-skip { z-index: 30; min-height: 44px; }
+.flagship-gate .egypt-gate-skip:focus-visible { outline: 2px solid #f2d16b; outline-offset: 4px; }
+.flagship-gate-light {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 81%,#d4af3754,transparent 49%);
+  transition: opacity 470ms ease;
+}
+.flagship-gate[data-act=doors] .flagship-gate-light { opacity: .8; }
+
+#budi-museum .featured-arrows button { border-radius: 50%; box-shadow: inset 0 0 0 2px #080605; }
+
+#budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .master-service-relief { filter: drop-shadow(0 10px 18px #d4af3738); }
+#budi-museum #skills .relic-shell.is-active .relic-trigger { box-shadow: inset 0 0 28px color-mix(in srgb,var(--skill-color),transparent 80%),0 18px 30px #0009; }
+#budi-museum .master-stat { text-shadow: 0 1px #4f3816,0 -1px #ffe39c55,0 0 16px #d4af3738; }
+#budi-museum #contact .payment-vault-card:focus-within .payment-vault-index { border-block-end-color: var(--rail-accent); }
+
+.flagship-gate .egypt-gate-seal { z-index: 14; transform: scale(.97); }
+.flagship-gate[data-act=seal] .egypt-gate-seal { transform: scale(1); }
+.flagship-gate[data-act=arrival] .egypt-gate-skip { visibility: hidden; }
+
+.flagship-gate .egypt-gate-seal { transition-duration: 280ms; }
+.flagship-gate[data-act=doors] .egypt-gate-seal { transition-duration: 340ms; }
+
+.flagship-gate .egypt-door { transition-duration: 1420ms; }
+.flagship-gate .gate-door-inlay {
+  position: absolute;
+  inset: 15% 15%;
+  border-block: 4px double #bd944f65;
+  background: repeating-linear-gradient(135deg,transparent 0 28px,#bd944f15 29px 30px,transparent 31px 43px);
+  opacity: .4;
+}
+.flagship-gate[data-act=seal] .gate-door-inlay { opacity: .72; transition: opacity 650ms ease; }
+.flagship-gate .egypt-gate-skip { background: #080706e8; color: #f2d16b; }
+#budi-museum #home .refined-temple::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg,transparent 0 12%,#d4af3716 12.1%,transparent 12.3% 15%);
+  mask-image: linear-gradient(90deg,transparent 43%,#000);
+}
+#budi-museum #about .lived-days-plaque {
+  border-inline: 1px solid #d4af3749;
+  background: radial-gradient(ellipse at 50% 30%,#77512755,transparent 70%),#15100f;
+}
+#budi-museum #about .lived-days-plaque .master-stat { font-size: clamp(1.75rem,4.3vw,4rem); white-space: nowrap; }
+#budi-museum #skills .relic-shell.is-active .relic-brand { box-shadow: 0 0 18px color-mix(in srgb,var(--skill-color),transparent 50%); }
+#budi-museum .featured-arrows button:is(:hover,:focus-visible) { box-shadow: inset 0 0 0 2px #080605,0 0 12px #d4af373f; }
+#budi-museum .footer-museum .royal-footer-index {
+  padding-inline: clamp(.75rem,2vw,1.6rem);
+  background: linear-gradient(180deg,#8b69141b,transparent 75%);
+}
+#budi-museum .footer-museum .royal-footer-index > div { padding-inline-start: .75rem; border-inline-start: 1px solid #d4af374f; }
+#budi-museum .footer-museum .royal-footer-cartouche img { outline: 1px solid #d4af3766; outline-offset: 5px; }
+#budi-museum #contact .payment-vault-card:is(:hover,:focus-within) .payment-vault-index { color: #fff0c2; }
+
+#budi-museum .weather-engraving {
+  flex: none;
+  margin-inline: .3rem .1rem;
+  padding-inline: .8rem;
+  border-inline: 1px solid #d4af374d;
+  color: #ebd5a3;
+  font: 500 .82rem/1.6 Cairo,system-ui,sans-serif;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+.refined-pointer-light {
+  inset: 0 auto auto 0;
+  width: min(640px,75vw);
+  height: min(480px,65vh);
+  transform: translate3d(calc(var(--mx,72vw) - 50%),calc(var(--my,25vh) - 50%),0);
+  background: radial-gradient(ellipse,var(--pointer-hue),transparent 68%);
+}
+@media (max-width: 850px) {
+  #budi-museum .weather-engraving { margin-inline: 0; padding-inline: .45rem; }
+}
+
+#budi-museum #home .atrium-portrait:has(.hero-photo-card) {
+  width: min(100%,480px);
+  max-width: none;
+  padding: 0;
+  transform: none;
+}
+#budi-museum #home .atrium-portrait:has(.hero-photo-card)::before,
+#budi-museum #home .atrium-portrait:has(.hero-photo-card)::after { content: none; }
+.hero-photo-card {
+  display: grid;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #a88752;
+  border-radius: 26px 26px 10px 10px;
+  background: linear-gradient(142deg,#2e251b,#11100f 52%);
+  box-shadow: 0 23px 46px #0009;
+}
+.hero-photo-card-media { position: relative; aspect-ratio: 5 / 6; overflow: hidden; border-radius: 19px 19px 4px 4px; }
+.hero-photo-card-media img { object-position: 50% 76%; }
+.hero-photo-card-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 12px 8px;
+  color: #f8f6f0;
+}
+.hero-photo-card-caption svg { flex: none; color: #d4af37; }
+.hero-photo-card-caption strong,.hero-photo-card-caption small { display: block; }
+.hero-photo-card-caption small { color: #d8c7a1; margin-block-start: 3px; }
+#budi-museum #contact .royal-support-vault .payment-vault-card {
+  isolation: isolate;
+  background: linear-gradient(150deg,var(--payment-stone,#262019),#11100f 78%) !important;
+  box-shadow: inset 0 0 0 3px #05050577 !important;
+}
+#budi-museum #contact .payment-vault-card[data-payment=vodafone] { --payment-stone: #30201f; --payment-ink: #cc7778; }
+#budi-museum #contact .payment-vault-card[data-payment=taptap] { --payment-stone: #1e2822; --payment-ink: #84a78a; }
+#budi-museum #contact .payment-vault-card[data-payment=instapay] { --payment-stone: #272031; --payment-ink: #ac91c4; }
+#budi-museum #contact .royal-support-vault .payment-vault-card::before {
+  inset: 0;
+  z-index: -1;
+  border: 0;
+  background: var(--payment-ink,#bc995c);
+  mask: url("/images/museum/payment-relief.svg") right top / 205px auto no-repeat;
+  opacity: .22;
+  pointer-events: none;
+}
+#budi-museum #contact .royal-support-vault .payment-vault-card a.group\/btn {
+  background: color-mix(in srgb,var(--payment-ink),#151210 83%) !important;
+  border-color: color-mix(in srgb,var(--payment-ink),transparent 43%);
+  color: #f8f6f0 !important;
+  box-shadow: none !important;
+}
+
+#budi-museum [data-social-vitrine] {
+  position: relative;
+  isolation: isolate;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #c997535c;
+  border-radius: 9px;
+  background: linear-gradient(145deg,#f7d89c25,transparent 42%),linear-gradient(158deg,#4d2234,#170e16 73%);
+  box-shadow: inset 0 0 0 2px #100a126c,0 4px 10px #0007;
+  transition: border-color 180ms,transform 180ms;
+}
+#budi-museum [data-social-vitrine]::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 5px;
+  z-index: -1;
+  background: color-mix(in srgb,var(--social-brand,#a06c46) 62%,#21101b);
+  box-shadow: inset 0 1px #fff4d338;
+}
+#budi-museum [data-social-vitrine]::after {
+  content: "";
+  position: absolute;
+  inset: 1px 4px auto;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg,transparent,#f5d79c,transparent);
+  opacity: .45;
+}
+#budi-museum [data-social-vitrine]:is(:hover,:focus-visible) {
+  border-color: #f3ca83;
+  box-shadow: inset 0 0 0 2px #180b13,0 0 16px #d4af3738;
+}
+#budi-museum :is([data-social-vitrine],.hero-glass-action):focus-visible { outline: 2px solid #f2d16b; outline-offset: 3px; }
+.hero-glass-action {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: .7rem;
+  min-height: 48px;
+  padding: .75rem 1.15rem;
+  overflow: hidden;
+  font-weight: 650;
+  font-size: .875rem;
+  border: 1px solid #d4af3777;
+  border-radius: 8px;
+}
+.hero-glass-hire {
+  color: #25141a;
+  background: linear-gradient(115deg,#b48746,#f9d997 45%,#d0a057);
+  box-shadow: inset 0 0 0 3px #6f3f3629,0 6px 20px #d4af372d;
+}
+.hero-glass-hire::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(112deg,transparent 34%,#fff2c580 49%,transparent 64%);
+  transform: translateX(-100%);
+  transition: transform 480ms ease;
+}
+.hero-glass-hire:is(:hover,:focus-visible)::before { transform: translateX(100%); }
+.hero-glass-projects { color: #f7e8c9; background: linear-gradient(150deg,#59253b,#1b101c 75%); box-shadow: inset 0 0 0 3px #160c1488; }
+.hero-glass-projects::after {
+  content: "";
+  position: absolute;
+  inset: auto 12% 0;
+  height: 2px;
+  background: linear-gradient(90deg,transparent,#f3d491,transparent);
+  transform: scaleX(.3);
+  transition: transform 240ms ease;
+}
+.hero-glass-projects svg { color: #f2d16b; transition: transform 200ms ease; }
+.hero-glass-projects:is(:hover,:focus-visible)::after { transform: scaleX(1); }
+.hero-glass-projects:is(:hover,:focus-visible) svg { transform: translateX(3px); }
+.hero-photo-card { position: relative; }
+.hero-photo-card::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 4px;
+  border: 1px solid #f6d59435;
+  border-radius: 22px 22px 7px 7px;
+}
+.hero-photo-card-caption { background: linear-gradient(100deg,#4b20312e,transparent 76%); border-block-start: 1px solid #d4af3740; }
+.hero-photo-card-caption > svg { padding: 5px; width: 31px; height: 31px; border: 1px solid #b38a5868; border-radius: 6px; background: #3b1e2a; }
+@media (prefers-reduced-motion: reduce) {
+  #budi-museum [data-social-vitrine],.hero-glass-action::before,.hero-glass-action::after,.hero-glass-action svg { transition: none; transform: none; }
+}
+
+#budi-museum .social-gold-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid #e2b765a6;
+  border-radius: 12px;
+  background: linear-gradient(170deg,#633747,#25141f 48%,#120e12);
+  box-shadow: inset 0 1px #ffe2a758,0 0 17px #d4af373d;
+}
+#budi-museum .social-gold-rail [data-social-vitrine] {
+  min-width: 36px;
+  min-height: 44px;
+  width: 36px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+#budi-museum .social-gold-rail [data-social-vitrine]::after { content: none; }
+#budi-museum .social-gold-rail [data-social-vitrine]:is(:hover,:focus-visible) { background: #edc88224; }
+#budi-museum #home .hero-photo-card-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(125deg,#f6d58a38,transparent 25%),
+    linear-gradient(0deg,#21121a62,transparent 20%);
+}
+#budi-museum #home .hero-photo-card::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 #ffe7ae,0 0 22px #d4af372a;
+  background: linear-gradient(90deg,transparent,#f3cd7b 50%,transparent) center top / 55% 2px no-repeat;
+}
+#budi-museum #certificates .archive-photo-exhibit .featured-artifact :is(.museum-learning-card,.museum-exhibit-shell) {
+  border-radius: 12px;
+  background: linear-gradient(160deg,#282019,#151011 58%);
+}
+#budi-museum #certificates .archive-photo-exhibit :is(.museum-learning-art,.museum-exhibit-frame) {
+  background: #f1ebdf;
+  outline: 1px solid #bd955a5c;
+  outline-offset: 3px;
+}
+#budi-museum #certificates .archive-photo-exhibit .featured-peek { border-radius: 7px; }
+
+#budi-museum .social-gold-rail {
+  gap: clamp(6px,.6vw,10px);
+  padding: 8px;
+  border-radius: 15px;
+  background: linear-gradient(160deg,#422333,#181018 72%);
+}
+#budi-museum .social-gold-rail [data-social-vitrine] { min-inline-size: 44px; width: 44px; border-color: #d4af372a; }
+#budi-museum #services .museum-exhibit-frame .service-exhibit-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .7;
+  filter: saturate(.65) brightness(.7);
+}
+#budi-museum #services .master-service-relief {
+  inset: auto 5% 4% auto;
+  width: clamp(70px,21%,142px);
+  height: auto;
+  padding: 0;
+  background: #151012db;
+  border: 1px solid #cfa75e80;
+  border-radius: 8px;
+}
+#budi-museum #home .hero-photo-card-media::after {
+  background: radial-gradient(circle at 11% 12%,#fff1c2ad 0 1px,transparent 3px),
+    radial-gradient(circle at 88% 25%,#f4d78887 0 1px,transparent 3px),
+    linear-gradient(124deg,#ffe2a83b,transparent 31%),
+    linear-gradient(0deg,#21121a63,transparent 21%);
+}
+
+/* The foyer stays behind the doors and dissolves into the live Hero. */
+.flagship-gate { isolation: isolate; overflow: hidden; }
+.flagship-gate .museum-gate-depth {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(ellipse at 50% 60%,#382619,#080706 72%);
+  transition: opacity 670ms ease;
+}
+.flagship-gate .museum-gate-depth svg { width: 100%; height: 100%; }
+.flagship-gate[data-act=arrival] .museum-gate-depth { opacity: 0; }
+.flagship-gate .egypt-gate-doors {
+  inset: 25% max(0px,calc(50% - 17.5vh)) 19%;
+  overflow: hidden;
+  perspective: 850px;
+  background: #0e0a08;
+  box-shadow: inset 0 0 35px #000;
+  transition: opacity 650ms ease;
+}
+.flagship-gate[data-act=arrival] .egypt-gate-doors { opacity: 0; }
+.flagship-gate .egypt-door {
+  background: repeating-linear-gradient(90deg,#171009 0 2px,transparent 2px 22px),
+    linear-gradient(115deg,#523720,#241810 54%,#110b08);
+  border: 1px solid #bc8d5a68;
+  backface-visibility: hidden;
+}
+.flagship-gate .egypt-gate-doors.is-opening .egypt-door-left { transform: rotateY(-76deg) translateX(-22%); }
+.flagship-gate .egypt-gate-doors.is-opening .egypt-door-right { transform: rotateY(76deg) translateX(22%); }
+.flagship-gate .egypt-gate-seal {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 2px;
+  filter: drop-shadow(0 0 13px #ffd29249);
+  pointer-events: none;
+}
+.flagship-gate .egypt-gate-seal svg { fill: #ffe4aa; }
+.flagship-gate[data-act=doors] .egypt-gate-seal { transform: translateY(-14px) scale(1.035); }
+.flagship-gate .egypt-gate-label { color: #ffe4aa; text-shadow: 0 2px 6px #000; }
+.flagship-gate-light {
+  background: radial-gradient(ellipse at 50% 68%,#ffca795e,transparent 38%),
+    conic-gradient(from 158deg at 50% 46%,transparent 0deg,#ffbc652e 17deg,#ffe3a344 23deg,transparent 44deg);
+}
+@media (max-width: 600px) {
+  .flagship-gate .egypt-gate-doors { inset-inline: calc(50% - 16vh); }
+}

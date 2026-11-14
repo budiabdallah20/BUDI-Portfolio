@@ -1,4 +1,5 @@
 "use client";
+import RoomScene from "@/components/museum/RoomScene";
 
 import { useState } from "react";
 import { motion } from "motion/react";
@@ -216,6 +217,7 @@ export default function Contact({
 }): React.JSX.Element {
   const { lang, t } = useLanguage();
   const reduced = useReducedMotion();
+  const [clipboardStatus, setClipboardStatus] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [contactCardOpen, setContactCardOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -251,10 +253,12 @@ export default function Contact({
     try {
       await navigator.clipboard.writeText(text);
       setCopied(key);
+      setClipboardStatus(lang === "fr" ? "Copié dans le presse-papiers." : "Copied to clipboard.");
       window.setTimeout(() => {
         setCopied((cur) => (cur === key ? null : cur));
       }, 1600);
     } catch {
+      setClipboardStatus(lang === "fr" ? "Copie impossible. Vous pouvez sélectionner le texte." : "Copy failed. You can select the text manually.");
       setCopied(null);
     }
   };
@@ -401,6 +405,8 @@ export default function Contact({
       aria-labelledby="contact-heading"
       className="contact-reimagined relative overflow-clip border-t border-border py-24 sm:py-32"
     >
+      <RoomScene scene="courtyard" />
+      <p className="sr-only" role="status">{clipboardStatus}</p>
       <div
         aria-hidden="true"
         className="absolute inset-0"
@@ -511,7 +517,7 @@ export default function Contact({
             </div>
             <div className="contact-identity-actions relative flex shrink-0 flex-wrap items-center justify-center gap-2">
               {socialLinks.filter((s) => s.label === "LinkedIn" || s.label === "GitHub").map((s) => (
-                <a key={s.label} href={s.href} target="_blank" rel="noreferrer" aria-label={s.label} title={s.label} style={{ backgroundColor: s.badgeColor }} className="contact-brand-social flex h-10 w-10 items-center justify-center rounded-lg border border-white/25 transition-transform hover:-translate-y-1">
+                <a key={s.label} href={s.href} target="_blank" rel="noreferrer" aria-label={s.label} title={s.label} style={{ "--social-brand": s.badgeColor } as React.CSSProperties} data-social-vitrine="" className="contact-brand-social flex h-10 w-10 items-center justify-center rounded-lg border border-white/25 transition-transform hover:-translate-y-1">
                   {s.image ? <Image src={s.image} alt="" width={20} height={20} className={s.bleachGlyph ? "glyph-white h-5 w-5" : "h-5 w-5"} /> : s.icon ? <s.icon className="h-5 w-5" /> : null}
                 </a>
               ))}
@@ -677,7 +683,7 @@ export default function Contact({
             {c.allChannels}
           </p>
           <div aria-label={c.allChannels} className="contact-social-rail mt-3">
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <div className="social-gold-rail mx-auto">
               {socialLinks.map((s) => (
                 <a
                   key={s.label}
@@ -685,7 +691,7 @@ export default function Contact({
                   aria-label={s.label}
                   title={s.label}
                   {...(s.external ? { target: "_blank", rel: "noreferrer" } : {})}
-                  style={{ backgroundColor: s.badgeColor }}
+                  style={{ "--social-brand": s.badgeColor } as React.CSSProperties} data-social-vitrine=""
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/15 text-white transition-transform duration-200 hover:scale-110"
                 >
                   {s.image ? (
@@ -786,7 +792,7 @@ export default function Contact({
               <div className="border-t border-emerald-300/15 px-6 py-6">
                 <div className="support-methods-heading"><p className="eyebrow">{c.donateEyebrow}</p><h3>{lang === "fr" ? "Moyens de paiement" : "Payment methods"}</h3><p>{c.donateSub}</p></div>
                 {/* 3 independent rails — active = live, soon = amber teaser, off = locked */}
-                <div className="payment-methods mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <div className="payment-methods royal-support-vault mt-5">
                   {donateRails.map((item, i) => {
                     const st = item.rail.state;
                     const locked = st === "off";
@@ -809,7 +815,7 @@ export default function Contact({
                           locked && "border-white/10 bg-white/[0.02] opacity-95 hover:border-white/25",
                         )}
                       >
-                        <div className="payment-invoice-head" aria-hidden="true"><span>SUPPORT RECEIPT / {String(i + 1).padStart(2, "0")}</span><span>BUDI</span></div>
+                        <div className="payment-vault-index" aria-hidden="true"><span>{String(i + 1).padStart(2, "0")}</span><span>BUDI</span></div>
                         <span
                           aria-hidden="true"
                           className="absolute top-0 left-0 h-[3px] w-0 transition-all duration-500 group-hover:w-full"

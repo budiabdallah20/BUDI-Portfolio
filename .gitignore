@@ -73,3 +73,9 @@ Thumbs.db
 Desktop.ini
 
 .vercel
+
+# Environment variants and machine-local artifacts
+.env.*
+!.env.example
+certs/
+claude-skills-*/

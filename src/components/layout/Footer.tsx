@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import RoomScene from "@/components/museum/RoomScene";
 import { EgyptFlag, SuezFlag } from "@/components/Flags";
 import { navLinks, profile, socialLinks, stackChips } from "@/data/portfolio";
 import { TECH_STACK, techLogo } from "@/data/techLogos";
@@ -73,10 +74,12 @@ const COPY = {
  * socials and a smart bottom bar. Self-contained bilingual copy.
  */
 export default function Footer({
+  image,
   email,
   availability,
 }: {
   email?: string;
+  image?: string;
   availability?: SiteAvailability;
 }): React.JSX.Element {
   const { lang, t } = useLanguage();
@@ -156,7 +159,7 @@ export default function Footer({
   };
 
   return (
-    <footer className="footer-museum relative overflow-clip border-t border-border">
+    <footer className="footer-museum relative overflow-clip border-t border-border"><RoomScene scene="island" />
       {/* Magic top beam — light runs across the footer crown */}
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px overflow-hidden">
         <span className="animate-bar-shine block h-full w-full bg-gradient-to-r from-transparent via-accent to-transparent" />
@@ -210,12 +213,17 @@ export default function Footer({
 
         {/* ——— Finale CTA ——— */}
         <motion.div
-          initial={reduced ? false : { opacity: 0, y: 32 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="flex flex-col items-center text-center"
+          className="royal-footer-finale"
         >
+          <div className="royal-footer-cartouche">
+            <Image src={image?.trim() || "/images/general/about2.jpg"} alt={profile.name} width={240} height={300} sizes="(max-width: 700px) 170px, 240px" />
+            <Logo variant="full" className="royal-footer-wordmark" />
+          </div>
+          <div className="royal-footer-inscription">
           <p
             title={availLabel}
             className={`flex max-w-full items-center gap-2.5 rounded-full border px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] uppercase ${
@@ -280,10 +288,11 @@ export default function Footer({
               <ArrowUpRight className="relative h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
           </span>
+          </div>
         </motion.div>
 
         {/* ——— Link columns ——— */}
-        <div className="mt-16 grid grid-cols-2 gap-10 border-t border-border pt-12 lg:grid-cols-4">
+        <div className="royal-footer-index mt-16 grid grid-cols-2 gap-10 border-t border-border pt-12 lg:grid-cols-4">
           <div className="group/brand relative col-span-2 lg:col-span-1">
             <span
               aria-hidden="true"
@@ -477,7 +486,7 @@ export default function Footer({
             <p className="font-mono text-[11px] tracking-[0.3em] text-faint uppercase">
               {c.socialsTitle}
             </p>
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label={t.hero.socials}>
+            <ul className="social-gold-rail mt-4" aria-label={t.hero.socials}>
               {socialLinks.map(({ label, href, badgeColor, image, icon: Icon, bleachGlyph, external }) => (
                 <li key={label}>
                   <a
@@ -485,7 +494,7 @@ export default function Footer({
                     aria-label={label}
                     title={label}
                     {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-                    style={{ backgroundColor: badgeColor }}
+                    style={{ "--social-brand": badgeColor } as React.CSSProperties} data-social-vitrine=""
                     className="flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-white transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
                   >
                     {image ? (
@@ -750,6 +759,7 @@ export default function Footer({
         </div>
       )}
 
+      <div className="relative mx-auto max-w-7xl px-6 py-5 text-center text-xs text-muted"><a href="/images/museum/credits.html" className="underline underline-offset-4 hover:text-accent">{lang === "fr" ? "Crédits photographiques et licences" : "Photography credits & licenses"}</a></div>
     </footer>
   );
 }

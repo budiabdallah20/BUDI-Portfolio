@@ -1,4 +1,6 @@
 "use client";
+import RoomScene from "@/components/museum/RoomScene";
+import Image from "next/image";
 
 import { useEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
@@ -60,8 +62,8 @@ function LiveCells({ birthISO }: { birthISO: string }): React.JSX.Element | null
   return (
     <>
       <div className="flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-        <span className="display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
-          {fullYears(birth, now)}
+        <span className="master-stat display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
+          {fullYears(birth, now).toLocaleString(lang)}
         </span>
         <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
           {t.about.statsAgeLabel}
@@ -70,9 +72,9 @@ function LiveCells({ birthISO }: { birthISO: string }): React.JSX.Element | null
           {t.about.statsAgeSub}
         </span>
       </div>
-      <div className="flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-        <span className="display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
-          {totalDays(birth, now).toLocaleString("en-US").replace(/,/g, " ")}
+      <div className="lived-days-plaque flex flex-col items-center gap-1 px-4 py-8 text-center">
+        <span className="master-stat display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
+          {totalDays(birth, now).toLocaleString(lang)}
         </span>
         <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
           {t.about.statsDaysLabel}
@@ -82,8 +84,8 @@ function LiveCells({ birthISO }: { birthISO: string }): React.JSX.Element | null
         </span>
       </div>
       <div className="group flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-        <span className="display text-5xl font-bold text-accent tabular-nums drop-shadow-[0_0_18px_rgba(255,61,0,0.25)] sm:text-6xl">
-          {daysToBirthday(birth, now)}
+        <span className="master-stat display text-5xl font-bold text-accent tabular-nums drop-shadow-[0_0_18px_rgba(255,61,0,0.25)] sm:text-6xl">
+          {daysToBirthday(birth, now).toLocaleString(lang)}
         </span>
         <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
           {t.about.statsCakeLabel}
@@ -268,6 +270,7 @@ export default function About({
       aria-labelledby="about-heading"
       className="relative overflow-clip border-t border-border"
     >
+      <RoomScene scene="identity" />
       {/* Marquee ribbon */}
       <div
         aria-hidden="true"
@@ -340,7 +343,7 @@ export default function About({
         </div>
 
         {/* ——— Story + portrait ——— */}
-        <div className="mx-auto mt-14 flex max-w-7xl flex-col items-center justify-between gap-12 lg:flex-row lg:items-start lg:gap-16">
+        <div className="royal-identity-monument mx-auto mt-14">
           <div className="relative w-full flex-1 lg:max-w-2xl">
             {/* Magic aurora wash behind the editorial column */}
             <div aria-hidden="true" className="pointer-events-none absolute -inset-6 -z-10 overflow-hidden">
@@ -524,7 +527,7 @@ export default function About({
           </div>
 
           {/* ——— Portrait — orbital seal + floating magic chips ——— */}
-          <div data-about-fade className="group/portrait relative w-[280px] shrink-0 md:w-[320px] lg:sticky lg:top-28">
+          <div data-about-fade className="royal-portrait group/portrait relative">
             <div
               aria-hidden="true"
               className="absolute inset-0 scale-110 rounded-full opacity-80 transition-opacity duration-500 group-hover/portrait:opacity-100"
@@ -657,7 +660,7 @@ export default function About({
           <div className="flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
             <CountUp
               end={3}
-              className="display text-5xl font-bold text-accent tabular-nums sm:text-6xl"
+              className="master-stat display text-5xl font-bold text-accent tabular-nums sm:text-6xl"
             />
             <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
               {t.about.statsLangLabel}
@@ -671,11 +674,15 @@ export default function About({
 
         {/* ——— Education ——— */}
         {hasEducation && (
-          <div data-about-fade className="mx-auto mt-16 max-w-3xl">
+          <div data-about-fade className="royal-academic-archive mx-auto mt-16">
             <h3 className="flex items-center gap-3 font-display text-2xl font-bold tracking-tight text-foreground">
               <GraduationCap className="h-6 w-6 text-accent" aria-hidden="true" />
               {t.about.eduTitle}
             </h3>
+            <div className="museum-education">
+              <figure><Image src="/images/education/suez-official.png" alt="" width={64} height={64}/><figcaption>{lang === "fr" ? "Université de Suez" : "Suez University"}</figcaption></figure>
+              <figure><Image src="/images/education/science-official.jpg" alt="" width={64} height={64}/><figcaption>{lang === "fr" ? "Faculté des sciences" : "Faculty of Science"}</figcaption></figure>
+            </div>
             <ol className="mt-8">
               {personal.education.map((entry) => (
                 <li

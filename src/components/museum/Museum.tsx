@@ -5,7 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Award, BriefcaseBusiness, Code2, Layers3 } from "lucide-react";
 import GlassModal from "@/components/GlassModal";
 import TechnologyIcon from "@/components/TechnologyIcon";
-import ServiceArtwork from "@/components/ServiceArtwork";
+import ServiceRelief from "./ServiceRelief";
+import FeaturedGallery from "./FeaturedGallery";
+import EngravedPath from "./EngravedPath";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { SKILLS } from "@/components/sections/Skills";
 import { additionalServices } from "@/data/service-offerings";
@@ -16,6 +18,9 @@ import { skillMatchesTech } from "@/lib/skill-usage";
 import { getProjectAvailability, projectPublicTags, type ProjectAvailability } from "@/lib/project-availability";
 import type { RemoteContent } from "@/lib/content";
 import "./museum.css";
+import RoomScene from "./RoomScene";
+import SkillRelics from "./SkillRelics";
+import ProjectVitrines from "./ProjectVitrines";
 
 type Hall = "services" | "projects" | "skills" | "certificates";
 type Exhibit = {
@@ -30,41 +35,17 @@ const certificateStudies = [
   { key: "english", recordId: "study-english", image: "/images/certificates/study-english.svg", provider: "AUC School of Continuing Education", en: "English language · B2 theme", fr: "Anglais · thème B2", detailEn: "English course pathway and CEFR level reference.", detailFr: "Parcours d’anglais et référence au niveau CECR.", href: "https://sce.aucegypt.edu/programs/english-courses" },
   { key: "microsoft", recordId: "study-microsoft", image: "/images/certificates/study-microsoft.svg", provider: "Microsoft Learn", en: "Technology learning paths", fr: "Parcours technologiques", detailEn: "Self-paced modules and guided learning paths.", detailFr: "Modules à votre rythme et parcours guidés.", href: "https://learn.microsoft.com/en-us/training/" },
   { key: "cybersecurity", recordId: "study-cyber", image: "/images/certificates/study-cyber.svg", provider: "Cisco Networking Academy", en: "Introduction to Cybersecurity", fr: "Introduction à la cybersécurité", detailEn: "Foundational cybersecurity course · 6 hours.", detailFr: "Cours de cybersécurité initial · 6 heures.", href: "https://www.netacad.com/courses/introduction-to-cybersecurity" },
-  { key: "networking", recordId: "study-network", image: "/images/certificates/study-network.svg", provider: "Cisco Networking Academy", en: "Networking Basics", fr: "Fondamentaux des réseaux", detailEn: "Network foundations and devices · 22 hours.", detailFr: "Bases des réseaux et équipements · 22 heures.", href: "https://www.netacad.com/courses/networking-basics" },
 ] as const;
 const collectionLabels: Record<"en" | "fr", Record<Hall, [string, string]>> = {
   en: { services: ["Service", "Services"], projects: ["Project", "Projects"], skills: ["Skill", "Skills"], certificates: ["Certificate", "Certificates"] },
   fr: { services: ["Service", "Services"], projects: ["Projet", "Projets"], skills: ["Compétence", "Compétences"], certificates: ["Certificat", "Certificats"] },
 };
-const servicePhotos = {
-  web: "https://images.unsplash.com/photo-1545665277-5937489579f2?auto=format&fit=crop&w=900&q=72",
-  support: "https://images.unsplash.com/photo-1662638600476-d563fffbb072?auto=format&fit=crop&w=900&q=72",
-  systems: "https://images.unsplash.com/photo-1681164315014-06bf36b2597a?auto=format&fit=crop&w=900&q=72",
-};
-function servicePhotoFor(item: Exhibit): string {
-  if (item.image && /\.(avif|jpe?g|png|webp)(\?|$)/i.test(item.image)) return item.image;
-  if (/maintenance|support|maintenance|assistance/i.test(item.name)) return servicePhotos.support;
-  if (/system|système|clinic|cabinet|database|backend/i.test(item.name)) return servicePhotos.systems;
-  return servicePhotos.web;
-}
 const skillColors: Record<string, string> = {
   react: "#61dafb", next: "#e9e9ee", javascript: "#f7df1e", typescript: "#3178c6", html: "#e34f26", css: "#1572b6", tailwind: "#38bdf8", node: "#5fa04e", python: "#3776ab", figma: "#a259ff", git: "#f05032", github: "#c9d1d9", supabase: "#3ecf8e", postgres: "#4169e1", mongodb: "#47a248", gsap: "#88ce02", motion: "#c2f970", wordpress: "#21759b", docker: "#2496ed", php: "#777bb4", sql: "#62b5e5",
 };
 function skillColorFor(name: string): string {
   const match = Object.entries(skillColors).find(([key]) => name.toLowerCase().includes(key));
   return match?.[1] ?? "#e8c37d";
-}
-function moveProjectFocus(event: React.KeyboardEvent<HTMLButtonElement>) {
-  const key = event.key;
-  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(key)) return;
-  const cabinet = event.currentTarget.closest(".museum-exhibits-projects");
-  if (!cabinet) return;
-  const buttons = Array.from(cabinet.querySelectorAll<HTMLButtonElement>(".museum-exhibit"));
-  const index = buttons.indexOf(event.currentTarget);
-  if (index < 0) return;
-  const columns = getComputedStyle(cabinet).gridTemplateColumns.split(" ").length || 1;
-  const next = key === "Home" ? 0 : key === "End" ? buttons.length - 1 : index + (key === "ArrowRight" ? 1 : key === "ArrowLeft" ? -1 : key === "ArrowDown" ? columns : -columns);
-  if (buttons[next]) { event.preventDefault(); buttons[next].focus(); }
 }
 const copy = {
   en: {
@@ -85,12 +66,8 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
   const museumRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<{ hall: Hall; exhibit: Exhibit } | null>(null);
   const [selectedStudyKey, setSelectedStudyKey] = useState<string | null>(null);
-  const [studyGlassOpen, setStudyGlassOpen] = useState(false);
-  useEffect(() => {
-    if (!selectedStudyKey) return;
-    const timer = window.setTimeout(() => setStudyGlassOpen(true), 260);
-    return () => window.clearTimeout(timer);
-  }, [selectedStudyKey]);
+  const [activeService, setActiveService] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState(false);
   useEffect(() => {
     const root = museumRef.current;
     if (!root || !("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -111,7 +88,7 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
     }));
     const projects: Exhibit[] = content ? content.projects.filter(p => p.visible !== false).map(p => ({
       key: p.id, name: lang === "fr" ? p.titleFr || p.title : p.title, subtitle: p.category,
-      description: lang === "fr" ? p.descFr || p.desc : p.desc, image: p.id === "proj-budi-s" ? "/brand/budi-light.svg" : p.image || projectCoverFor(p.github), gallery: p.gallery, tags: [...p.tech, ...projectPublicTags(p.tags)],
+      description: lang === "fr" ? p.descFr || p.desc : p.desc, image: p.id === "proj-budi-s" ? "/brand/budi-light.svg" : /raqib/i.test(p.github + " " + p.id) ? "/images/projects/raqib-wordmark.svg" : p.image || projectCoverFor(p.github), gallery: p.gallery, tags: [...p.tech, ...projectPublicTags(p.tags)],
       github: p.github, demo: p.demo, category: p.category, date: p.year, status: getProjectAvailability(p).state, deadline: getProjectAvailability(p).deadline,
       points: lang === "fr" ? p.briefFr : p.briefEn,
       metadata: [
@@ -149,10 +126,23 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
   const selectedStudy = displayStudies.find(path => path.key === selectedStudyKey);
   const moveCertificate = (step: number) => {
     if (!selected || selected.hall !== "certificates") return;
+    setZoomed(false);
     const list = collections.certificates;
-    setSelected({ hall: "certificates", exhibit: list[(selectedIndex + step + list.length) % list.length] });
+    const next = (selectedIndex + step + list.length) % list.length;
+    setSelected({ hall: "certificates", exhibit: list[next] });
   };
-  return <div ref={museumRef} className="museum museum--embedded" aria-label={c.kicker}>
+  const studyIndex = displayStudies.findIndex(item => item.key === selectedStudyKey);
+  const moveStudy = (step: number) => {
+    const next = (studyIndex + step + displayStudies.length) % displayStudies.length;
+    setZoomed(false);
+    setSelectedStudyKey(displayStudies[next].key);
+  };
+  const archiveKeys = (event: React.KeyboardEvent, move: (step: number) => void) => {
+    if (zoomed || event.altKey || event.ctrlKey || event.metaKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    move((event.key === "ArrowRight" ? 1 : -1) * (getComputedStyle(event.currentTarget).direction === "rtl" ? -1 : 1));
+  };
+  return <div ref={museumRef} className="museum museum--embedded astra-galleries" aria-label={c.kicker}>
     {halls.map((hall, hallIndex) => {
       const Icon = icons[hall];
       const exhibits = collections[hall];
@@ -160,27 +150,47 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
       const sectionCount = isConceptGallery ? displayStudies.length : exhibits.length;
       const countLabel = isConceptGallery ? (lang === "fr" ? (sectionCount === 1 ? "Étude visuelle" : "Études visuelles") : (sectionCount === 1 ? "Display study" : "Display studies")) : collectionLabels[lang][hall][sectionCount === 1 ? 0 : 1];
       return <section key={hall} id={hall} className={`museum-hall museum-hall--${hall}`} aria-labelledby={`${hall}-heading`}>
+        <RoomScene scene={{ services: "reliefs", projects: "monuments", skills: "corridor", certificates: "archive" }[hall]} />
         <div className="museum-section-heading"><p className="museum-eyebrow"><Icon size={16} aria-hidden="true" /> {String(hallIndex + 1).padStart(2, "0")} / {c.kicker}</p><h2 id={`${hall}-heading`}>{c[hall]}</h2><p>{hall === "certificates" && !sectionCount ? (lang === "fr" ? "Aucun certificat publié pour le moment." : "No published certificates yet.") : c.descriptions[hall]}</p><span className="museum-collection-count" role="status" aria-label={`${sectionCount} ${countLabel}`}><Icon size={18} aria-hidden="true" /><strong>{sectionCount.toLocaleString(lang)}</strong><small>{countLabel}</small></span></div>
         {hall === "projects" && exhibits.length > 0 && <div className="museum-cabinet-heading"><span>{c.cabinet}</span><span>{c.arrows}</span></div>}
-        {exhibits.length ? <div className={`museum-exhibits museum-exhibits-${hall}`}>
-          {exhibits.map((item, i) => <button key={item.key} type="button" className="museum-exhibit" style={hall === "skills" ? { "--skill-color": skillColorFor(item.name) } as React.CSSProperties : undefined} onKeyDown={hall === "projects" ? moveProjectFocus : undefined} onClick={() => setSelected({ hall, exhibit: item })} aria-haspopup="dialog" aria-label={`${c.explore}: ${item.name}`}>
-            <span className="museum-exhibit-spot" aria-hidden="true" />
-            <span className="museum-exhibit-frame">{hall === "skills" ? <span className="museum-skill-icon"><TechnologyIcon name={item.name} src={item.logo} /></span> : hall === "services" ? <><img className="museum-service-photo" src={servicePhotoFor(item)} alt="" loading="lazy" /><ServiceArtwork title={item.name} category={item.category ?? "development"} index={i} /></> : item.image ? <img className={item.image.toLowerCase().split("?")[0].endsWith(".svg") ? "museum-art-contain" : undefined} src={item.image} alt="" loading="lazy" /> : item.pdf && hall === "certificates" ? <span className="museum-exhibit-placeholder"><Award size={48} /><small>PDF</small></span> : <span className="museum-exhibit-placeholder"><Icon size={48} /><small>{c.image}</small></span>}</span>
-            <span className="museum-exhibit-plaque"><small>{String(i + 1).padStart(2, "0")} / {item.category || item.subtitle || c[hall]}</small><strong>{item.name}</strong>{item.status && <em className={`museum-project-status museum-project-status--${item.status}`}>{item.status === "available" ? c.available : item.status === "maintenance" ? c.maintenance : c.progress}</em>}{(hall === "projects" || hall === "services") && !!item.tags?.length && <span className="museum-project-tags">{item.tags.slice(0, 3).map(tag => <span key={tag} className="museum-project-tag">{techLogo(tag) && <img src={techLogo(tag)!} alt="" loading="lazy" />}{tag}</span>)}</span>}{item.deadline && item.status !== "available" && <time className="museum-project-due" dateTime={item.deadline}>{c.due}: {item.deadline}</time>}<span>{c.explore} <ArrowUpRight size={15} /></span></span>
-          </button>)}
+        {hall === "projects" && exhibits.length ? <ProjectVitrines items={exhibits} labels={c} onOpen={exhibit => setSelected({ hall, exhibit })} /> : hall === "skills" && exhibits.length ? <SkillRelics items={exhibits} label={c.explore} colorFor={skillColorFor} onOpen={exhibit => setSelected({ hall, exhibit })} /> : exhibits.length ? <div className={`museum-exhibits museum-exhibits-${hall}`}>
+          {hall === "services" ? <EngravedPath className="v5-service-grid" activeKey={activeService}>{exhibits.map((item, i) => <article key={item.key} className="museum-exhibit-shell" data-exhibit-key={item.key} onPointerEnter={() => setActiveService(item.key)} onPointerLeave={() => setActiveService(null)} onFocus={() => setActiveService(item.key)} onBlur={() => setActiveService(null)}>
+            <button type="button" className="museum-exhibit" onClick={() => { setZoomed(false); setSelected({ hall, exhibit: item }); }} aria-haspopup="dialog" aria-label={`${c.explore}: ${item.name}`}>
+              <span className="museum-exhibit-frame">
+                <span className="v5-altar-crest" aria-hidden="true" />
+                <ServiceRelief name={item.name} category={item.category} />
+              </span>
+              <span className="museum-exhibit-plaque">
+                <small>{[String(i + 1).padStart(2, "0"), item.category || item.subtitle, item.date].filter(Boolean).join(" / ")}</small>
+                <strong>{item.name}</strong>
+                {hall === "services" && item.description && <span className="astra-service-description">{item.description}</span>}
+                {hall === "services" && !!item.tags?.length && <span className="museum-project-tags">{item.tags.slice(0, 3).map(tag => <span key={tag} className="museum-project-tag">{techLogo(tag) && <img src={techLogo(tag)!} alt="" loading="lazy" />}{tag}</span>)}</span>}
+                <span>{c.explore} <ArrowUpRight size={15} aria-hidden="true" /></span>
+              </span>
+            </button>
+          </article>)}</EngravedPath> : <FeaturedGallery className="featured-archive archive-photo-exhibit" label={c.browse} names={exhibits.map(item => item.name)}
+            peek={i => exhibits[i].image ? <img src={exhibits[i].image} alt="" loading="lazy" /> : <Award />}
+            render={i => { const item = exhibits[i]; return <article className="museum-exhibit-shell">
+            <button type="button" className="museum-exhibit" onClick={() => { setZoomed(false); setSelected({ hall, exhibit: item }); }} aria-haspopup="dialog">
+              <span className="museum-exhibit-frame">{item.image ? <img src={item.image} alt="" loading="lazy" /> : <span className="museum-exhibit-placeholder"><Award size={48} aria-hidden="true" /><small>{item.pdf ? "PDF" : c.image}</small></span>}</span>
+              <span className="museum-exhibit-plaque"><small>{[item.subtitle, item.date].filter(Boolean).join(" / ")}</small><strong>{item.name}</strong><span>{c.explore}<ArrowUpRight size={15} aria-hidden="true" /></span></span>
+            </button>
+          </article>; }} />}
         </div> : isConceptGallery ? <div className="museum-learning" aria-label={lang === "fr" ? "Études visuelles de certificats, non délivrés" : "Certificate design studies, not issued"}>
-          <div className="museum-learning-intro"><span>{lang === "fr" ? "DANS LE CADRE" : "BEHIND THE GLASS"}</span><p>{lang === "fr" ? "Quatre études visuelles à explorer. Aucune n’est un certificat délivré." : "Explore four framed design studies. None is an issued credential."}</p></div>
-          <div className="museum-learning-grid">{displayStudies.map(path => <article className={`museum-learning-card museum-learning-card--${path.key}`} key={path.key}>
-            <button type="button" className="museum-learning-open" onClick={() => { setStudyGlassOpen(false); setSelectedStudyKey(path.key); }} aria-haspopup="dialog" aria-label={`${lang === "fr" ? "Voir les détails et ouvrir le cadre" : "View details and open frame"}: ${lang === "fr" ? path.fr : path.en}`}>
+          <div className="museum-learning-intro"><span>{lang === "fr" ? "DANS LE CADRE" : "BEHIND THE GLASS"}</span><p>{lang === "fr" ? "Trois études visuelles à explorer. Aucune n’est un certificat délivré." : "Explore three framed design studies. None is an issued credential."}</p></div>
+          <FeaturedGallery className="featured-archive archive-photo-exhibit" label={c.browse} names={displayStudies.map(path => lang === "fr" ? path.fr : path.en)}
+            peek={i => <img src={displayStudies[i].image} alt="" loading="lazy" />}
+            render={i => { const path = displayStudies[i]; return <article className={`museum-learning-card museum-learning-card--${path.key}`} key={path.key}>
+            <button type="button" className="museum-learning-open" onClick={() => { setZoomed(false); setSelectedStudyKey(path.key); }} aria-haspopup="dialog" aria-label={`${lang === "fr" ? "Voir les détails et ouvrir le cadre" : "View details and open frame"}: ${lang === "fr" ? path.fr : path.en}`}>
               <span className="museum-learning-art"><img src={path.image} alt={lang === "fr" ? `Étude visuelle pour ${path.fr}, non délivrée` : `Visual study for ${path.en}, not issued`} loading="lazy" /></span>
               <span className="museum-learning-info"><small>{path.provider}</small><strong>{lang === "fr" ? path.fr : path.en}</strong><span className="museum-learning-description">{lang === "fr" ? path.detailFr : path.detailEn}</span><span className="museum-learning-status">{lang === "fr" ? "Étude visuelle · Non délivrée" : "Display study · Not issued"}</span><span className="museum-learning-view">{lang === "fr" ? "Ouvrir le cadre et les détails" : "Open frame and details"} <ArrowUpRight size={15}/></span></span>
             </button>
             <a className="museum-learning-source" href={path.href} target="_blank" rel="noopener noreferrer">{lang === "fr" ? "Voir le programme officiel" : "Explore official program"} <ArrowUpRight size={15}/></a>
-          </article>)}</div>
+          </article>; }} />
         </div> : <div className="museum-empty"><div className="museum-empty-frame"><Icon size={44} aria-hidden="true"/><p>{c.empty}</p></div></div>}
       </section>;
     })}
-    <GlassModal open={!!selected} onClose={() => setSelected(null)} label={selected?.exhibit.name ?? c.details} wide accent={selected?.hall === "skills" ? "#72e8dd" : selected?.hall === "projects" ? "#b6a1ff" : selected?.hall === "certificates" ? "#ffd18a" : "#f39d78"}>
+    <GlassModal open={!!selected} onClose={() => setSelected(null)} label={selected?.exhibit.name ?? c.details} onPanelKeyDown={selected?.hall === "certificates" ? event => archiveKeys(event, moveCertificate) : undefined} wide accent={selected?.hall === "skills" ? "#72e8dd" : selected?.hall === "projects" ? "#b6a1ff" : selected?.hall === "certificates" ? "#ffd18a" : "#f39d78"}>
       {selected && <div className={`museum-detail museum-detail--${selected.hall}`}>
         <p className="museum-eyebrow">{c.kicker} / {c[selected.hall]}</p>
         <h2>{selected.exhibit.name}</h2>
@@ -189,8 +199,9 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
         {selected.exhibit.deadline && selected.exhibit.status !== "available" && <p className="museum-detail-date">{c.due}: <time dateTime={selected.exhibit.deadline}>{selected.exhibit.deadline}</time></p>}
         {selected.hall === "certificates" && <div className="museum-certificate-browser">
           <div className="museum-certificate-toolbar"><span>{c.browse} · {selectedIndex + 1} / {collections.certificates.length}</span><div><button type="button" onClick={() => moveCertificate(-1)} aria-label={c.previous}><ArrowLeft size={18} /></button><button type="button" onClick={() => moveCertificate(1)} aria-label={c.next}><ArrowRight size={18} /></button></div></div>
-          <div className="museum-certificate-page">{selected.exhibit.pdf ? <iframe src={selected.exhibit.pdf} title={selected.exhibit.name} /> : selected.exhibit.image ? <img src={selected.exhibit.image} alt={selected.exhibit.name} /> : <div className="museum-certificate-missing"><Award size={64} /><span>{c.image}</span></div>}</div>
-          <div className="museum-certificate-thumbs">{collections.certificates.map((cert, i) => <button type="button" key={cert.key} aria-current={i === selectedIndex ? "true" : undefined} onClick={() => setSelected({ hall: "certificates", exhibit: cert })} title={cert.name}>{cert.image ? <img src={cert.image} alt="" loading="lazy" /> : <Award size={18} />}<span>{cert.name}</span></button>)}</div>
+          <div className="museum-certificate-page">{selected.exhibit.pdf ? <iframe src={selected.exhibit.pdf} title={selected.exhibit.name} /> : selected.exhibit.image ? <div className={`museum-archive-viewport${zoomed ? " is-zoomed" : ""}`} tabIndex={0} role="region" aria-label={selected.exhibit.name}><img src={selected.exhibit.image} alt={selected.exhibit.name} /></div> : <div className="museum-certificate-missing"><Award size={64} /><span>{c.image}</span></div>}</div>
+          {!selected.exhibit.pdf && selected.exhibit.image && <button type="button" className="museum-study-glass-toggle" aria-pressed={zoomed} onClick={() => setZoomed(value => !value)}>{zoomed ? (lang === "fr" ? "Ajuster à la fenêtre" : "Fit to window") : (lang === "fr" ? "Agrandir le document" : "Zoom document")}</button>}
+          <div className="museum-certificate-thumbs">{collections.certificates.map((cert, i) => <button type="button" key={cert.key} aria-current={i === selectedIndex ? "true" : undefined} onClick={() => { setZoomed(false); setSelected({ hall: "certificates", exhibit: cert }); }} title={cert.name}>{cert.image ? <img src={cert.image} alt="" loading="lazy" /> : <Award size={18} />}<span>{cert.name}</span></button>)}</div>
         </div>}
         {selected.hall === "projects" && selected.exhibit.image && <img className="museum-detail-image" src={selected.exhibit.image} alt={selected.exhibit.name} />}
         {selected.hall === "skills" && <div className="museum-detail-skill-icon"><TechnologyIcon name={selected.exhibit.name} src={selected.exhibit.logo} /></div>}
@@ -205,16 +216,16 @@ export default function Museum({ content }: { content: RemoteContent | null }) {
         <div className="museum-detail-links">{selected.exhibit.github && <a href={selected.exhibit.github} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={16} /></a>}{selected.exhibit.demo && <a href={selected.exhibit.demo} target="_blank" rel="noreferrer">Live Demo <ArrowUpRight size={16} /></a>}{selected.exhibit.verify && <a href={selected.exhibit.verify} target="_blank" rel="noreferrer">{c.verify} <ArrowUpRight size={16} /></a>}{(selected.exhibit.pdf || selected.hall === "certificates" && selected.exhibit.image) && <a href={selected.exhibit.pdf || selected.exhibit.image} target="_blank" rel="noreferrer">{c.original} <ArrowUpRight size={16} /></a>}{selected.hall === "services" && <><a href={selected.exhibit.ctaLink && /^(https?:\/\/|mailto:|tel:)/i.test(selected.exhibit.ctaLink) ? selected.exhibit.ctaLink : `https://wa.me/201065228072?text=${encodeURIComponent(lang === "fr" ? `Bonjour BUDI ! Je veux : ${selected.exhibit.name}` : `Hi BUDI! I want: ${selected.exhibit.name}`)}`} target="_blank" rel="noreferrer">{selected.exhibit.ctaLabel || c.contact} <ArrowUpRight size={16} /></a><a href="#contact" onClick={() => setSelected(null)}>{c.contact} <ArrowUpRight size={16} /></a></>}</div>
       </div>}
     </GlassModal>
-    <GlassModal open={!!selectedStudy} onClose={() => setSelectedStudyKey(null)} label={selectedStudy ? (lang === "fr" ? selectedStudy.fr : selectedStudy.en) : c.certificates} wide accent="#d7b679">
+    <GlassModal open={!!selectedStudy} onClose={() => setSelectedStudyKey(null)} label={selectedStudy ? (lang === "fr" ? selectedStudy.fr : selectedStudy.en) : c.certificates} onPanelKeyDown={event => archiveKeys(event, moveStudy)} wide accent="#d7b679">
       {selectedStudy && <div className="museum-study-detail">
         <p className="museum-eyebrow">{c.certificates} / {lang === "fr" ? "Étude visuelle" : "Display study"}</p>
         <h2>{lang === "fr" ? selectedStudy.fr : selectedStudy.en}</h2>
+        <div className="museum-certificate-toolbar"><span aria-live="polite">{c.browse} · {studyIndex + 1} / {displayStudies.length}</span><div><button type="button" onClick={() => moveStudy(-1)} aria-label={c.previous}><ArrowLeft size={18} /></button><button type="button" onClick={() => moveStudy(1)} aria-label={c.next}><ArrowRight size={18} /></button></div></div>
         <p className="museum-study-disclosure">{lang === "fr" ? "Création du portfolio · Aucun certificat délivré par l’organisme mentionné." : "Portfolio artwork · No credential was issued by the referenced organization."}</p>
-        <div className={`museum-study-wood-frame${studyGlassOpen ? " is-open" : ""}`}>
+        <div className={`museum-archive-viewport${zoomed ? " is-zoomed" : ""}`} tabIndex={0} role="region" aria-label={lang === "fr" ? "Aperçu du document" : "Document preview"}><div className="museum-study-wood-frame">
           <img src={selectedStudy.image} alt={lang === "fr" ? `Aperçu intégral de ${selectedStudy.fr}, étude visuelle non délivrée` : `Full preview of ${selectedStudy.en}, unissued visual study`} />
-          <span className="museum-study-glass" aria-hidden="true" />
-        </div>
-        <button type="button" className="museum-study-glass-toggle" onClick={() => setStudyGlassOpen(open => !open)} aria-pressed={studyGlassOpen}>{studyGlassOpen ? (lang === "fr" ? "Refermer la vitre" : "Close the glass") : (lang === "fr" ? "Ouvrir la vitre" : "Open the glass")}</button>
+        </div></div>
+        <button type="button" className="museum-study-glass-toggle" onClick={() => { setZoomed(value => !value); }} aria-pressed={zoomed}>{zoomed ? (lang === "fr" ? "Ajuster à la fenêtre" : "Fit to window") : (lang === "fr" ? "Agrandir le document" : "Zoom document")}</button>
         <dl className="museum-study-facts"><div><dt>{lang === "fr" ? "Référence" : "Reference"}</dt><dd>{selectedStudy.provider}</dd></div><div><dt>{lang === "fr" ? "Parcours" : "Program"}</dt><dd>{lang === "fr" ? selectedStudy.detailFr : selectedStudy.detailEn}</dd></div><div><dt>{lang === "fr" ? "Statut" : "Status"}</dt><dd>{lang === "fr" ? "Étude visuelle, non délivrée" : "Design study, not issued"}</dd></div><div><dt>{lang === "fr" ? "Création" : "Artwork"}</dt><dd>BUDI Portfolio</dd></div></dl>
         <a className="museum-study-program" href={selectedStudy.href} target="_blank" rel="noopener noreferrer">{lang === "fr" ? "Voir le programme officiel" : "Explore official program"} <ArrowUpRight size={16}/></a>
       </div>}

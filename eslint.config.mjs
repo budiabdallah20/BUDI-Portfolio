@@ -7,7 +7,7 @@
  */
 export default [
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"],
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "work/**", "claude-skills-2.14.11/**"],
   },
   {
     files: ["**/*.{js,mjs,cjs}"],

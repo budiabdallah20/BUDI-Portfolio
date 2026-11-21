@@ -1,0 +1,89 @@
+.editorial-page #skills.showcase-section {
+  --showcase-ink: #20140d;
+  --showcase-muted: #644b3b;
+  --showcase-line: #f2c9ab;
+  --showcase-orange: #a9420b;
+  background: #fff;
+  color: var(--showcase-ink);
+  color-scheme: light;
+}
+.editorial-page #skills .showcase-shell::before { background: linear-gradient(transparent,#ecae855e,transparent); }
+.editorial-page #skills .showcase-count { color: #ad430d; }
+.editorial-page #skills .skills-glass-grid button {
+  isolation: isolate;
+  color: #eadbd0;
+  background: linear-gradient(145deg,#242325,#0d0e10 75%);
+  border-color: #484248;
+  box-shadow: inset 0 1px #ffffff1f, inset 0 -1px #0009, 0 9px 20px -16px #151216ae;
+}
+.editorial-page #skills .skills-glass-grid button:is(:hover,:focus-visible,[aria-expanded=true],:target,[data-atelier-target]) {
+  color: #fff8f0;
+  border-color: color-mix(in srgb,var(--skill-accent),#221b20 34%);
+  background: radial-gradient(ellipse at var(--skill-spot-x,50%) var(--skill-spot-y,27%),color-mix(in srgb,var(--skill-accent) 27%,#221b20),#101114 83%);
+  box-shadow: inset 0 1px #ffffff29, 0 10px 26px -10px color-mix(in srgb,var(--skill-accent) 49%,transparent);
+}
+.editorial-page #skills .skills-glass-grid .showcase-skill-mark img { filter: brightness(0) invert(.88); }
+.editorial-page #skills .skills-glass-grid button:is(:hover,:focus-visible,[aria-expanded=true]) .showcase-skill-mark img {
+  filter: drop-shadow(0 3px 9px color-mix(in srgb,var(--skill-accent) 56%,transparent));
+}
+.editorial-page #skills .skills-glass-grid button:is(:hover,:focus-visible,[aria-expanded=true]) :is([data-tech="Next.js"],[data-tech="Vercel"]) img {
+  filter: brightness(0) invert(1) drop-shadow(0 2px 12px color-mix(in srgb,var(--skill-accent) 61%,transparent));
+}
+.editorial-page #skills .skills-glass-grid:has(button:is(:hover,:focus-visible)) button:not(:hover,:focus-visible) { opacity: 1; }
+.editorial-page #skills .skills-glass-grid .showcase-skill-mark[data-tech="Canva"] img { filter: grayscale(1) brightness(1.22); }
+.editorial-page #skills .skills-glass-grid button:is(:hover,:focus-visible) .showcase-skill-mark[data-tech="Canva"] img { filter: drop-shadow(0 3px 9px #46e2d36b); }
+.editorial-page #skills .skills-glass-grid button:focus-visible { outline: 2px solid var(--skill-accent); outline-offset: 3px; }
+
+.skills-mark { display: grid; place-items: center; inline-size: 45px; block-size: 45px; flex: 0 0 45px; border: 1px solid #ead8cb; border-radius: .65rem; background: #fff; color: #1a1511; }
+.skills-dossier-overlay { position: fixed; inset: 0; z-index: 245; background: #140d09bd; }
+.skills-dossier {
+  position: fixed;
+  z-index: 246;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  width: min(100% - 1.5rem, 720px);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fffaf5;
+  color: #1a1511;
+  border: 1px solid #f4bc94;
+  border-radius: 1.2rem;
+  box-shadow: 0 30px 95px #0009;
+}
+.skills-dossier-header {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: .85rem;
+  align-items: center;
+  padding: clamp(.9rem,3vw,1.7rem);
+  background: linear-gradient(135deg,#201412,#40201a);
+  color: #fff9f2;
+  border-block-start: 4px solid #ff771e;
+}
+.skills-dossier-header h2 { margin-block: .18rem 0; font: 730 clamp(1.6rem,4.5vw,3.2rem)/1.03 var(--font-display,system-ui); overflow-wrap: anywhere; }
+.skills-dossier-header p { font: 650 .76rem/1.35 var(--font-mono,monospace); color: #ffbb90; }
+.skills-close { display:grid;place-items:center;width:44px;height:44px;border:1px solid #a76c51;border-radius:.65rem; }
+.skills-close:hover { color:#1a1511;background:#ffa76d; }
+.skills-dossier-body { display:grid;gap:1.1rem;padding:clamp(.9rem,3vw,1.6rem); }
+.skills-dossier-metrics { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr));gap:.55rem; }
+.skills-dossier-metrics > div { display:grid;gap:.35rem;align-content:start;padding:.75rem;border:1px solid #ead4c3;border-radius:.75rem;background:#fff; }
+.skills-dossier-metrics div > span { font-size:.74rem;color:#6e5446; }
+.skills-dossier-metrics strong { font:720 clamp(1rem,2.8vw,1.8rem)/1.07 var(--font-display,system-ui); color:#903c14; }
+.skills-dossier-metrics [data-proficient="true"] { color:#28603a; }
+.skills-dossier-metrics meter { width:100%; accent-color:#ec6b1a; }
+.skills-level-meter { display:flex; gap:.45rem; align-items:center; }
+.skills-level-meter small { color:#654635; font-weight:680; }
+.skills-dossier-body h3 { margin-block-end:.42rem;font:720 1.15rem/1.2 var(--font-display,system-ui); }
+.skills-dossier-body p { color:#675045;line-height:1.55; }
+.skills-dossier-projects ul { display:grid;gap:.4rem;list-style:none;padding:0; }
+.skills-dossier-projects a { display:flex;justify-content:space-between;align-items:center;gap:.65rem;min-height:48px;padding:.65rem .75rem;border:1px solid #ead4c3;border-radius:.7rem;background:#fff; }
+.skills-dossier-projects a:hover { background:#ffefe2;border-color:#de9a71; }
+.skills-dossier-projects a strong,.skills-dossier-projects a small { display:block; }
+.skills-dossier-projects a small { color:#755747; }
+.skills-dossier-projects a svg { color:#a64014;flex-shrink:0; }
+.skills-dossier :is(a,button):focus-visible { outline:2px solid #b94a10;outline-offset:3px; }
+@media(prefers-reduced-motion:no-preference) {
+  .skills-dossier[data-state="open"] { animation: skills-in .24s ease-out both; }
+}
+@keyframes skills-in { from { opacity:0;transform:translateY(10px) scale(.985); } }

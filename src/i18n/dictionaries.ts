@@ -1,5 +1,4 @@
 export type Lang = "en" | "fr";
-
 export type NavId =
   | "home"
   | "about"
@@ -543,20 +542,9 @@ const en: Dictionary = {
         year: "2026",
       },
       {
-        title: "Massar — Personal OS",
-        desc: "Arabic life-management app (v10): tasks, lectures, expenses, habits, prayer tracking, memories and an AI buddy.",
-        tech: ["JavaScript", "HTML", "CSS"],
-        status: "completed",
-        opensource: true,
-        category: "PWA",
-        github: "https://github.com/budiabdallah20/Massar",
-        period: "09/2026 — 09/2026",
-        year: "2026",
-      },
-      {
         title: "BUDI Platform",
         desc: "My previous portfolio platform — contact, donations and live dashboards in one place.",
-        tech: ["JavaScript", "HTML", "CSS"],
+        tech: ["Next.js", "Tailwind CSS", "TypeScript", "Framer Motion", "GSAP", "Three.js", "Lenis"],
         status: "completed",
         opensource: true,
         category: "Personal",
@@ -957,20 +945,9 @@ const fr: Dictionary = {
         year: "2026",
       },
       {
-        title: "Massar — Personal OS",
-        desc: "App arabe de gestion de vie (v10) : tâches, cours, dépenses, habitudes, prières, souvenirs et un ami IA.",
-        tech: ["JavaScript", "HTML", "CSS"],
-        status: "completed",
-        opensource: true,
-        category: "PWA",
-        github: "https://github.com/budiabdallah20/Massar",
-        period: "09/2026 — 09/2026",
-        year: "2026",
-      },
-      {
         title: "BUDI Platform",
         desc: "Mon ancienne plateforme portfolio — contact, dons et dashboards en direct au même endroit.",
-        tech: ["JavaScript", "HTML", "CSS"],
+        tech: ["Next.js", "Tailwind CSS", "TypeScript", "Framer Motion", "GSAP", "Three.js", "Lenis"],
         status: "completed",
         opensource: true,
         category: "Personnel",

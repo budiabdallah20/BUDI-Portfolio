@@ -1,0 +1,138 @@
+/* Shared editorial surfaces. Brand marks and authentic media keep their source colors. */
+.editorial-page {
+  --obsidian:#050505; --obsidian-raised:#101216; --obsidian-card:#17181a;
+  --champagne:#d6b579; --champagne-light:#e8cd98; --champagne-edge:#d6b57944;
+  --ivory:#f8f7f3; --obsidian-muted:#b2b0aa; --dark-gutter:clamp(1rem,4.2vw,4rem);
+}
+.editorial-page :is(#about,#projects,#skills,#certificates,#contact) {
+  --background:var(--obsidian); --surface:var(--obsidian-raised); --foreground:var(--ivory);
+  --muted:var(--obsidian-muted); --faint:#a8a298; --border:var(--champagne-edge); --accent:var(--champagne);
+  --accent-foreground:#1a1409; --focus:var(--champagne-light);
+  background:var(--obsidian); color:var(--ivory); border-block-start:0; color-scheme:dark;
+}
+.editorial-page :is(#about,#projects,#skills,#certificates,#contact) :focus-visible { outline-color:var(--champagne-light); }
+.editorial-page #about { position:relative; border-block-start:1px solid #b89a642e; }
+.editorial-page #about::before { content:""; position:absolute; inset:0 0 auto; height:1px; background:linear-gradient(90deg,transparent,var(--champagne),transparent); z-index:2; }
+.editorial-page .editorial-hero { padding-block-end:clamp(1.35rem,4vw,3.2rem); }
+.editorial-page #about > .marquee,.editorial-page #about > .marquee-rev { display:none; }
+.editorial-page #about > [aria-hidden=true].absolute { display:none; }
+.editorial-page #about > .relative.mx-auto { padding-block:clamp(2.7rem,6vw,5.4rem); }
+.editorial-page #about-heading { color:var(--ivory); filter:none; }
+.editorial-page #about-heading svg { color:var(--champagne); }
+.editorial-page #about .royal-identity-monument {
+  display:grid; align-items:start; grid-template-columns:minmax(0,1.15fr) minmax(0,.75fr);
+  column-gap:clamp(1.4rem,5vw,5rem); row-gap:1.75rem;
+}
+.editorial-page #about .royal-identity-monument > * { min-inline-size:0; }
+.editorial-page #about .royal-portrait { align-self:start; width:100%; max-width:460px; margin-inline:auto; }
+.editorial-page #about .royal-portrait > [aria-hidden=true].absolute { display:none; }
+.editorial-page #about .about-portrait-frame {
+  aspect-ratio:4/4.6; border:1px solid var(--champagne-edge); border-radius:22px;
+  background:radial-gradient(ellipse at 54% 65%,#d6b57929,transparent 70%),#101112;
+  box-shadow:inset 0 1px #e8cd985e,0 18px 46px #0008;
+}
+.editorial-page #about .about-portrait-frame img[src*="editorial-portrait"] { object-fit:contain; object-position:center bottom; }
+.editorial-page #about .story-card { background:linear-gradient(130deg,#1c1b18,#101113); border-color:var(--champagne-edge); }
+.editorial-page #about .story-card:hover { border-color:var(--champagne); box-shadow:0 12px 26px #0005; }
+.editorial-page #about .story-chapter-num { color:var(--champagne-light); }
+.editorial-page #about .about-workflow { background:transparent; color:var(--ivory); border-block-start:1px solid var(--champagne-edge); }
+.editorial-page .about-workflow p { color:var(--obsidian-muted); }
+.editorial-page .about-workflow li::before { background:#b6995e52; }
+.editorial-page .about-workflow li[data-visited=true]::before { background:linear-gradient(90deg,#846c42,#e8cd98); }
+.editorial-page .workflow-node { color:#f1dbad; background:#171612; border-color:#b89a646c; }
+.editorial-page .about-workflow li[data-active=true] .workflow-node { color:#191206; background:var(--champagne-light); border-color:var(--champagne); box-shadow:0 0 0 4px #d6b57939; }
+@media(max-width:760px) {
+ .editorial-page #about .royal-identity-monument { grid-template-columns:minmax(0,1fr); }
+ .editorial-page #about .royal-portrait { grid-row:1; max-width:340px; }
+}
+.editorial-page #projects.dark-studio.showcase-section { background:var(--obsidian); padding-block:clamp(1.2rem,3.1vw,3rem); }
+.editorial-page .dark-studio .showcase-shell { border-color:var(--champagne-edge); background:radial-gradient(ellipse at 88% 0%,#d6b57912,transparent 51%),#0a0a0a; }
+.editorial-page .dark-studio .showcase-shell::before { background:linear-gradient(90deg,transparent,var(--champagne),transparent); }
+.editorial-page #skills { --showcase-ink:var(--ivory); --showcase-muted:var(--obsidian-muted); --showcase-line:var(--champagne-edge); --showcase-orange:var(--champagne); }
+.editorial-page #skills .showcase-shell::before { background:linear-gradient(transparent,#b99d6860,transparent); }
+.editorial-page .obsidian-skills.showcase-skill-grid button { background:linear-gradient(145deg,#1c1c1a,#111112); border-color:var(--champagne-edge); }
+.editorial-page .obsidian-skills.showcase-skill-grid button:is(:hover,:focus-visible,[aria-expanded=true]) {
+  border-color:var(--skill-accent); background:radial-gradient(ellipse at var(--skill-spot-x,50%) var(--skill-spot-y,27%),color-mix(in srgb,var(--skill-accent) 57%,#171615),#101011 78%);
+}
+.editorial-page #certificates .cert-card { background:linear-gradient(140deg,#1e1c17,#111113); border:1px solid var(--champagne-edge); border-radius:18px; }
+.editorial-page #certificates .cert-card:is(:hover,:focus-visible) { border-color:var(--champagne); }
+.editorial-page #certificates > [aria-hidden=true].absolute,.editorial-page #contact > [aria-hidden=true].absolute { display:none; }
+.editorial-page #contact :is(.contact-identity > div,.contact-channels article,.contact-social,.contact-faq) { background:linear-gradient(140deg,#1b1a17,#111113); border-color:var(--champagne-edge); backdrop-filter:none; }
+.editorial-page #contact .contact-identity > span:first-child { background:linear-gradient(120deg,#bd9e63a0,#100f0d,#d6b57944)!important; }
+.editorial-page #contact .contact-brand-logo { filter:drop-shadow(0 0 16px #d6b57946); }
+.editorial-page #contact :is(input,textarea,select) { color:var(--ivory); background:#151515; border-color:var(--champagne-edge); }
+.editorial-page #contact :is(input,textarea,select):focus { border-color:var(--champagne); }
+.editorial-page > .footer-museum {
+ --background:#f8f7f3; --surface:#fffdf8; --foreground:#171612; --muted:#514c40; --faint:#615a4e;
+ --border:#44351d35; --accent:#85501d; --accent-foreground:white;
+ color:#1b1915; color-scheme:light; background:#fff; border-block-start:1px solid #d6b57991;
+}
+.editorial-page > .footer-museum > [aria-hidden=true].absolute { display:none; }
+.editorial-page > .footer-museum p { text-wrap:pretty; }
+.editorial-page .royal-footer-finale { border:1px solid #8a745747; border-radius:20px; padding:clamp(1rem,4vw,2.6rem); background:#fbf8f2; }
+.editorial-page .royal-footer-wordmark { color:#191713; }
+.editorial-page .royal-footer-index { gap:clamp(1rem,4vw,2.6rem); }
+.editorial-page #contact .payment-methods>.payment-vault-card { background:linear-gradient(145deg,#211c14,#121212 62%,#0a0a0a)!important; border-color:var(--champagne-edge); box-shadow:inset 0 1px #e8cd9835,0 14px 26px #0007!important; }
+.editorial-page :is(#certificates,#contact) { padding-block:clamp(3rem,7vw,6rem); }
+.editorial-page #contact .contact-channels { gap:clamp(.75rem,1.5vw,1.2rem); }
+.editorial-page #contact .contact-channels article { box-shadow:inset 0 1px #e8cd981c,0 12px 25px #0005; }
+.editorial-page .royal-footer-finale { display:grid; grid-template-columns:minmax(130px,.45fr) minmax(0,1fr); align-items:center; gap:clamp(1rem,4vw,3rem); }
+.editorial-page .royal-footer-cartouche { display:grid; place-items:center; gap:.65rem; }
+.editorial-page .royal-footer-cartouche img { border:1px solid #8a745746; border-radius:12px; box-shadow:0 12px 24px #37260f1c; }
+.editorial-page .royal-footer-wordmark { width:4rem; }
+.editorial-page .royal-footer-inscription .load-shimmer { color:#191713; -webkit-text-fill-color:currentColor; }
+.editorial-page .royal-footer-inscription .text-stroke { -webkit-text-stroke-color:#514532; filter:none; }
+.editorial-page .footer-museum .text-white { color:#252018; }
+.editorial-page .footer-museum .text-amber-300 { color:#74521d; }
+.editorial-page .footer-museum .animate-spin-conic { animation:none; opacity:.22; }
+.editorial-page .footer-museum .animate-aurora-a,.editorial-page .footer-museum .animate-aurora-b { display:none; }
+.editorial-page .footer-museum > .relative.mx-auto { padding-block-start:clamp(2.4rem,6vw,4.8rem); }
+@media(max-width:700px) { .editorial-page .royal-footer-finale { grid-template-columns:minmax(0,1fr); } }
+/* The portrait stays within the story grid while the chapters scroll beside it. */
+@media (min-width:900px) and (min-height:690px) {
+ .editorial-page #about .royal-portrait { position:sticky; inset-block-start:105px; max-inline-size:min(420px,calc((100svh - 185px) * .86)); }
+}
+.editorial-page .editorial-hero { position:relative; isolation:isolate; }
+.editorial-page .editorial-popover :is(a,button):hover { color:#fff6ee; background:#752704; }
+.editorial-hire {
+  min-block-size:42px; display:inline-flex; align-items:center; justify-content:center; gap:.28rem;
+  border:1px solid #9e4d22; border-radius:999px; padding:.4rem .72rem; white-space:nowrap;
+  background:#23170f; color:#ffe2b4; font-weight:750; font-size:.76rem;
+}
+.editorial-hire:is(:hover,:focus-visible) { background:#752704; border-color:#752704; color:white; }
+@media(max-width:520px) {
+ .editorial-hire { font-size:.68rem; padding-inline:.48rem; }
+ .editorial-hire svg { display:none; }
+ .editorial-nav-tools { gap:.25rem; }
+}
+.editorial-page #contact { background:#050505; }
+.editorial-page #contact .contact-identity { margin-block-start:clamp(1.5rem,4vw,3rem); }
+.editorial-page #contact .contact-identity > div { gap:clamp(.95rem,3vw,2rem); padding:clamp(.9rem,2.6vw,1.85rem); }
+.editorial-page #contact .contact-portrait-frame:has(.contact-editorial-photo) {
+  width:min(100%,270px); aspect-ratio:1/1; border:1px solid #d6b57975; border-radius:16px; overflow:hidden;
+  background:#15110e; box-shadow:0 16px 28px #0007;
+}
+.editorial-page #contact .contact-editorial-photo { object-fit:cover; object-position:54% 80%; }
+.editorial-page #contact :is(.contact-channels,.contact-social,.contact-faq) { margin-block-start:clamp(.9rem,2.5vw,1.75rem); }
+.editorial-page > .footer-museum {
+ --background:#0c1511; --surface:#17251e; --foreground:#f8f7f3; --muted:#c1c8be; --faint:#acb8ac;
+ --border:#aabda73d; --accent:#e8cd98; --accent-foreground:#16110a;
+ color:#f7f7ee; color-scheme:dark;
+ background:radial-gradient(ellipse at 45% 0%,#22382b87,transparent 60%),linear-gradient(#b2d6ae10 1px,transparent 1px),linear-gradient(90deg,#b2d6ae10 1px,transparent 1px),#0c1511;
+ background-size:auto,44px 44px,44px 44px,auto;
+}
+.editorial-page .royal-footer-finale { background:#132019e8; border-color:#e8cd9845; }
+.editorial-page .royal-footer-inscription .load-shimmer,.editorial-page .footer-museum .text-white { color:#f8f7f3; }
+.editorial-page .royal-footer-inscription .text-stroke { -webkit-text-stroke-color:#e8cd98; }
+.editorial-page .footer-museum .text-amber-300 { color:#f0d5a6; }
+.editorial-page .royal-footer-wordmark {
+ width:clamp(7rem,13vw,11rem); aspect-ratio:114/72;
+ background:linear-gradient(105deg,#936125 3%,#d3a34f 21%,#fff7d8 39%,#dab26e 54%,#ffe7b1 68%,#9e7135 85%,#d6b579);
+ background-size:220% 100%; mask:url(/brand/budi-light.svg) center/contain no-repeat;
+ filter:drop-shadow(0 0 12px #e8cd986e);
+}
+.editorial-page .royal-footer-wordmark svg { opacity:0; }
+@media(prefers-reduced-motion:no-preference) {
+ .editorial-page .royal-footer-wordmark:hover { animation:footer-gold-sweep 1.55s ease-out both; }
+}
+@keyframes footer-gold-sweep { from { background-position:100% 0; } to { background-position:0 0; } }

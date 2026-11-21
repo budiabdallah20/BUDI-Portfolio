@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { canonicalTechnology, skillMatchesTech } from "@/lib/skill-usage";
 import { selectTechnology } from "@/lib/project-filter";
+import { isPublicStudioProject } from "@/lib/studio-projects";
 import { projectCovers } from "@/data/project-covers";
 
 type Filter = "all" | "completed" | "in-progress" | "opensource";
@@ -71,21 +72,6 @@ const EXTRAS: Record<string, ProjectExtra> = {
         "Gestion académique pour étudiants, enseignants et administrateurs.",
         "Présence par QR, cours, emplois du temps et notes avec suivi GPA.",
         "Le projet est en cours ; un aperçu en ligne est disponible.",
-      ],
-    },
-  },
-  massar: {
-    demo: "https://budiabdallah20.github.io/Massar/",
-    brief: {
-      en: [
-        "Personal OS v10: kanban tasks, lecture attendance, expenses, habits and goals.",
-        "Prayer tracker, tasbih, mood, memories, QR tools and Fofa the AI buddy — gamified with XP.",
-        "Result: shipped at v10 — open the demo and explore a whole life system.",
-      ],
-      fr: [
-        "OS personnel v10 : tâches kanban, présence aux cours, dépenses, habitudes et objectifs.",
-        "Prières, tasbih, humeur, souvenirs, outils QR et Fofa l'ami IA — gamifié avec XP.",
-        "Résultat : livré en v10 — ouvrez la démo et explorez tout un système de vie.",
       ],
     },
   },
@@ -176,7 +162,7 @@ export default function Projects({
   const list = useMemo(() => {
     if (remote !== undefined) {
       return remote
-        .filter((r) => r.visible !== false)
+        .filter(isPublicStudioProject)
         .map((r) => ({
         title: r.title,
         desc: fr ? r.descFr || r.desc : r.desc,
@@ -202,6 +188,7 @@ export default function Projects({
         teamSize: r.teamSize ?? 1,
         tags: r.tags ?? [],
         featured: r.featured === true,
+        sortOrder: r.sortOrder ?? 0,
         progress: r.progress ?? 0,
         version: r.version || "",
         changelog: r.changelog ?? [],
@@ -209,7 +196,7 @@ export default function Projects({
         seoDesc: r.seoDesc || "",
       }));
     }
-    return t.projects.items.map((p) => ({ ...p, demo: null as string | null, image: "", briefEn: [] as string[], briefFr: [] as string[], role: "", timeline: "", sponsored: false as boolean, featured: false as boolean }));
+    return t.projects.items.map((p) => ({ ...p, demo: null as string | null, image: "", briefEn: [] as string[], briefFr: [] as string[], role: "", timeline: "", sponsored: false as boolean, featured: false as boolean, sortOrder: 0 }));
   }, [remote, fr, t]);
   const [detailKey, setDetailKey] = useState<string | null>(null);
   /** Image-only lightbox — cover preview + download, no dossier. */
@@ -319,7 +306,13 @@ export default function Projects({
       };
       return [...rows].sort((a, b) => yearOf(b.year) - yearOf(a.year));
     }
-    return [...rows].sort((a, b) => (b.featured === true ? 1 : 0) - (a.featured === true ? 1 : 0));
+    // Curated = the dashboard's manual order; featured is only a tie-breaker
+    // so existing rows (all default 0) keep their previous behaviour.
+    return [...rows].sort(
+      (a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+        (b.featured === true ? 1 : 0) - (a.featured === true ? 1 : 0),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, filter, sort, liked, query, technology]);
 

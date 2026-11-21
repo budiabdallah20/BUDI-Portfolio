@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import EngravedPath from "./EngravedPath";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 
-type Relic = { key: string; name: string; category?: string; logo?: string };
+type Relic = { key: string; name: string; anchor?: string; category?: string; logo?: string };
 
 /** Original ornamental forms, not replicas or historical inscriptions. */
 function RelicObject({ variant }: { variant: number }) {
@@ -39,7 +39,7 @@ export default function SkillRelics<T extends Relic>({ items, label, onOpen, col
     {selected && <div className="exhibit-selection"><span>{items.find(item => item.key === selected)?.name}</span><button type="button" onClick={() => setSelected(null)}>{t.exhibition.reset} ×</button></div>}
     <EngravedPath className="relic-field" activeKey={active} color={color}>
     {items.map((item, i) => <article className={`relic-shell${active === item.key ? " is-active" : ""}`} key={item.key} data-exhibit-key={item.key} style={{ "--skill-color": colorFor(item.name) } as React.CSSProperties}>
-      <button type="button" className="relic-trigger" aria-label={`${label}: ${item.name}`} aria-haspopup="dialog"
+      <button type="button" id={item.anchor} className="relic-trigger" aria-label={`${label}: ${item.name}`} aria-haspopup="dialog"
         onPointerEnter={() => setHovered(item.key)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(item.key)} onBlur={() => setHovered(null)} onClick={() => { setSelected(item.key); onOpen(item); }}>
         <span className="relic-spotlight" aria-hidden="true" />
         <span className="relic-stage"><RelicObject variant={i % 4}/><span className="relic-brand"><TechnologyIcon name={item.name} src={item.logo}/></span></span>

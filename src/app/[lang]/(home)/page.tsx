@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import HomeShell from "@/components/home/HomeShell";
+import { notFound, redirect } from "next/navigation";
+import dynamicComponent from "next/dynamic";
+import EditorialLanding from "@/components/home/EditorialLanding";
 import { siteConfig } from "@/config/site";
+import { getHomeVisibility } from "@/config/home-visibility";
 import { fetchContent } from "@/lib/content";
 import { isLang } from "@/i18n/dictionaries";
+
+const LegacyHome = dynamicComponent(() => import("@/components/home/HomeShell"));
 
 /**
  * ALWAYS fresh — zero stale cache, by owner demand: every dashboard edit
@@ -47,11 +51,22 @@ export async function generateMetadata({
 
 export default async function HomePage({
   params,
+  searchParams,
 }: {
   params: Promise<LangRouteParams>;
+  searchParams: Promise<{ sections?: string | string[] }>;
 }): Promise<React.JSX.Element> {
   const { lang } = await params;
+  if (lang === "ar") redirect("/en");
   if (!isLang(lang)) notFound();
-  const content = await fetchContent();
-  return <HomeShell content={content} />;
+  const [content, { sections }] = await Promise.all([fetchContent(), searchParams]);
+  const visibility = getHomeVisibility(sections);
+  const instaPayLink = URL.parse(process.env.BUDI_INSTAPAY_LINK?.trim() ?? "");
+  const instaPayHref = instaPayLink?.origin === "https://ipn.eg" &&
+    !instaPayLink.username && !instaPayLink.password && instaPayLink.pathname.startsWith("/S/")
+    ? instaPayLink.href
+    : undefined;
+  return process.env.BUDI_PORTFOLIO_LAYOUT === "legacy"
+    ? <LegacyHome content={content} visibility={visibility} />
+    : <EditorialLanding content={content} visibility={visibility} instaPayHref={instaPayHref} />;
 }

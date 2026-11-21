@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Download, Languages, Mail, Search } from "lucide-react";
+import { isHomeAnchorVisible, type HomeVisibility } from "@/config/home-visibility";
 import { heroCopy, navLinks, profile } from "@/data/portfolio";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface CommandPaletteProps {
   open: boolean;
+  visibility?: HomeVisibility;
   onClose: () => void;
 }
 
@@ -21,7 +23,7 @@ interface PaletteItem {
   run: () => void;
 }
 
-export default function CommandPalette({ open, onClose }: CommandPaletteProps): React.JSX.Element {
+export default function CommandPalette({ open, onClose, visibility }: CommandPaletteProps): React.JSX.Element {
   const { t, lang, switchLanguage } = useLanguage();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -34,7 +36,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
       document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
     };
     return [
-      ...navLinks.map((link, i) => ({
+      ...navLinks.filter(link => isHomeAnchorVisible(link.href, visibility)).map((link, i) => ({
         key: `go-${link.id}`,
         label: t.nav[link.id],
         hint: `0${i + 1}`,
@@ -81,7 +83,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps): 
         },
       },
     ];
-  }, [t, lang, switchLanguage, onClose, copied]);
+  }, [t, lang, switchLanguage, onClose, copied, visibility]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

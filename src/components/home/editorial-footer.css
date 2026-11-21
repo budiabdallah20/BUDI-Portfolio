@@ -1,0 +1,302 @@
+/*
+ * BUDI EDITORIAL FOOTER — Dark Premium Finale
+ * Scoped to .editorial-page footer to prevent bleed into light editorial context.
+ * Applies the BUDI signature palette: deep black, burgundy depth, gold precision, orange CTAs.
+ */
+
+/* =========================================================================
+   DARK SURFACE RESET — override editorial-page's ivory/light context
+   ========================================================================= */
+.editorial-page .footer-museum {
+  --background: #0a0a0b;
+  --foreground: #f4f4ef;
+  --muted: #a2a29a;
+  --faint: #6e6e68;
+  --border: rgba(244, 244, 239, 0.08);
+  --accent: #d7fd44;
+  --accent-foreground: #101200;
+  --surface: #121214;
+  --ember: #eb6b23;
+
+  background: radial-gradient(ellipse 55% 38% at 50% 0%, rgba(104, 28, 50, 0.4), transparent 65%),
+    linear-gradient(180deg, #0d0b0d 0%, #0a0909 50%, #060607 100%);
+  color: var(--foreground);
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   EDITORIAL FOOTER — SIGNATURE HEADLINE
+   The "LET'S BUILD" grande finale
+   ========================================================================= */
+.editorial-page .footer-museum .royal-footer-finale {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: clamp(2rem, 5vw, 5rem);
+}
+
+.editorial-page .footer-museum .royal-footer-cartouche {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+}
+
+.editorial-page .footer-museum .royal-footer-inscription {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Headline typographic scale */
+.editorial-page .footer-museum .royal-footer-inscription .display {
+  font-family: "Oswald", "Arial Black", Impact, system-ui, sans-serif;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.editorial-page .footer-museum .load-shimmer {
+  color: #f4f4ef;
+}
+
+.editorial-page .footer-museum .text-stroke {
+  -webkit-text-stroke: 1.5px rgba(216, 180, 119, 0.7);
+  color: transparent;
+  text-shadow: 0 0 60px rgba(216, 180, 119, 0.15);
+}
+
+/* =========================================================================
+   FOOTER CTA BUTTON — Chamfered orange primary action
+   ========================================================================= */
+.editorial-page .footer-museum .royal-footer-inscription a.group {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  background: linear-gradient(110deg, #ff8c42 0%, #eb6b23 100%);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 0;
+  box-shadow: 0 10px 32px -6px rgba(235, 107, 35, 0.6);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.editorial-page .footer-museum .royal-footer-inscription a.group:hover {
+  box-shadow: 0 14px 40px -4px rgba(235, 107, 35, 0.75);
+  transform: translateY(-2px);
+}
+
+/* =========================================================================
+   FOOTER NAV LINKS — Ivory on dark, orange hover accent
+   ========================================================================= */
+.editorial-page .footer-museum a {
+  color: var(--muted);
+}
+
+.editorial-page .footer-museum a:hover {
+  color: var(--foreground);
+}
+
+.editorial-page .footer-museum nav a:hover {
+  color: #eb6b23;
+}
+
+/* Nav items — gold index numerals */
+.editorial-page .footer-museum nav .font-mono.text-faint {
+  color: rgba(216, 180, 119, 0.55);
+}
+
+.editorial-page .footer-museum nav .h-px.bg-accent {
+  background: #eb6b23;
+}
+
+/* =========================================================================
+   FOOTER CONTACT COLUMN — Icon accents
+   ========================================================================= */
+.editorial-page .footer-museum .text-accent {
+  color: #eb6b23;
+}
+
+/* =========================================================================
+   FOOTER INDEX GRID & COLUMN SPACING
+   ========================================================================= */
+.editorial-page .footer-museum .royal-footer-index {
+  gap: clamp(2rem, 3.8vw, 4rem);
+  border-color: rgba(216, 180, 119, 0.15);
+  padding-block: 3.5rem 2.5rem;
+}
+
+/* =========================================================================
+   FOOTER SOCIAL ICONS — Gold-accented luxury capsules with brand glow
+   ========================================================================= */
+.editorial-page .footer-museum .social-gold-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0;
+  margin: 1rem 0 0 0;
+  list-style: none;
+}
+
+.editorial-page .footer-museum .social-gold-rail li {
+  display: inline-flex;
+}
+
+.editorial-page .footer-museum .social-gold-rail li a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.65rem;
+  block-size: 2.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(216, 180, 119, 0.22);
+  background: rgba(255, 255, 255, 0.035);
+  color: #d4d4cf;
+  position: relative;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.editorial-page .footer-museum .social-gold-rail li a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--social-brand, #eb6b23);
+  color: #ffffff;
+  transform: translateY(-3.5px) scale(1.08);
+  box-shadow: 0 0 16px -2px var(--social-brand, rgba(235, 107, 35, 0.6)),
+              inset 0 0 10px -2px var(--social-brand, rgba(235, 107, 35, 0.35));
+}
+
+/* =========================================================================
+   FOOTER BOTTOM BAR — Refined, dark
+   ========================================================================= */
+.editorial-page .footer-museum .border-t {
+  border-color: rgba(244, 244, 239, 0.08);
+}
+
+.editorial-page .footer-museum .text-faint {
+  color: #6e6e68;
+}
+
+.editorial-page .footer-museum .font-mono.text-faint {
+  color: #6e6e68;
+}
+
+/* Back-to-top + ⌘K buttons */
+.editorial-page .footer-museum button.border-border {
+  border-color: rgba(244, 244, 239, 0.1);
+  color: #a2a29a;
+  background: transparent;
+}
+
+.editorial-page .footer-museum button.border-border:hover {
+  border-color: #eb6b23;
+  color: #eb6b23;
+}
+
+/* Admin button */
+.editorial-page .footer-museum button[aria-label="Admin"] {
+  border-color: rgba(244, 244, 239, 0.1);
+  color: #a2a29a;
+}
+
+.editorial-page .footer-museum button[aria-label="Admin"]:hover {
+  border-color: #d8b477;
+  color: #d8b477;
+}
+
+/* WhatsApp and Call instant-hire buttons — preserved brand colors */
+.editorial-page .footer-museum .bg-\[\#25d366\] {
+  background: #25d366 !important;
+}
+
+.editorial-page .footer-museum .bg-\[\#d7fd44\] {
+  background: #d7fd44 !important;
+}
+
+/* =========================================================================
+   FOOTER MARQUEE — Muted tech icons on dark
+   ========================================================================= */
+.editorial-page .footer-museum .marquee img {
+  opacity: 0.45;
+  filter: brightness(0.9) saturate(0.5);
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.editorial-page .footer-museum .marquee img:hover {
+  opacity: 0.9;
+  filter: none;
+}
+
+/* =========================================================================
+   FOOTER GRANDE BUDI WORDMARK — Gold outline finale
+   ========================================================================= */
+.editorial-page .footer-museum .word-halo {
+  background: radial-gradient(ellipse 60% 56% at 50% 55%, rgba(216, 180, 119, 0.22), transparent 70%) !important;
+}
+
+/* =========================================================================
+   STATUS DOT — emerald green operational indicator
+   ========================================================================= */
+.editorial-page .footer-museum .bg-emerald-400 {
+  background: #34d399;
+}
+
+/* =========================================================================
+   FOOTER BRAND COLUMN — Availability badge
+   ========================================================================= */
+.editorial-page .footer-museum .border-accent\/30 {
+  border-color: rgba(215, 253, 68, 0.28);
+}
+
+.editorial-page .footer-museum .bg-accent\/10 {
+  background: rgba(215, 253, 68, 0.07);
+}
+
+/* =========================================================================
+   ACADEMIC AFFILIATION BLOCK
+   ========================================================================= */
+.editorial-page .footer-museum .royal-footer-academic {
+  border-color: rgba(216, 180, 119, 0.2);
+}
+
+.editorial-page .footer-museum .royal-footer-academic > div {
+  border-color: rgba(216, 180, 119, 0.25);
+  background: radial-gradient(ellipse at 10% 50%, rgba(104, 28, 50, 0.35), transparent 70%),
+    rgba(17, 18, 22, 0.75);
+}
+
+/* =========================================================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================================================= */
+@media (max-width: 768px) {
+  .editorial-page .footer-museum .royal-footer-finale {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .editorial-page .footer-museum .royal-footer-inscription {
+    align-items: center;
+  }
+
+  .editorial-page .footer-museum .royal-footer-cartouche {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   FOOTER ENTRANCE ANIMATION
+   Refined section entrance on first view
+   ========================================================================= */
+@media (prefers-reduced-motion: no-preference) {
+  .editorial-page .footer-museum {
+    animation: editorial-footer-reveal 0.9s cubic-bezier(0.19, 1, 0.22, 1) both;
+    animation-timeline: view(block);
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+@keyframes editorial-footer-reveal {
+  from {
+    opacity: 0.4;
+    translate: 0 20px;
+  }
+}

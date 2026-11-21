@@ -1,7 +1,16 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { additionalServices } from "@/data/service-offerings";
-export const previewMode = process.env.NODE_ENV === "development";
+/**
+ * Local-only preview is OPT-IN.
+ *
+ * It used to be implicit in `NODE_ENV === "development"`, which silently
+ * diverted every dashboard save to work/preview-content.json while production
+ * read Supabase. That split-brain is how "local projects" never reached the
+ * live site. Set NEXT_PUBLIC_BUDI_LOCAL_PREVIEW=1 only when you deliberately
+ * want the offline preview; the default dev flow now uses the real database.
+ */
+export const previewMode = process.env.NEXT_PUBLIC_BUDI_LOCAL_PREVIEW === "1";
 type Row = Record<string, unknown> & { id: string };
 type State = Record<string, Row[]>;
 const file = path.join(process.cwd(),"work","preview-content.json");

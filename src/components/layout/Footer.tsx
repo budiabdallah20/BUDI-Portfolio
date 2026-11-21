@@ -1,5 +1,7 @@
 "use client";
 
+import { isHomeAnchorVisible, type HomeVisibility } from "@/config/home-visibility";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
@@ -29,14 +31,17 @@ import { workDeadlineSuffix, workLabel } from "@/components/WorkStatus";
 
 const COPY = {
   en: {
-    eyebrow: "The last frame",
-    line1: "LET'S BUILD",
-    line2: "SOMETHING THAT MATTERS.",
-    sub: "Have an idea, a project, or a role in mind? My inbox is always open.",
+    eyebrow: "05 / Finale",
+    line1: "LET'S MAKE",
+    line2: "SOMETHING MATTER",
     cta: "Start a Conversation",
     navTitle: "Navigation",
     contactTitle: "Contact",
     socialsTitle: "Socials",
+    academicUniv: "Suez University · Faculty of Science",
+    academicDept: "Department of Mathematics & Computer Science",
+    academicClass: "Class of 2029 · Undergraduate Degree",
+    academicBadge: "Verified Academic Affiliation",
     copyEmail: "Copy email",
     copyNumber: "Copy number",
     copied: "Copied",
@@ -48,14 +53,17 @@ const COPY = {
     status: "All systems operational",
   },
   fr: {
-    eyebrow: "La dernière image",
-    line1: "CONSTRUISONS",
-    line2: "QUELQUE CHOSE QUI COMPTE.",
-    sub: "Une idée, un projet ou un poste en tête ? Ma boîte mail est toujours ouverte.",
+    eyebrow: "05 / Finale",
+    line1: "CRÉONS",
+    line2: "QUELQUE CHOSE QUI COMPTE",
     cta: "Démarrer une conversation",
     navTitle: "Navigation",
     contactTitle: "Contact",
     socialsTitle: "Réseaux",
+    academicUniv: "Université de Suez · Faculté des Sciences",
+    academicDept: "Département de Mathématiques & Informatique",
+    academicClass: "Promotion 2029 · Premier Cycle",
+    academicBadge: "Affiliation Académique Vérifiée",
     copyEmail: "Copier l'e-mail",
     copyNumber: "Copier le numéro",
     copied: "Copié",
@@ -77,10 +85,14 @@ export default function Footer({
   image,
   email,
   availability,
+  editorial = false,
+  visibility,
 }: {
   email?: string;
   image?: string;
   availability?: SiteAvailability;
+  editorial?: boolean;
+  visibility?: HomeVisibility;
 }): React.JSX.Element {
   const { lang, t } = useLanguage();
   const reduced = useReducedMotion();
@@ -159,7 +171,7 @@ export default function Footer({
   };
 
   return (
-    <footer className="footer-museum relative overflow-clip border-t border-border"><RoomScene scene="island" />
+    <footer className="footer-museum relative overflow-clip border-t border-border">{!editorial && <RoomScene scene="island" />}
       {/* Magic top beam — light runs across the footer crown */}
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px overflow-hidden">
         <span className="animate-bar-shine block h-full w-full bg-gradient-to-r from-transparent via-accent to-transparent" />
@@ -259,9 +271,6 @@ export default function Footer({
               {c.line2}
             </span>
             <span className="sr-only">{`${c.line1} ${c.line2}`}</span>
-          </p>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            {c.sub}
           </p>
           <span className="relative mt-8 inline-flex rounded-sm p-[1.5px]">
             <span
@@ -376,7 +385,7 @@ export default function Footer({
               {c.navTitle}
             </p>
             <ul className="mt-4 space-y-2.5">
-              {navLinks.map((link, i) => (
+              {navLinks.filter(link => isHomeAnchorVisible(link.href, visibility)).map((link, i) => (
                 <li key={link.id}>
                   <a
                     href={link.href}
@@ -462,7 +471,7 @@ export default function Footer({
             {/* Instant hire — one tap to WhatsApp or a real call */}
             <div className="mt-4 flex gap-2">
               <a
-                href="https://wa.me/201065228072"
+                href={socialLinks.find(s => s.label === "WhatsApp")?.href || "https://wa.me/201065228072"}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`${c.whatsapp} — ${profile.phoneDisplay}`}
@@ -513,6 +522,44 @@ export default function Footer({
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        {/* ——— Academic Affiliation — Suez University & Faculty of Science ——— */}
+        <div className="royal-footer-academic mt-12 border-t border-border pt-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-5 rounded-2xl border border-border/80 bg-surface/50 p-5 sm:p-6 backdrop-blur-sm shadow-[0_12px_36px_-10px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center -space-x-2 shrink-0">
+                <Image
+                  src="/images/education/suez-official.png"
+                  alt="Suez University Seal"
+                  width={44}
+                  height={44}
+                  className="relative z-10 h-11 w-11 rounded-full border border-[#d8b477]/50 bg-black/70 p-1 object-contain shadow-[0_0_12px_rgba(216,180,119,0.3)]"
+                />
+                <Image
+                  src="/images/education/science-official.jpg"
+                  alt="Faculty of Science Seal"
+                  width={44}
+                  height={44}
+                  className="relative z-0 h-11 w-11 rounded-full border border-[#d8b477]/35 bg-black/70 p-1 object-contain"
+                />
+              </div>
+              <div>
+                <p className="font-display text-sm font-bold text-foreground">
+                  {c.academicUniv}
+                </p>
+                <p className="font-mono text-xs text-muted">
+                  {c.academicDept}
+                  {" · "}
+                  <span className="text-[#d8b477] font-semibold">{c.academicClass}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] tracking-wider text-faint uppercase">
+              <span className="h-2 w-2 rounded-full bg-[#d7fd44] shadow-[0_0_8px_rgba(215,253,68,0.6)]" />
+              <span>{c.academicBadge}</span>
+            </div>
           </div>
         </div>
 
@@ -695,7 +742,8 @@ export default function Footer({
               <h2 className="font-display text-lg font-bold">Admin access</h2>
             </div>
             <p className="mb-4 text-sm text-muted">
-              Enter the footer admin password (different from the dashboard PIN).
+              Enter the footer admin password. The next screen asks for the
+              4-digit dashboard PIN.
             </p>
             <form
               onSubmit={async (e) => {

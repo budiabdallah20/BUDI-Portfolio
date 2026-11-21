@@ -1,0 +1,18 @@
+.about-workflow { max-width:1376px; margin-inline:auto; padding:clamp(2rem,6vw,5rem) clamp(1rem,5vw,4.5rem); background:white; color:#182436; }
+.about-workflow h3 { margin-block-end:1.5rem; font-size:clamp(2.2rem,5vw,4.25rem); font-weight:780; line-height:1.05; letter-spacing:-.055em; }
+.about-workflow ol { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
+.about-workflow li { min-inline-size:0; position:relative; padding-inline-end:1.25rem; }
+.about-workflow li::before { content:""; position:absolute; z-index:0; inset-inline:0; inset-block-start:21px; height:1px; background:#c1cde0; }
+.about-workflow li:last-child::before { display:none; }
+.about-workflow li[data-visited=true]::before { background:linear-gradient(90deg,#d76b30,#399dff); }
+.workflow-node { position:relative; z-index:1; display:grid; place-items:center; inline-size:44px; block-size:44px; border-radius:50%; background:#f7fafc; border:1px solid #adbed3; color:#364c67; font:750 .82rem monospace; }
+.about-workflow li[data-active=true] .workflow-node { color:#8e380d; background:#fff5ec; border-color:#e1834d; box-shadow:0 0 0 4px #f4be9252; }
+.about-workflow h4 { margin-block:.65rem .35rem; font-size:1.27rem; font-weight:760; }
+.about-workflow p { font-size:.9rem; line-height:1.52; color:#465976; max-inline-size:29ch; }
+@media(max-width:760px) {
+  .about-workflow ol { grid-template-columns:1fr; }
+  .about-workflow li { padding:0 0 1.45rem; padding-inline-start:3.5rem; min-block-size:54px; }
+  .about-workflow li::before { inset-block:0; inset-inline-start:21px; inset-inline-end:auto; width:1px; height:auto; }
+  .workflow-node { position:absolute; inset-inline-start:0; inset-block-start:0; }
+  .about-workflow h4 { margin-block-start:0; }
+}

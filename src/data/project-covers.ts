@@ -1,7 +1,5 @@
 /** Existing portfolio cover artwork, keyed by the real repository slug. */
 export const projectCovers: Record<string, string> = {
-  kayan: "/images/projects/zaker-logo.svg",
-  massar: "/images/projects/analytics.svg",
   "budi-s-": "/brand/budi-light.svg",
   raqib: "/images/projects/raqib-wordmark.svg",
   "dental-system": "/images/projects/budi-dental.svg",

@@ -24,5 +24,13 @@ export function purgeContentCache(): string[] {
       /* static export — nothing to purge */
     }
   }
+  // Localized documents are a dynamic segment: purge the page pattern too so
+  // /en, /fr and /ar cannot hold an older snapshot after a dashboard write.
+  try {
+    revalidatePath("/[lang]", "page");
+    paths.push("/[lang]");
+  } catch {
+    /* static export — nothing to purge */
+  }
   return paths;
 }

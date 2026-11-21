@@ -8,8 +8,11 @@ export function useNow(intervalMs = 1000): Date | null {
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), intervalMs);
+    const tick = () => setNow(new Date());
+    const frame = window.requestAnimationFrame(tick);
+    const id = window.setInterval(tick, intervalMs);
     return (): void => {
+      window.cancelAnimationFrame(frame);
       window.clearInterval(id);
     };
   }, [intervalMs]);

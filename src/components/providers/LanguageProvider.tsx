@@ -17,7 +17,7 @@ interface LanguageValue {
   setLang: (lang: Lang) => void;
   toggle: () => void;
   /** Hard switch — persist + full reload to /{lang} (fresh open, like a first visit). */
-  switchLanguage: (next: Lang) => void;
+  switchLanguage: (next: Lang, preserveAnchor?: boolean) => void;
 }
 
 const LanguageContext = createContext<LanguageValue | null>(null);
@@ -104,7 +104,7 @@ export function LanguageProvider({ children }: { children: ReactNode }): React.J
    * fresh open — persist the choice, then let the browser do a real
    * navigation (full reload), never a soft in-place re-render.
    */
-  const switchLanguage = useCallback((next: Lang): void => {
+  const switchLanguage = useCallback((next: Lang, preserveAnchor = false): void => {
     try {
       window.localStorage.setItem(STORAGE_KEY, next);
     } catch {
@@ -117,7 +117,8 @@ export function LanguageProvider({ children }: { children: ReactNode }): React.J
       /* cookies blocked — the path itself carries the choice */
     }
     try { window.sessionStorage.removeItem("budi-seen"); } catch { /* Navigation still works without storage. */ }
-    window.location.assign(`/${next}`);
+    const previewQuery = isLang(window.location.pathname.slice(1)) ? window.location.search : "";
+    window.location.assign(`/${next}${previewQuery}${preserveAnchor ? window.location.hash : ""}`);
   }, []);
 
   const setLang = switchLanguage;

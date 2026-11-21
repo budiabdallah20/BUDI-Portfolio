@@ -26,20 +26,6 @@
 }
 #budi-museum :is(.master-stat,.museum-collection-count strong):lang(ar) { font-family: Cairo,system-ui,sans-serif; }
 
-#budi-museum #services .master-service-relief {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 6px 18px;
-  filter: drop-shadow(0 12px 13px #000a);
-}
-#budi-museum #services .master-relief-object { transform-box: fill-box; transform-origin: center; }
-@media (prefers-reduced-motion:no-preference) {
-  #budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .master-relief-object { animation: v5-relief-lift 420ms ease-out; }
-}
-#budi-museum #services .v5-altar-crest { top: 5%; opacity: .45; }
-
 .featured-gallery {
   min-inline-size: 0;
   padding: clamp(.7rem,2.5vw,2rem);
@@ -115,23 +101,10 @@
 #budi-museum #certificates .featured-archive :is(.museum-learning-info small,.museum-learning-view,.museum-learning-status) { color: #f4d498; }
 #budi-museum #certificates .featured-archive .museum-learning-status { background: #d4af371a; }
 #budi-museum .museum-exhibits-certificates:has(.featured-archive) { display: block; }
-#budi-museum #projects .featured-projects .vitrine {
-  display: grid;
-  grid-template-columns: minmax(0,1.18fr) minmax(0,1fr);
-  gap: 12px;
-  padding: clamp(.7rem,2vw,1.35rem);
-  background: radial-gradient(ellipse at 0 0,#4932217d,transparent 62%),#10100f;
-}
-#budi-museum #projects .featured-projects .vitrine-window { aspect-ratio: 1.58; }
-#budi-museum #projects .featured-projects .vitrine-label { padding-block: .7rem; }
-#budi-museum #projects .featured-projects .vitrine-plinth { grid-column: 1 / -1; }
 #budi-museum #home .atrium-portrait-window {
   outline: 2px solid #bd934772;
   outline-offset: 9px;
   box-shadow: 0 0 0 7px #21160f,0 0 0 12px #070606,0 28px 55px #000b;
-}
-@media (max-width: 820px) {
-  #budi-museum #projects .featured-projects .vitrine { grid-template-columns: minmax(0,1fr); }
 }
 @media (max-width: 480px) {
   .featured-stage.has-peek { grid-template-columns: minmax(0,1fr) 48px; }
@@ -175,10 +148,6 @@
 #budi-museum #home .refined-temple-haze {
   background: radial-gradient(ellipse at 73% 28%,#b1845555,transparent 44%),radial-gradient(ellipse at 77% 78%,#5a1f2f77,transparent 49%);
 }
-#budi-museum #services .museum-exhibit-frame {
-  box-shadow: inset 0 12px 33px #0009,inset 0 -7px 20px #d4af3712;
-}
-#budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .v5-altar-crest { opacity: .9; }
 #budi-museum #about :is(.master-stat,.royal-identity-monument) {
   text-rendering: optimizeLegibility;
 }
@@ -234,8 +203,6 @@
 .flagship-gate[data-act=doors] .flagship-gate-light { opacity: .8; }
 
 #budi-museum .featured-arrows button { border-radius: 50%; box-shadow: inset 0 0 0 2px #080605; }
-
-#budi-museum #services .museum-exhibit:is(:hover,:focus-visible) .master-service-relief { filter: drop-shadow(0 10px 18px #d4af3738); }
 #budi-museum #skills .relic-shell.is-active .relic-trigger { box-shadow: inset 0 0 28px color-mix(in srgb,var(--skill-color),transparent 80%),0 18px 30px #0009; }
 #budi-museum .master-stat { text-shadow: 0 1px #4f3816,0 -1px #ffe39c55,0 0 16px #d4af3738; }
 #budi-museum #contact .payment-vault-card:focus-within .payment-vault-index { border-block-end-color: var(--rail-accent); }
@@ -507,24 +474,6 @@
   background: linear-gradient(160deg,#422333,#181018 72%);
 }
 #budi-museum .social-gold-rail [data-social-vitrine] { min-inline-size: 44px; width: 44px; border-color: #d4af372a; }
-#budi-museum #services .museum-exhibit-frame .service-exhibit-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: .7;
-  filter: saturate(.65) brightness(.7);
-}
-#budi-museum #services .master-service-relief {
-  inset: auto 5% 4% auto;
-  width: clamp(70px,21%,142px);
-  height: auto;
-  padding: 0;
-  background: #151012db;
-  border: 1px solid #cfa75e80;
-  border-radius: 8px;
-}
 #budi-museum #home .hero-photo-card-media::after {
   background: radial-gradient(circle at 11% 12%,#fff1c2ad 0 1px,transparent 3px),
     radial-gradient(circle at 88% 25%,#f4d78887 0 1px,transparent 3px),

@@ -21,7 +21,11 @@ import "@/components/museum/galleries-v5.css";
 import "@/components/museum/master-gallery.css";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import Museum from "@/components/museum/Museum";
+import type { HomeVisibility } from "@/config/home-visibility";
 import Contact from "@/components/sections/Contact";
+import StudioMotion from "./StudioMotion";
+import SmoothScroll from "./SmoothScroll";
+import "./studio.css";
 import Footer from "@/components/layout/Footer";
 
 /**
@@ -50,7 +54,8 @@ function shouldSkipIntro(): boolean {
   }
 }
 
-export default function HomeShell({ content }: { content: RemoteContent | null }): React.JSX.Element {
+export default function HomeShell({ content, visibility }: { content: RemoteContent | null; visibility: HomeVisibility }): React.JSX.Element {
+  const fullHome = Object.values(visibility).every(Boolean);
   const showLoader = content?.settings?.showLoader !== false;
   const maintenance = content?.settings?.maintenance === true;
   const contactEmail = content?.settings?.contactEmail || undefined;
@@ -180,7 +185,7 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
   }, [loading]);
 
   return (
-    <div id="budi-museum" className="egyptian-museum">
+    <div id="budi-museum" className="egyptian-museum cinematic-studio">
       <link rel="preload" href="/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       <RealtimeRefresh />
       <ErrorReporter />
@@ -198,17 +203,20 @@ export default function HomeShell({ content }: { content: RemoteContent | null }
           {lang === "fr" ? "Mode maintenance — mises à jour en cours" : "Maintenance mode — updates in progress"}
         </p>
       )}
-      <Navbar visible={!loading} availability={availability} />
-      {!loading && <WelcomeToast />}
-      {!loading && <SecurityQuickLink />}
+      <Navbar visibility={visibility} visible={!loading} availability={availability} />
+      <SmoothScroll ready={!loading} />
+      {fullHome && !loading && <WelcomeToast />}
+      {fullHome && !loading && <SecurityQuickLink />}
+      <StudioMotion ready={!loading} />
       <main id="content">
-        <Hero start={!loading} image={content?.settings?.heroImage || undefined} />
-        <About availability={availability} image={content?.settings?.aboutImage || undefined} />
-        <AboutManifesto />
-        <Museum content={content} />
-        <Contact email={contactEmail} availability={availability} payments={payments} siteVerified={siteVerified} verificationBadges={verificationBadges} />
+        <Hero visibility={visibility} start={!loading} image={content?.settings?.heroImage || undefined} />
+        {visibility.about && <About availability={availability} image={content?.settings?.aboutImage || undefined}
+          contactHref={visibility.contact ? "#contact" : undefined} projectsVisible={visibility.projects} />}
+        <Museum content={content} visibility={visibility} />
+        {fullHome && <AboutManifesto />}
+        {visibility.contact && <Contact email={contactEmail} availability={availability} payments={payments} siteVerified={siteVerified} verificationBadges={verificationBadges} />}
       </main>
-      <Footer image={content?.settings?.aboutImage || undefined} email={contactEmail} availability={availability} />
+      {visibility.footer && <Footer image={content?.settings?.aboutImage || undefined} email={contactEmail} availability={availability} visibility={visibility} />}
     </div>
   );
 }

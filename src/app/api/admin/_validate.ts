@@ -221,6 +221,7 @@ const TABLES: Record<string, Record<string, Field>> = {
     teamSize: { k: "int", min: 1, max: 50 },
     tags: OPT_ARR(14, 30),
     featured: { k: "bool" },
+    sortOrder: { k: "int", min: 0, max: 9999 },
     progress: { k: "int", min: 0, max: 100 },
     version: S(20),
     changelog: OPT_ARR(12, 220),

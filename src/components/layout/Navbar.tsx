@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Menu, Search, X } from "lucide-react";
+import { isHomeAnchorVisible, type HomeVisibility } from "@/config/home-visibility";
 import { navLinks, profile } from "@/data/portfolio";
 import { workDeadlineSuffix, workLabel, type SiteAvailability } from "@/components/WorkStatus";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
 import { cn } from "@/lib/utils";
 import CommandPalette from "./CommandPalette";
@@ -17,6 +19,7 @@ import UtilityBar from "./UtilityBar";
 
 interface NavbarProps {
   visible: boolean;
+  visibility?: HomeVisibility;
   availability?: SiteAvailability;
 }
 const LANGUAGE_OPTIONS = Object.keys(dictionaries) as Lang[];
@@ -84,8 +87,8 @@ function LangButton({ onToggle }: { onToggle?: () => void }): React.JSX.Element 
       <LangFlag lang={lang} />
       <span aria-hidden="true">{lang.toUpperCase()}</span>
     </button>
-    {open && <div role="menu" aria-label={lang === "fr" ? "Langues" : "Languages"} onKeyDown={onMenuKeyDown} className="absolute end-0 top-full z-[90] mt-3 min-w-44 rounded-2xl border border-sky-300/25 bg-[#121b29]/95 p-1.5 shadow-[0_20px_55px_#000a,0_0_25px_#75b8e32b] backdrop-blur-xl">
-      {languages.map((option, index) => <button key={option} ref={element => { optionsRef.current[index] = element; }} type="button" role="menuitemradio" aria-checked={lang === option} onClick={() => { setOpen(false); onToggle?.(); if (option !== lang) switchLanguage(option); else triggerRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm text-foreground hover:bg-sky-300/10 focus-visible:bg-sky-300/15 focus-visible:outline-none"><LangFlag lang={option}/><span className="flex-1">{names[option]}</span>{lang === option && <span className="text-sky-300" aria-hidden="true">✓</span>}</button>)}
+    {open && <div role="menu" aria-label={lang === "fr" ? "Langues" : "Languages"} onKeyDown={onMenuKeyDown} className="absolute end-0 top-full z-[90] mt-3 min-w-44 rounded-2xl border border-accent/25 bg-[#111216]/95 p-1.5 shadow-[0_20px_55px_#000a,0_0_25px_#d4b58121] backdrop-blur-xl">
+      {languages.map((option, index) => <button key={option} ref={element => { optionsRef.current[index] = element; }} type="button" role="menuitemradio" aria-checked={lang === option} onClick={() => { setOpen(false); onToggle?.(); if (option !== lang) switchLanguage(option); else triggerRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm text-foreground hover:bg-accent/10 focus-visible:bg-accent/15 focus-visible:outline-none"><LangFlag lang={option}/><span className="flex-1">{names[option]}</span>{lang === option && <span className="text-accent" aria-hidden="true">✓</span>}</button>)}
     </div>}
     </div>
   );
@@ -124,14 +127,16 @@ function ControlCluster({
   );
 }
 
-export default function Navbar({ visible, availability }: NavbarProps): React.JSX.Element {
+export default function Navbar({ visible, availability, visibility }: NavbarProps): React.JSX.Element {
+  const reducedMotion = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const { t, lang } = useLanguage();
-  const active = useScrollSpy(navLinks.map((l) => l.id));
+  const visibleLinks = navLinks.filter(link => isHomeAnchorVisible(link.href, visibility));
+  const active = useScrollSpy(navLinks.map(link => link.id));
   /** Dashboard-owned availability — every navbar badge flips with one switch. */
   const avail: SiteAvailability = availability ?? { status: "available", note: "", noteFr: "", until: "" };
   const availLabel =
@@ -165,22 +170,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
     };
   }, [open]);
 
-  // The address bar always tells the truth about where you stand:
-  // /{lang}#{section} — updated in place (no history spam). A deep link
-  // that the page hasn't honored yet is never stomped while the page
-  // sits untouched at the top.
-  useEffect(() => {
-    try {
-      const current = window.location.hash.replace("#", "");
-      if (current === active) return;
-      const untouchedDeepLink =
-        navLinks.some((l) => l.id === current) && window.scrollY < 8;
-      if (untouchedDeepLink) return;
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#${active}`);
-    } catch {
-      /* history unavailable — the spy still works, the URL just stays put */
-    }
-  }, [active]);
+  // Scroll position updates the active link. Fragment history belongs to navigation.
 
   // Global ⌘K / Ctrl+K toggles the command palette.
   useEffect(() => {
@@ -236,7 +226,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
           </a>
 
           <ul className="hidden items-center gap-0.5 lg:flex">
-            {navLinks.map((link) => {
+            {visibleLinks.map((link) => {
               const isActive = active === link.id;
               return (
                 <li key={link.id}>
@@ -251,8 +241,8 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
                     {isActive && (
                       <motion.span
                         layoutId="nav-active-pill"
-                        transition={{ type: "spring", bounce: 0.18, duration: 0.55 }}
-                        className="absolute inset-0 rounded-full border border-accent/25 bg-accent/10 shadow-[0_0_20px_rgba(255,61,0,0.28)]"
+                        transition={reducedMotion ? { duration: 0 } : { type: "spring", bounce: 0.08, duration: 0.38 }}
+                        className="absolute inset-0 rounded-xl border border-[#d4975e]/70 bg-[#9b531d]/20 shadow-[inset_0_1px_0_#f4bd8130,0_4px_12px_#0003]"
                       />
                     )}
                     <span className="relative">
@@ -261,7 +251,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "absolute inset-x-4 -bottom-px h-0.5 origin-left rounded-full bg-accent shadow-[0_0_8px_rgba(255,61,0,0.8)] transition-transform duration-300",
+                        "absolute inset-x-4 -bottom-px h-0.5 origin-left rounded-full bg-accent transition-transform duration-300 motion-reduce:transition-none",
                         isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
                       )}
                     />
@@ -345,7 +335,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
               variants={{ open: { transition: { staggerChildren: 0.06 } }, closed: {} }}
               className="flex h-full flex-col gap-1 overflow-y-auto px-5 pt-32 pb-8 md:pt-40"
             >
-              {navLinks.map((link, index) => {
+              {visibleLinks.map((link, index) => {
                 const isActive = active === link.id;
                 return (
                   <motion.li
@@ -399,7 +389,7 @@ export default function Navbar({ visible, availability }: NavbarProps): React.JS
       </AnimatePresence>
 
       {/* BUDI ⌘K command palette */}
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette visibility={visibility} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* Back-to-top — surfaces once you've travelled down the page */}
       <AnimatePresence>

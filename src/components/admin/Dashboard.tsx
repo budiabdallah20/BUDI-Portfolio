@@ -2066,7 +2066,7 @@ export default function Dashboard({
   return (
     <div className="admin-studio relative isolate flex min-h-svh bg-[#081426] text-white">
       <GizaBackdrop />
-      {process.env.NODE_ENV === "development" && <div className="preview-mode-label">LOCAL PREVIEW · Saves stay on this computer</div>}
+      {process.env.NEXT_PUBLIC_BUDI_LOCAL_PREVIEW === "1" && <div className="preview-mode-label">LOCAL PREVIEW · NOT SAVED TO SUPABASE</div>}
       {/* Sidebar */}
       <aside className="fixed inset-x-0 top-0 z-[110] border-b border-white/10 bg-[#0a1526]/95 backdrop-blur-xl lg:inset-y-0 lg:right-auto lg:w-60 lg:border-r lg:border-b-0">
         <div className="group flex items-center gap-2.5 px-4 py-3 lg:px-5 lg:py-5">
@@ -4779,7 +4779,7 @@ function ProjectsTab({
         ? a.title.localeCompare(b.title)
         : sort === "loved"
           ? loveOf(b) - loveOf(a)
-          : 0,
+          : (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
   );
   const live = db.projects.filter((p) => p.visible).length;
   const oss = db.projects.filter((p) => p.opensource).length;
@@ -4815,6 +4815,7 @@ function ProjectsTab({
     teamSize: 1,
     tags: [],
     featured: false,
+    sortOrder: 0,
     progress: 0,
     version: "",
     changelog: [],
@@ -7169,6 +7170,9 @@ function ProjectEditor({
           </Field>
           <Field label="Progress % (in-progress)">
             <input type="number" value={form.progress} onChange={(e) => set("progress", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="Display order" hint="lower shows first">
+            <input type="number" min={0} max={9999} value={form.sortOrder ?? 0} onChange={(e) => set("sortOrder", Number(e.target.value))} className={inputCls} />
           </Field>
           <Field label="SEO slug">
             <input value={form.seoSlug} onChange={(e) => set("seoSlug", e.target.value)} className={inputCls} maxLength={80} />

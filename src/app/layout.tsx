@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk, Oswald } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import AppProviders from "@/components/providers/AppProviders";
@@ -23,6 +23,13 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-mono",
+  display: "swap",
+});
+
+const impact = Oswald({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-impact",
   display: "swap",
 });
 
@@ -176,7 +183,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+      className={`${display.variable} ${sans.variable} ${mono.variable} ${impact.variable}`}
     >
       {/* Boot runs synchronously as the first body node — valid HTML, runs
           before hydration, so theme + language apply with zero flash. */}

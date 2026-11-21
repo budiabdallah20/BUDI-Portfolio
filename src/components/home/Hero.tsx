@@ -16,6 +16,7 @@ import {
   Sunset,
   BadgeCheck,
 } from "lucide-react";
+import { homeSectionHref, type HomeVisibility } from "@/config/home-visibility";
 import { heroCopy, profile, socialLinks, stackChips } from "@/data/portfolio";
 import { techLogo } from "@/data/techLogos";
 import SmartImage from "@/components/SmartImage";
@@ -27,6 +28,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 interface HeroProps {
   /** Becomes true the moment the loading curtain lifts. */
   start: boolean;
+  visibility?: HomeVisibility;
   /** Dashboard-owned portrait — falls back to the baked-in photo. */
   image?: string;
 }
@@ -54,7 +56,7 @@ function dayPartForHour(hour: number): DayPart {
 
 const DAY_ICON = { morning: Sunrise, afternoon: Sun, evening: Sunset, night: Moon } as const;
 
-export default function Hero({ start, image }: HeroProps): React.JSX.Element {
+export default function Hero({ start, image, visibility }: HeroProps): React.JSX.Element {
   const rootRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
   const { t, lang } = useLanguage();
@@ -306,10 +308,10 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
           </div>
 
           <div data-hero-reveal className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <a href={heroCopy.primaryCta.href} className="hero-glass-action hero-glass-hire">
+            <a href={homeSectionHref(heroCopy.primaryCta.href, visibility)} className="hero-glass-action hero-glass-hire">
               <span>{t.hero.hireMe}</span><ArrowUpRight size={17} aria-hidden="true" />
             </a>
-            <a href={heroCopy.secondaryCta.href} className="hero-glass-action hero-glass-projects">
+            <a href={homeSectionHref(heroCopy.secondaryCta.href, visibility)} className="hero-glass-action hero-glass-projects">
               <span>{t.hero.explore}</span><ArrowRight size={17} aria-hidden="true" />
             </a>
             <a
@@ -420,7 +422,7 @@ export default function Hero({ start, image }: HeroProps): React.JSX.Element {
       </div>
 
       <a
-        href="#about"
+        href={homeSectionHref("#about", visibility)}
         data-hero-scroll
         aria-label={t.hero.scrollNext}
         className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 md:flex"

@@ -1,731 +1,172 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import Image from "next/image";
-import { Award, BadgeCheck, Check, Copy, ExternalLink, ImagePlus, Link2, Plus, Search, X } from "lucide-react";
-import CountUp from "@/components/CountUp";
-import GlassModal from "@/components/GlassModal";
+import { Dialog } from "radix-ui";
+import { ArrowDownRight, ArrowUpRight, Download, FileText, Search, X } from "lucide-react";
+import type { Lang } from "@/i18n/dictionaries";
 import type { AdminCert } from "@/components/admin/store";
 import { useLanguage } from "@/components/providers/LanguageProvider";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { useModalScroll } from "@/hooks/useModalScroll";
-import { useBodyScrollLock, useTopmostEscape } from "@/hooks/useBodyScrollLock";
-import { techLogo } from "@/data/techLogos";
-import SmartImage from "@/components/SmartImage";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import "./creative-phase.css";
 
-interface Cert {
-  title: { en: string; fr: string };
-  issuer: { en: string; fr: string };
-  year: string;
-  months: number;
-  id: string;
-  skills: string[];
-  /** Drop the file in public/images/certificates/ and set the path — card upgrades itself. */
-  image: string | null;
-  verify: string | null;
-  expiry?: string | null;
-  level?: "beginner" | "intermediate" | "advanced" | "expert";
-  hours?: number;
-  type?: "certificate" | "badge" | "award" | "course";
-  featured?: boolean;
-  pdf?: string | null;
-  linkedSkills?: string[];
-}
-
-/** Grid page size — the shelf grows to 100+ with one tap. */
-const PAGE_SIZE = 8;
-
-// Real credentials from the live portfolio — no placeholders, no fakes.
-const CERTS: Cert[] = [];
-
-const COPY = {
+const copy = {
   en: {
-    eyebrow: "06 · Certificates",
-    title: "Certificates",
-    lede: "A record of learning, practice and professional milestones.",
-    addImage: "Certificate image coming soon",
-    verify: "Verify",
-    verifySoon: "Verify soon",
-    search: "Search certificates…",
-    empty: "No certificates match.",
-    reset: "Reset",
-    showing: "Showing",
-    totalLabel: "Certificates",
-    vendorsLabel: "Issuers",
-    more: "Show more",
-    less: "Show less",
+    label: "Credentials", heading: ["Proof of", "learning"],
+    design: "View design", studies: "Design studies", study: "Design study · not issued", published: "Gallery entries", empty: "No credentials published yet.", unavailable: "Credential records are temporarily unavailable.",
+    noMatches: "No credentials match your search.", all: "All years", search: "Search credentials", details: "View credential",
+    close: "Close credential", verify: "Open verification link", original: "Open original image", download: "Download credential",
+    noImage: "Document preview unavailable", issuer: "Issuer", date: "Issued", reference: "Credential ID", expiry: "Expiry",
+    skills: "Related skills", more: "Show more", viewSkills: "Explore skills",
   },
   fr: {
-    eyebrow: "06 · Certificats",
-    title: "Certificats",
-    lede: "Un parcours de formation, de pratique et de progression.",
-    addImage: "Image du certificat bientôt",
-    verify: "Vérifier",
-    verifySoon: "Bientôt vérifiable",
-    search: "Rechercher…",
-    empty: "Aucun certificat.",
-    reset: "Réinitialiser",
-    showing: "Affichage",
-    totalLabel: "Certificats",
-    vendorsLabel: "Organismes",
-    more: "Voir plus",
-    less: "Voir moins",
+    label: "Certifications", heading: ["Parcours et", "certifications"],
+    design: "Voir le design", studies: "Études de design", study: "Étude de design · non délivrée", published: "Entrées de la galerie", empty: "Aucune certification publiée pour le moment.", unavailable: "Les certifications sont temporairement indisponibles.",
+    noMatches: "Aucune certification ne correspond à votre recherche.", all: "Toutes les années", search: "Rechercher une certification", details: "Voir la certification",
+    close: "Fermer la certification", verify: "Ouvrir le lien de vérification", original: "Ouvrir l’image originale", download: "Télécharger le document",
+    noImage: "Aperçu du document indisponible", issuer: "Organisme", date: "Délivrée", reference: "Identifiant", expiry: "Expiration",
+    skills: "Compétences associées", more: "Afficher plus", viewSkills: "Explorer les compétences",
   },
 } as const;
 
-/**
- * Certificates — a dense trophy shelf built for 100+ credentials:
- * compact 4-per-row cards, year tabs, live search, paged reveal,
- * hover zoom + fullscreen lightbox once a real image lands.
- */
-export default function Certificates({ remote }: { remote?: AdminCert[] }): React.JSX.Element {
-  const { lang } = useLanguage();
-  const reduced = useReducedMotion();
-  const [lightbox, setLightbox] = useState<number | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const lightboxScroll = useModalScroll<HTMLDivElement>(lightbox !== null);
-  // Same counted lock + topmost Escape as GlassModal: the lightbox opens
-  // ON TOP of the dossier, so it must not fight it over body scroll.
-  useBodyScrollLock(lightbox !== null);
-  useTopmostEscape(lightbox !== null, () => setLightbox(null));
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const t = lang === "fr" ? COPY.fr : COPY.en;
-  const fr = lang === "fr";
+const PAGE_SIZE = 6;
+// Published study rows store the same SVGs as these local originals.
+const bundledStudies = new Set(["study-english", "study-microsoft", "study-cyber", "study-network"]);
+const publicUrl = (value?: string) => value?.match(/^(?:\/(?![\\/])|https?:\/\/)/i) ? value : undefined;
+const imageSource = (value?: string) => publicUrl(value) || (value?.match(/^data:image\/(?:png|jpe?g|webp|gif|avif);base64,/i) ? value : undefined);
 
-    /** Database wins whenever it is wired in — even an empty list is a real
-     *  state (a deleted certificate must disappear, not resurrect the
-     *  baked-in seed). The baked-in list is only the no-database fallback. */
-    const certs: Cert[] = useMemo<Cert[]>(() => {
-      if (remote !== undefined) {
-      return remote
-        .filter((r) => r.visible !== false)
-        .map((r) => ({
-        title: { en: r.titleEn, fr: r.titleFr },
-        issuer: { en: r.issuerEn, fr: r.issuerFr },
-        year: r.year,
-        months: r.months,
-        id: r.id,
-        skills: r.skills,
-        image: r.image || null,
-        verify: r.verify || null,
-        expiry: r.expiry || null,
-        level: r.level,
-        hours: r.hours,
-        type: r.type,
-        featured: r.featured === true,
-        pdf: r.pdf || null,
-        linkedSkills: r.linkedSkills ?? r.skills,
-      }));
-    }
-    return CERTS;
-  }, [remote]);
-  const [tab, setTab] = useState<string>("all");
-  const [query, setQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+function formatDate(value: string | undefined, lang: Lang) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(value + "T00:00:00Z");
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+    ? new Intl.DateTimeFormat(lang, { dateStyle: "long", timeZone: "UTC" }).format(date)
+    : undefined;
+}
 
-  const resetPage = (): void => setVisibleCount(PAGE_SIZE);
-
-  const years = useMemo(
-    () => [...new Set(certs.map((c) => c.year))].sort().reverse(),
-    [certs],
+function CredentialImage({ source, title, fallback, large }: { source?: string; title: string; fallback: string; large?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="creative-credential-media" data-large={large}>
+      {source && !failed
+        ? <Image src={source} alt={title} fill sizes={large ? "(max-width: 680px) 88vw, 660px" : "(max-width: 620px) 88vw, 390px"}
+            unoptimized={!source.startsWith("/")} onError={() => setFailed(true)} />
+        : <span><FileText aria-hidden="true" size={30} />{fallback}</span>}
+    </div>
   );
-  const vendors = useMemo(
-    () => new Set(certs.map((c) => (fr ? c.issuer.fr : c.issuer.en))).size,
-    [certs, fr],
-  );
-  const filteredAll = certs.filter((cert) => {
-    if (tab !== "all" && cert.year !== tab) return false;
-    const q = query.trim().toLowerCase();
-    if (q === "") return true;
-    const title = fr ? cert.title.fr : cert.title.en;
-    const issuer = fr ? cert.issuer.fr : cert.issuer.en;
-    return (
-      title.toLowerCase().includes(q) ||
-      issuer.toLowerCase().includes(q) ||
-      cert.skills.some((s) => s.toLowerCase().includes(q))
-    );
-  });
-  const filtered = filteredAll.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredAll.length;
-  const detailCert = detailId === null ? null : certs.find((c) => c.id === detailId) ?? null;
+}
 
-  const copyText = (key: string, text: string): void => {
-    try {
-      void navigator.clipboard?.writeText(text)?.catch(() => undefined);
-    } catch {
-      /* clipboard unavailable */
-    }
-    setCopiedKey(key);
-    window.setTimeout(() => {
-      setCopiedKey((cur) => (cur === key ? null : cur));
-    }, 1600);
-  };
-
-  /** Cursor spotlight + gentle tilt — direct DOM writes, no re-renders. */
-  const onCardMove = (event: React.MouseEvent<HTMLElement>): void => {
-    if (reduced || !window.matchMedia("(pointer: fine)").matches) return;
-    const el = event.currentTarget;
-    const rect = el.getBoundingClientRect();
-    el.style.setProperty("--sx", `${(event.clientX - rect.left).toFixed(0)}px`);
-    el.style.setProperty("--sy", `${(event.clientY - rect.top).toFixed(0)}px`);
-    const px = (event.clientX - rect.left) / rect.width - 0.5;
-    const py = (event.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `perspective(1000px) rotateX(${(-py * 2.5).toFixed(2)}deg) rotateY(${(px * 3).toFixed(2)}deg)`;
-  };
-  const onCardLeave = (event: React.MouseEvent<HTMLElement>): void => {
-    event.currentTarget.style.transform = "";
-  };
+function CredentialCard({ cert, index, lang, study = false }: { cert: AdminCert; index: number; lang: Lang; study?: boolean }) {
+  const words = copy[lang];
+  const title = (lang === "fr" ? cert.titleFr : cert.titleEn) || cert.titleEn || cert.titleFr;
+  const issuer = (lang === "fr" ? cert.issuerFr : cert.issuerEn) || cert.issuerEn || cert.issuerFr;
+  const issue = formatDate(cert.issueDate, lang) || (/^\d{4}$/.test(cert.year) ? cert.year : undefined);
+  const expiry = formatDate(cert.expiry, lang);
+  const file = publicUrl(cert.pdf) || imageSource(cert.pdf) || (cert.pdf?.startsWith("data:application/pdf;base64,") ? cert.pdf : undefined);
+  const bundledStudy = study && bundledStudies.has(cert.id) && cert.image?.startsWith("data:image/svg+xml;base64,")
+    ? "/images/certificates/" + cert.id + ".svg"
+    : undefined;
+  const media = imageSource(cert.image) || bundledStudy || (cert.pdf?.match(/\.(?:png|jpe?g|webp|avif)(?:[?#]|$)|^data:image\//i) ? imageSource(cert.pdf) : undefined);
+  const issuerLogo = imageSource(cert.verifyLogo);
+  const verify = publicUrl(cert.verify);
+  const skills = [...new Set([...(cert.linkedSkills ?? []), ...(cert.skills ?? [])].filter(Boolean))];
+  const facts = study ? [] : [[words.issuer, issuer], [words.date, issue], [words.reference, cert.code], [words.expiry, expiry]];
 
   return (
-    <section
-      id="certificates"
-      aria-labelledby="certificates-heading"
-      className="relative overflow-clip border-t border-border py-24 sm:py-32"
-    >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 30% at 85% 10%, rgba(255,61,0,0.07), transparent 65%)",
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="text-stroke display pointer-events-none absolute top-16 right-0 hidden text-[20vw] leading-none opacity-20 select-none md:block"
-      >
-        05
+    <article className="creative-credential-card creative-frame">
+      <div className="creative-credential-bar"><span>{String(index + 1).padStart(2, "0")}</span>{issue && <span>{issue}</span>}</div>
+      <CredentialImage key={media} source={media} title={title} fallback={words.noImage} />
+      <div className="creative-credential-meta">
+        {study ? <p className="creative-kicker">{words.study}</p> : issuer && <p className="creative-kicker">{issuerLogo && <Image src={issuerLogo} width={22} height={22} alt="" unoptimized={!issuerLogo.startsWith("/")} />}{issuer}</p>}
+        <h3>{title}</h3>
+        {!!skills.length && <p>{skills.slice(0, 3).join(" · ")}</p>}
+        <Dialog.Root>
+          <Dialog.Trigger asChild>
+            <Button type="button" className="creative-cta" aria-label={`${study ? words.design : words.details} · ${title}`}>{study ? words.design : words.details}<ArrowUpRight aria-hidden="true" /></Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="creative-credential-overlay" />
+            <Dialog.Content className="creative-credential-dialog creative-frame" aria-describedby={undefined}>
+              <header>
+                <Dialog.Title>{title}</Dialog.Title>
+                <Dialog.Close asChild><button type="button" className="creative-close" aria-label={words.close}><X aria-hidden="true" size={20} /></button></Dialog.Close>
+              </header>
+              {study && <p className="creative-kicker credential-study-label">{words.study}</p>}
+              <CredentialImage key={media} source={media} title={title} fallback={words.noImage} large />
+              <dl className="creative-credential-facts">
+                {facts.map(([label, value]) => value && <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+              </dl>
+              {!!skills.length && <div className="creative-dossier-skills"><h4>{words.skills}</h4><p>{skills.join(" · ")}</p></div>}
+              <div className="creative-dossier-actions">
+                {!study && verify && <a className="creative-cta" href={verify} target="_blank" rel="noopener noreferrer">{words.verify}<ArrowUpRight size={15} aria-hidden="true" /></a>}
+                {media && publicUrl(media) && <a href={media} target="_blank" rel="noopener noreferrer">{words.original}<ArrowUpRight size={15} aria-hidden="true" /></a>}
+                {!study && (file || media) && <a href={file || media} download={`credential-${cert.id.replace(/[^\w-]/g, "-")}`} target="_blank" rel="noopener noreferrer">{words.download}<Download size={15} aria-hidden="true" /></a>}
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </div>
+    </article>
+  );
+}
 
-      <div className="relative mx-auto w-full max-w-7xl px-5 sm:px-8">
-        <div className="flex flex-col items-center text-center">
-          <p className="flex items-center gap-4 font-mono text-xs tracking-[0.35em] text-faint uppercase">
-            <span
-              aria-hidden="true"
-              className="h-px w-10 bg-gradient-to-r from-transparent to-accent/60"
-            />
-            {t.eyebrow}
-            <span
-              aria-hidden="true"
-              className="h-px w-10 bg-gradient-to-l from-transparent to-accent/60"
-            />
-          </p>
-          <h2
-            id="certificates-heading"
-            className="display mt-4 text-4xl font-bold tracking-tight text-accent drop-shadow-[0_0_28px_rgba(255,61,0,0.25)] md:text-6xl xl:text-7xl"
-          >
-            {t.title}
-          </h2>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            {t.lede}
-          </p>
-        </div>
+export default function Certificates({ remote }: { remote?: AdminCert[] }) {
+  const { lang } = useLanguage();
+  const words = copy[lang];
+  const [year, setYear] = useState("");
+  const [query, setQuery] = useState("");
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const credentials = (remote ?? []).filter(cert =>
+    cert.visible !== false && !/^study-/i.test(cert.id) && Boolean(cert.titleEn?.trim() || cert.titleFr?.trim())
+  ).sort((a, b) => Number(b.featured) - Number(a.featured) || (b.issueDate || b.year || "").localeCompare(a.issueDate || a.year || ""));
+  const studies = (remote ?? []).filter(cert => cert.visible !== false && /^study-/i.test(cert.id));
+  const years = [...new Set(credentials.map(cert => cert.year).filter(year => /^\d{4}$/.test(year)))].sort().reverse();
+  const activeYear = years.includes(year) ? year : "";
+  const search = query.trim().toLocaleLowerCase(lang);
+  const filtered = credentials.filter(cert => (!activeYear || cert.year === activeYear) &&
+    [cert.titleEn, cert.titleFr, cert.issuerEn, cert.issuerFr, ...(cert.skills ?? []), ...(cert.linkedSkills ?? [])]
+      .some(text => text?.toLocaleLowerCase(lang).includes(search)));
 
-        {/* Counters */}
-        {certs.length > 0 && <div className="mx-auto mt-10 grid max-w-3xl grid-cols-3 border-y border-border">
-          {[
-            { n: certs.length, label: t.totalLabel },
-            { n: vendors, label: t.vendorsLabel },
-            { n: certs.filter((c) => c.verify).length, label: fr ? "Vérifiables" : "With verification" },
-          ].map((s) => (
-            <div key={s.label} className="flex flex-col items-center gap-1 px-4 py-6 text-center">
-              <CountUp
-                end={s.n}
-                className="display text-4xl font-bold text-foreground tabular-nums sm:text-5xl"
-              />
-              <span className="font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
-                {s.label}
-              </span>
+  return (
+    <section id="certificates" className="creative-section" aria-labelledby="certificates-heading">
+      <div className="creative-wrap">
+        <header className="creative-masthead">
+          <div className="creative-kicker">{words.label}<ArrowDownRight size={18} aria-hidden="true" /></div>
+          <div className="creative-masthead-row">
+            <h2 id="certificates-heading">{words.heading[0]} <em>{words.heading[1]}</em></h2>
+            <div className="credential-counts"><p className="creative-count"><strong>{remote ? (credentials.length + studies.length).toLocaleString(lang) : "—"}</strong>{words.published}</p></div>
+          </div>
+        </header>
+        <div className="creative-exhibition creative-frame">
+          {credentials.length >= 4 && (
+            <div className="creative-credential-controls">
+              {years.length > 1 && <select aria-label={words.all} value={activeYear} onChange={event => { setYear(event.target.value); setLimit(PAGE_SIZE); }}>
+                <option value="">{words.all}</option>
+                {years.map(value => <option key={value}>{value}</option>)}
+              </select>}
+              <label><Search size={16} aria-hidden="true" /><span className="sr-only">{words.search}</span>
+                <input type="search" placeholder={words.search} value={query} onChange={event => { setQuery(event.target.value); setLimit(PAGE_SIZE); }} />
+              </label>
+              <span role="status">{Math.min(filtered.length, limit)} / {filtered.length}</span>
             </div>
-          ))}
-        </div>
-
-        }
-        {/* Tabs + search */}
-        <div className="mt-8 flex flex-col items-center gap-3">
-          <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label={t.title}>
-            {["all", ...years].map((y) => {
-              const isActive = tab === y;
-              const label = y === "all" ? (fr ? "Tout" : "All") : y;
-              const count = y === "all" ? certs.length : certs.filter((c) => c.year === y).length;
-              return (
-                <button
-                  key={y}
-                  type="button"
-                  onClick={() => { setTab(y); resetPage(); }}
-                  aria-pressed={isActive}
-                  className={`border px-4 py-2 font-mono text-[11px] tracking-[0.18em] uppercase transition-colors duration-200 ${
-                    isActive
-                      ? "border-accent bg-accent font-bold text-accent-foreground"
-                      : "border-border text-muted hover:border-accent/50 hover:text-foreground"
-                  }`}
-                >
-                  {label}
-                  <span className="ml-2 tabular-nums opacity-70">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-          <label className="flex w-full max-w-xl items-center gap-2 border border-border bg-surface/60 px-4 py-2.5 transition-colors focus-within:border-accent/60">
-            <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
-            <span className="sr-only">{t.search}</span>
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => { setQuery(event.target.value); resetPage(); }}
-              placeholder={t.search}
-              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-faint"
-            />
-          </label>
-          <p className="font-mono text-[11px] tracking-[0.2em] text-faint uppercase tabular-nums" role="status">
-            {t.showing} {filtered.length}/{filteredAll.length}
-          </p>
-        </div>
-
-        {filteredAll.length === 0 ? (
-          <div className="mt-12 flex flex-col items-center gap-4 border border-dashed border-border px-6 py-16 text-center">
-            <Award className="h-10 w-10 text-accent" aria-hidden="true"/><h3 className="text-2xl font-bold">{certs.length ? t.empty : fr ? "Les preuves ont leur place ici." : "Room for the next milestone."}</h3><p className="max-w-md text-sm leading-relaxed text-muted">{certs.length ? "" : remote === undefined ? (fr ? "Les certificats ne sont pas disponibles actuellement." : "Certificate data is currently unavailable.") : (fr ? "Aucun certificat publié pour le moment." : "No certificates have been published yet.")}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setTab("all");
-                resetPage();
-              }}
-              className="border border-accent/50 px-5 py-2 text-sm font-bold text-accent transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
-            >
-              {t.reset}
-            </button>
-          </div>
-        ) : (
-        <>
-        <motion.div layout={reduced ? false : true} className="mt-10 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <AnimatePresence mode="popLayout" initial={false}>
-          {filtered.map((cert, i) => {
-            const visibleSkills = cert.skills.slice(0, 3);
-            const extraSkills = cert.skills.length - visibleSkills.length;
-            return (
-            <motion.article
-              key={cert.id}
-              layout={reduced ? false : true}
-              initial={reduced ? false : { opacity: 0, y: 22 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              exit={reduced ? undefined : { opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.4, ease: "easeOut", delay: (i % 4) * 0.06 }}
-              onMouseMove={onCardMove}
-              onMouseLeave={onCardLeave}
-              className="cert-card group relative"
-            >
-              {/* ——— Magic BEHIND the card ————
-                  Two layers live outside the card box so the glass surface
-                  hides their centre: a soft aura that breathes at rest, and
-                  a full-spectrum halo that blooms on hover. */}
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "pointer-events-none absolute -inset-1 rounded-2xl opacity-30 blur-lg",
-                  !reduced && "animate-cert-aura",
-                )}
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgba(215,253,68,0.55), rgba(255,61,0,0.4) 55%, rgba(139,92,246,0.5))",
-                }}
-              />
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-2.5 rounded-3xl opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-70"
-                style={{
-                  background:
-                    "conic-gradient(from 130deg, rgba(215,253,68,0.75), rgba(255,61,0,0.6), rgba(139,92,246,0.65), rgba(215,253,68,0.75))",
-                }}
-              />
-
-              <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface/70 transition-[transform,border-color,box-shadow] duration-300 group-hover:-translate-y-1 group-hover:border-accent/50 group-hover:shadow-[0_24px_70px_-30px_rgba(215,253,68,0.5)]">
-                {/* Sealed corners — snap inward on hover */}
-                <span aria-hidden="true" className="cert-corner cert-corner--tl" />
-                <span aria-hidden="true" className="cert-corner cert-corner--tr" />
-                <span aria-hidden="true" className="cert-corner cert-corner--bl" />
-                <span aria-hidden="true" className="cert-corner cert-corner--br" />
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                  style={{
-                    background:
-                      "radial-gradient(360px circle at var(--sx, 50%) var(--sy, 0%), rgba(215,253,68,0.08), transparent 65%)",
-                  }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute top-0 left-0 z-10 h-[2px] w-0 bg-accent shadow-[0_0_12px_rgba(255,61,0,0.8)] transition-all duration-500 group-hover:w-full"
-                />
-                <span
-                  aria-hidden="true"
-                  className="display pointer-events-none absolute right-1 bottom-0 z-[5] text-5xl font-black text-foreground/[0.04] select-none"
-                >
-                  0{i + 1}
-                </span>
-                {/* Compact image slot — 16/10, zoom on hover — opens the glass dossier */}
-                <button
-                  type="button"
-                  onClick={() => setDetailId(cert.id)}
-                  aria-label={fr ? cert.title.fr : cert.title.en}
-                  aria-haspopup="dialog"
-                  className={cn(
-                    "relative flex aspect-[16/10] w-full cursor-pointer items-center justify-center overflow-hidden border-b border-border",
-                  )}
-                >
-                  {cert.image ? (
-                    <SmartImage
-                      src={cert.image}
-                      alt={fr ? cert.title.fr : cert.title.en}
-                      fill
-                      fit="cover"
-                      loading="lazy"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : (
-                    <span className="flex flex-col items-center gap-2 p-4 text-center">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-dashed border-accent/40 bg-accent/[0.06] text-accent">
-                        <ImagePlus className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <span className="font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
-                        {t.addImage}
-                      </span>
-                    </span>
-                  )}
-                  <span className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-accent backdrop-blur-md">
-                    <Award className="h-3.5 w-3.5" aria-hidden="true" />
-                  </span>
-                  <span className="absolute bottom-2 left-2 rounded-full border border-white/10 bg-black/55 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-white/80 uppercase backdrop-blur-md tabular-nums">
-                    {cert.year} · {cert.months}{fr ? "m" : "mo"}
-                  </span>
-                  {/* Silk sweep — a blade of light crosses the credential on hover */}
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 -translate-x-[180%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-[320%]"
-                  />
-                </button>
-
-                <div className="flex flex-1 flex-col p-3.5">
-                  <p className="truncate font-mono text-[9px] tracking-[0.2em] text-faint uppercase">
-                    {fr ? cert.issuer.fr : cert.issuer.en}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setDetailId(cert.id)}
-                    aria-haspopup="dialog"
-                    className="font-display mt-1 line-clamp-2 min-h-[2.5em] cursor-pointer text-left text-[15px] leading-snug font-bold text-foreground transition-colors hover:text-accent"
-                  >
-                    {fr ? cert.title.fr : cert.title.en}
-                  </button>
-                  <div className="mt-2 mb-2.5 flex flex-wrap gap-1">
-                    {visibleSkills.map((skill) => {
-                      const logo = techLogo(skill);
-                      return (
-                        <span
-                          key={skill}
-                          className="flex items-center gap-1 border border-border px-1.5 py-px font-mono text-[9px] tracking-[0.1em] text-muted uppercase"
-                        >
-                          {logo && (
-                            <Image
-                              src={logo}
-                              alt=""
-                              width={10}
-                              height={10}
-                              loading="lazy"
-                              className="block h-2.5 w-2.5"
-                            />
-                          )}
-                          {skill}
-                        </span>
-                      );
-                    })}
-                    {extraSkills > 0 && (
-                      <span className="font-mono text-[9px] text-faint tabular-nums">+{extraSkills}</span>
-                    )}
-                  </div>
-                  <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate font-mono text-[9px] tracking-[0.14em] text-faint uppercase tabular-nums">
-                        {cert.id}
-                      </span>
-                      {cert.type && cert.type !== "certificate" && (
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-px font-mono text-[8px] uppercase text-faint">
-                          {cert.type}
-                        </span>
-                      )}
-                      {cert.hours && cert.hours > 0 && (
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-px font-mono text-[8px] tabular-nums text-faint">
-                          {cert.hours}h
-                        </span>
-                      )}
-                      {cert.expiry && (
-                        <span className="rounded-full border border-amber-400/30 bg-amber-400/[0.06] px-1.5 py-px font-mono text-[8px] text-amber-300">
-                          exp {cert.expiry}
-                        </span>
-                      )}
-                    {cert.skills.length > 0 && (
-                      <span
-                        className="shrink-0 rounded-full border border-accent/25 bg-accent/[0.06] px-1.5 py-px font-mono text-[9px] tracking-[0.08em] text-accent/80 tabular-nums uppercase"
-                        title={cert.skills.join(", ")}
-                      >
-                        {cert.skills.length} {fr ? "comp." : "skills"}
-                      </span>
-                    )}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDetailId(cert.id)}
-                        aria-haspopup="dialog"
-                        className="cursor-pointer font-mono text-[10px] tracking-[0.18em] text-muted uppercase transition-colors duration-200 hover:text-accent"
-                      >
-                        {fr ? "Détails" : "Details"} →
-                      </button>
-                      {cert.verify ? (
-                        <a
-                          href={cert.verify}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-accent transition-transform duration-200 hover:-translate-y-0.5"
-                        >
-                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                          {t.verify}
-                      </a>
-                    ) : (
-                      <span className="inline-flex shrink-0 cursor-not-allowed items-center gap-1 text-[11px] font-semibold text-faint">
-                        <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                        {t.verifySoon}
-                      </span>
-                    )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.article>
-            );
-          })}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Pagination */}
-        <div className="mt-8 flex flex-col items-center gap-3">
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="group inline-flex cursor-pointer items-center gap-2 border border-accent/50 px-7 py-3 text-sm font-bold text-accent transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent hover:text-accent-foreground"
-            >
-              <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" aria-hidden="true" />
-              {t.more} ({filteredAll.length - filtered.length})
-            </button>
-          ) : (
-            filteredAll.length > PAGE_SIZE && (
-              <button
-                type="button"
-                onClick={resetPage}
-                className="cursor-pointer border border-border px-6 py-2.5 font-mono text-[11px] tracking-[0.2em] text-muted uppercase transition-colors duration-200 hover:border-accent/50 hover:text-foreground"
-              >
-                {t.less}
-              </button>
-            )
           )}
+          {filtered.length
+            ? <div className="creative-credential-grid">{filtered.slice(0, limit).map((cert, index) =>
+                <CredentialCard key={cert.id} cert={cert} index={index} lang={lang} />
+              )}</div>
+            : !studies.length || !!credentials.length ? <div className="creative-credential-empty">
+              <div className="creative-empty-icon" aria-hidden="true"><FileText size={32} strokeWidth={1.2} /></div>
+              <p>{credentials.length ? words.noMatches : remote ? words.empty : words.unavailable}</p>
+              {!credentials.length && <a href="?sections=all#skills">{words.viewSkills}<ArrowUpRight size={15} aria-hidden="true" /></a>}
+            </div> : null}
+          {filtered.length > limit && <Button type="button" className="creative-cta creative-more" onClick={() => setLimit(limit + PAGE_SIZE)}>{words.more}</Button>}
+          {!!studies.length && <div className="credential-study-shelf">
+            <h3>{words.studies}</h3>
+            <div className="creative-credential-grid">{studies.map((cert, index) =>
+              <CredentialCard key={cert.id} cert={cert} index={index} lang={lang} study />
+            )}</div>
+          </div>}
         </div>
-        </>
-        )}
       </div>
-
-      {/* Glass dossier — full certificate file: image + issuer + meta + skills + verify */}
-      <GlassModal
-        open={detailCert !== null}
-        onClose={() => setDetailId(null)}
-        label={detailCert ? (fr ? detailCert.title.fr : detailCert.title.en) : "Certificate details"}
-        accent="#d7fd44"
-        wide
-      >
-        {detailCert !== null &&
-          (() => {
-            const c = detailCert;
-            const title = fr ? c.title.fr : c.title.en;
-            const issuer = fr ? c.issuer.fr : c.issuer.en;
-            const verifySoon = !c.verify;
-            return (
-              <div>
-                {/* Banner — reference cert-card: image h-64 zoom, click = fullscreen */}
-                {c.pdf && <div className="mb-5"><iframe src={c.pdf} title={title} className="h-[55vh] w-full rounded-xl border border-white/10"/><a href={c.pdf} target="_blank" rel="noreferrer" className="evolution-action mt-3">{fr ? "Ouvrir le PDF" : "Open certificate PDF"}</a></div>}{c.image ? (
-                  <button
-                    type="button"
-                    onClick={() => setLightbox(certs.indexOf(c))}
-                    aria-label={fr ? `Agrandir — ${title}` : `Zoom — ${title}`}
-                    className="group/banner relative mb-5 block aspect-[16/8] w-full cursor-zoom-in overflow-hidden rounded-2xl border border-white/10"
-                  >
-                    <SmartImage
-                      src={c.image}
-                      alt={title}
-                      fill
-                      fit="cover"
-                      sizes="(max-width: 768px) 100vw, 700px"
-                      className="object-cover transition-transform duration-700 group-hover/banner:scale-105"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"
-                    />
-                    <span className="absolute bottom-3 left-3 rounded-full border border-white/15 bg-black/55 px-2.5 py-1 font-mono text-[10px] tracking-[0.16em] text-white/85 uppercase backdrop-blur-md tabular-nums">
-                      {c.year} · {c.months}{fr ? "m" : "mo"}
-                    </span>
-                    <span className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-md transition-colors group-hover/banner:text-accent">
-                      <Search className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                  </button>
-                ) : null}
-                <p className="flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-[0.22em] text-white/50 uppercase">
-                  <Award className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-                  {issuer} · {c.year}
-                </p>
-                <h3 className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">{title}</h3>
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-                    <p className="font-mono text-[9px] tracking-[0.2em] text-white/40 uppercase">ID</p>
-                    <p className="truncate text-sm font-bold text-white tabular-nums" title={c.id}>{c.id}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-                    <p className="font-mono text-[9px] tracking-[0.2em] text-white/40 uppercase">{fr ? "Durée" : "Length"}</p>
-                    <p className="text-sm font-bold text-white tabular-nums">{c.months}{fr ? " mois" : " mo"}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 max-sm:col-span-2">
-                    <p className="font-mono text-[9px] tracking-[0.2em] text-white/40 uppercase">{fr ? "Organisme" : "Issuer"}</p>
-                    <p className="truncate text-sm font-bold text-white">{issuer}</p>
-                  </div>
-                </div>
-                {c.skills.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {c.skills.map((skill) => {
-                      const logo = techLogo(skill);
-                      return (
-                        <span
-                          key={skill}
-                          className="flex items-center gap-1.5 border border-white/12 bg-white/[0.04] px-2 py-1 font-mono text-[10px] tracking-[0.12em] text-white/70 uppercase"
-                        >
-                          {logo && <Image src={logo} alt="" width={12} height={12} loading="lazy" className="block h-3 w-3" />}
-                          {skill}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* Verify box — full URL + copy + open, like project repo box */}
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-xl">
-                  <p className="font-mono text-[9px] tracking-[0.22em] text-white/40 uppercase">
-                    {fr ? "Vérification" : "Verification"}
-                  </p>
-                  {c.verify ? (
-                    <div className="mt-2 flex flex-col gap-2">
-                      <p className="truncate font-mono text-xs text-white/60" dir="ltr" title={c.verify}>{c.verify}</p>
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={c.verify}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-bold text-accent-foreground transition-transform duration-200 hover:-translate-y-0.5"
-                        >
-                          <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-                          {t.verify}
-                          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyText(`verify-${c.id}`, c.verify as string)}
-                          className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border border-white/15 text-white/60 transition-colors hover:border-accent/60 hover:text-accent"
-                          aria-label={copiedKey === `verify-${c.id}` ? "Copied" : "Copy verify link"}
-                        >
-                          {copiedKey === `verify-${c.id}` ? <Check className="h-4 w-4 text-accent" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-white/40">
-                      <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-                      {t.verifySoon}
-                    </p>
-                  )}
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => copyText(`id-${c.id}`, c.id)}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-[13px] font-bold text-white/70 transition-colors hover:border-accent/60 hover:text-accent"
-                  >
-                    {copiedKey === `id-${c.id}` ? <Check className="h-4 w-4 text-accent" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-                    {copiedKey === `id-${c.id}` ? (fr ? "Copié" : "Copied") : "Copy ID"}
-                  </button>
-                  {c.image && (
-                    <button
-                      type="button"
-                      onClick={() => setLightbox(certs.indexOf(c))}
-                      className="flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-bold text-black transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <ImagePlus className="h-4 w-4" aria-hidden="true" />
-                      {fr ? "Voir l'image" : "View image"}
-                    </button>
-                  )}
-                </div>
-                <p className="mt-4 text-center font-mono text-[10px] tracking-[0.2em] text-white/30 uppercase">
-                  BUDI · {c.year} · {fr ? "Signé" : "Signed"}
-                </p>
-              </div>
-            );
-          })()}
-      </GlassModal>
-
-      {/* Lightbox — fullscreen image once opened from the dossier */}
-      <AnimatePresence>
-        {lightbox !== null && certs[lightbox]?.image && (
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={fr ? certs[lightbox]?.title.fr : certs[lightbox]?.title.en}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setLightbox(null)}
-            className="fixed inset-0 z-[95] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-sm sm:p-10"
-          >
-            <motion.div
-              initial={{ scale: 0.94, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.94, y: 12 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              onClick={(e) => e.stopPropagation()}
-              ref={lightboxScroll.ref}
-              tabIndex={-1}
-              onKeyDown={lightboxScroll.onKeyDown}
-              className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto border border-border bg-surface focus:outline-none"
-            >
-              <SmartImage
-                src={certs[lightbox].image as string}
-                alt={fr ? (certs[lightbox]?.title.fr ?? "") : (certs[lightbox]?.title.en ?? "")}
-                width={1200}
-                height={900}
-                className="max-h-[80vh] w-full object-contain"
-              />
-              <button
-                type="button"
-                onClick={() => setLightbox(null)}
-                aria-label={fr ? "Fermer" : "Close"}
-                className="absolute top-3 right-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-background/85 text-foreground backdrop-blur-md transition-colors hover:text-accent"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }

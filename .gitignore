@@ -23,9 +23,8 @@ pnpm-debug.log*
 
 # env secrets — NEVER push real keys (.env.example stays tracked as a template)
 .env
-.env.local
-.env.*.local
-.env.production
+.env.*
+!.env.example
 
 # misc secrets
 *.pem
@@ -72,10 +71,6 @@ supabase/.temp/
 Thumbs.db
 Desktop.ini
 
-.vercel
-
-# Environment variants and machine-local artifacts
-.env.*
-!.env.example
+# Machine-local artifacts
 certs/
 claude-skills-*/

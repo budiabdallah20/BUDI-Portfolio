@@ -282,6 +282,7 @@ alter table projects add column if not exists "clientLogo" text default '';
 alter table projects add column if not exists "teamSize" int default 1;
 alter table projects add column if not exists tags text[] default '{}';
 alter table projects add column if not exists featured boolean default false;
+alter table projects add column if not exists "sortOrder" int default 0;
 alter table projects add column if not exists progress int default 0;
 alter table projects add column if not exists version text default '';
 alter table projects add column if not exists changelog text[] default '{}';

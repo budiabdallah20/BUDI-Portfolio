@@ -7,13 +7,14 @@ interface CountUpProps {
   end: number;
   duration?: number;
   className?: string;
+  locale?: string;
 }
 
 /**
  * Animated counter — ease-out count on first scroll into view.
  * Plain toFixed rendering keeps SSR and hydration byte-identical.
  */
-export default function CountUp({ end, duration = 1400, className }: CountUpProps): React.JSX.Element {
+export default function CountUp({ end, duration = 1400, className, locale }: CountUpProps): React.JSX.Element {
   const ref = useRef<HTMLSpanElement>(null);
   const [value, setValue] = useState(0);
   const reduced = useReducedMotion();
@@ -21,7 +22,7 @@ export default function CountUp({ end, duration = 1400, className }: CountUpProp
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (reduced) {
+    if (reduced || !("IntersectionObserver" in window)) {
       setValue(end);
       return;
     }
@@ -52,7 +53,7 @@ export default function CountUp({ end, duration = 1400, className }: CountUpProp
 
   return (
     <span ref={ref} className={className}>
-      {Math.round(value)}
+      {locale ? Math.round(value).toLocaleString(locale) : Math.round(value)}
     </span>
   );
 }

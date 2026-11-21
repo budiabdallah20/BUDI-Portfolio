@@ -1,759 +1,711 @@
 "use client";
-import RoomScene from "@/components/museum/RoomScene";
-import Image from "next/image";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import Image from "next/image";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
-  ArrowDownRight,
-  BookOpen,
+  ArrowUpRight,
+  Check,
+  CheckCheck,
+  Clock,
+  Code2,
+  Copy,
   Feather,
+  Globe,
   GraduationCap,
-  Languages,
-  Layers,
+  Mail,
   Quote,
-  Rocket,
   ShieldCheck,
   Sparkles,
   Zap,
 } from "lucide-react";
+import { EgyptFlag, SuezFlag } from "@/components/Flags";
 import CountUp from "@/components/CountUp";
 import SmartImage from "@/components/SmartImage";
-import { EgyptFlag, SuezFlag } from "@/components/Flags";
-import type { SiteAvailability } from "@/components/WorkStatus";
-import { formatBadgeDate, workLabel } from "@/components/WorkStatus";
-import { personal, profile, stackChips } from "@/data/portfolio";
+import { formatBadgeDate, workLabel, type SiteAvailability } from "@/components/WorkStatus";
 import { useLanguage } from "@/components/providers/LanguageProvider";
+import { personal, profile, stackChips } from "@/data/portfolio";
+import { techLogo } from "@/data/techLogos";
 import { useNow } from "@/hooks/useNow";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { clockParts, daysToBirthday, fullYears, parseISODate, totalDays } from "@/lib/age";
 import { getAcademicStatus } from "@/lib/education";
-import type { LocalizedText } from "@/types";
+import AboutWorkflow from "./AboutWorkflow";
+import AboutChapters from "./AboutChapters";
+import styles from "./about-editorial.module.css";
 
-/** One icon per highlight card — product, quality, languages, launch. */
-const CARD_ICONS = [Layers, ShieldCheck, Languages, Rocket] as const;
+const motion = "(prefers-reduced-motion: no-preference)";
+const finePointer = "(hover: hover) and (pointer: fine) and " + motion;
+const pillars = [Zap, ShieldCheck, Feather] as const;
+const birth = parseISODate(personal.birthdate);
 
-/** Fraction of the current age-year already lived (birthday → birthday). */
-function yearProgress(birth: Date, now: Date): number {
-  const thisYear = new Date(now.getFullYear(), birth.getMonth(), birth.getDate()).getTime();
-  const nowMs = now.getTime();
-  const last =
-    thisYear <= nowMs
-      ? thisYear
-      : new Date(now.getFullYear() - 1, birth.getMonth(), birth.getDate()).getTime();
-  const next =
-    thisYear > nowMs
-      ? thisYear
-      : new Date(now.getFullYear() + 1, birth.getMonth(), birth.getDate()).getTime();
-  if (next <= last) return 0;
-  return Math.min(1, Math.max(0, (nowMs - last) / (next - last)));
+function yearProgress(birthdate: Date, now: Date) {
+  const birthday = (year: number) =>
+    new Date(year, birthdate.getMonth(), birthdate.getDate()).getTime();
+  const year = now.getFullYear();
+  const sinceBirthday = now.getTime() >= birthday(year);
+  const last = birthday(sinceBirthday ? year : year - 1);
+  const next = birthday(sinceBirthday ? year + 1 : year);
+  return Math.round(((now.getTime() - last) / (next - last)) * 100);
 }
 
-/** Live birthdate-driven cells — null-safe until mount (hydration-clean). */
-function LiveCells({ birthISO }: { birthISO: string }): React.JSX.Element | null {
-  const now = useNow(1000);
-  const { t, lang } = useLanguage();
-  if (!now) return null;
-  const birth = parseISODate(birthISO);
-  if (!birth) return null;
-  const clock = clockParts(birth, now);
-  const yearPct = Math.round(yearProgress(birth, now) * 100);
+const copy = {
+  en: {
+    headlinePrefix: "I BUILD WHAT",
+    headlineAccent: "I WISH EXISTED",
+    story: "My story",
+    storyTitle: "The story behind the code",
+    chapters: ["The Builder", "The Engineer", "The Mission"],
+    storyMeta: ["chapters", "min read"],
+    quote: "Great software must also be safe software.",
+    credit: "My Golden Rule",
+    pillars: ["Performance First", "Secure by Default", "Design with Intent"],
+    role: "Full-Stack Developer — Suez",
+    signed: "Signed & Verified",
+    contact: "Contact me",
+    available: "Open for work",
+    returns: "Back",
+    work: "Explore My Work",
+    services: "Explore Services",
+    location: "Egypt",
+    progress: "year complete",
+    frontend: "Frontend & Security Focus",
+    stats: "Numbers & Real-Time Pulse",
+    statsTag: "LIME ENERGY TELEMETRY",
+    contactTitle: "Have a project in mind?",
+    contactSubtitle: "Let's build high-performance software that stands the test of time.",
+    email: "Direct Email",
+    copyEmail: "Copy email",
+    copiedEmail: "Copied to clipboard!",
+    dossierBadge: "OFFICIAL ACADEMIC DOSSIER",
+    academicStatusLabel: "Current Standing",
+    levelPrefix: "LEVEL",
+    nextTransitionLabel: "Next Milestone",
+  },
+  fr: {
+    headlinePrefix: "JE CRÉE CE QUE",
+    headlineAccent: "J’AIMERAIS TROUVER",
+    story: "Mon histoire",
+    storyTitle: "L’histoire derrière le code",
+    chapters: ["Le bâtisseur", "L’ingénieur", "La mission"],
+    storyMeta: ["chapitres", "min de lecture"],
+    quote: "Un grand logiciel doit aussi être un logiciel sûr.",
+    credit: "Ma Règle d’Or",
+    pillars: ["Performance d'abord", "Sécurisé par défaut", "Design avec intention"],
+    role: "Développeur Full-Stack — Suez",
+    signed: "Signé & Vérifié",
+    contact: "Contactez-moi",
+    available: "Disponible",
+    returns: "Retour",
+    work: "Voir mes projets",
+    services: "Explorer les services",
+    location: "Égypte",
+    progress: "année écoulée",
+    frontend: "Frontend & Cybersécurité",
+    stats: "Télémétrie en temps réel",
+    statsTag: "TÉLÉMÉTRIE LIME ENERGY",
+    contactTitle: "Un projet en tête ?",
+    contactSubtitle: "Bâtissons ensemble un logiciel performant, résilient et conçu pour durer.",
+    email: "Email direct",
+    copyEmail: "Copier l'email",
+    copiedEmail: "Copié dans le presse-papiers !",
+    dossierBadge: "DOSSIER ACADÉMIQUE OFFICIEL",
+    academicStatusLabel: "Statut actuel",
+    levelPrefix: "NIVEAU",
+    nextTransitionLabel: "Prochaine étape",
+  },
+} as const;
+
+function FactNumber({ value, locale }: { value: number | null; locale: string }) {
+  if (value === null) return <dd className={styles.factValueEmpty}>—</dd>;
   return (
-    <>
-      <div className="flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-        <span className="master-stat display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
-          {fullYears(birth, now).toLocaleString(lang)}
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
-          {t.about.statsAgeLabel}
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.18em] text-faint uppercase">
-          {t.about.statsAgeSub}
-        </span>
-      </div>
-      <div className="lived-days-plaque flex flex-col items-center gap-1 px-4 py-8 text-center">
-        <span className="master-stat display text-5xl font-bold text-foreground tabular-nums sm:text-6xl">
-          {totalDays(birth, now).toLocaleString(lang)}
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
-          {t.about.statsDaysLabel}
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.18em] text-accent tabular-nums">
-          {clock.h}:{clock.m}:{clock.s} · {t.about.statsDaysSub}
-        </span>
-      </div>
-      <div className="group flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-        <span className="master-stat display text-5xl font-bold text-accent tabular-nums drop-shadow-[0_0_18px_rgba(255,61,0,0.25)] sm:text-6xl">
-          {daysToBirthday(birth, now).toLocaleString(lang)}
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
-          {t.about.statsCakeLabel}
-        </span>
-        <span
-          aria-hidden="true"
-          className="mt-2 h-1 w-24 overflow-hidden rounded-full bg-border"
-        >
-          <span
-            className="block h-full rounded-full bg-accent shadow-[0_0_8px_rgba(255,61,0,0.8)]"
-            style={{ width: `${yearPct}%` }}
-          />
-        </span>
-        <span className="font-mono text-[10px] tracking-[0.18em] text-faint uppercase tabular-nums">
-          {yearPct}% · {lang === "fr" ? "année écoulée" : "year complete"}
-        </span>
-      </div>
-    </>
+    <dd className={styles.factValue}>
+      <span className="sr-only">{value.toLocaleString(locale)}</span>
+      <span aria-hidden="true">
+        <CountUp end={value} locale={locale} duration={850} />
+      </span>
+    </dd>
   );
 }
 
-/** Live Suez clock under the portrait — null-safe until mount. */
-function SuezClock(): React.JSX.Element | null {
-  const now = useNow(1000);
+function LiveFacts() {
+  const { t, lang } = useLanguage();
+  const now = useNow();
+  const clock = birth && now ? clockParts(birth, now) : null;
+  const number = (value: number | null) => (value === null ? "—" : value.toLocaleString(lang));
+  const birthdayProgress = now && birth ? yearProgress(birth, now) : null;
+
+  return (
+    <section className={styles.factBand} aria-labelledby="about-facts-heading" data-about-reveal>
+      <header className={styles.factBandHeader}>
+        <div className={styles.factMetaRow}>
+          <span className={styles.factTag}>{copy[lang].statsTag}</span>
+          <span className={styles.factPulseDot} aria-hidden="true" />
+        </div>
+        <h3 id="about-facts-heading">{copy[lang].stats}</h3>
+      </header>
+
+      <dl className={styles.factsGrid}>
+        {/* Languages counter */}
+        <div className={styles.factCard}>
+          <dt className={styles.factLabel}>{t.about.statsLangLabel}</dt>
+          <FactNumber value={t.about.statsLangSub.split(" · ").length} locale={lang} />
+          <dd className={styles.factSub}>{t.about.statsLangSub}</dd>
+        </div>
+
+        {birth && (
+          <>
+            {/* Age counter */}
+            <div className={styles.factCard}>
+              <dt className={styles.factLabel}>{t.about.statsAgeLabel}</dt>
+              <FactNumber value={now ? fullYears(birth, now) : null} locale={lang} />
+              <dd className={styles.factSub}>{t.about.statsAgeSub}</dd>
+            </div>
+
+            {/* Days alive & live ticking timer */}
+            <div className={`${styles.factCard} ${styles.liveFactCard}`}>
+              <div className={styles.factLabelRow}>
+                <dt className={styles.factLabel}>{t.about.statsDaysLabel}</dt>
+                <span className={styles.liveBadge} aria-label="Live continuous counting">
+                  <span className={styles.liveDot} /> LIVE
+                </span>
+              </div>
+              <FactNumber value={now ? totalDays(birth, now) : null} locale={lang} />
+              <dd className={styles.timerRow}>
+                <span className={styles.timerClock} dir="ltr">
+                  <Clock size={13} className={styles.clockIcon} aria-hidden="true" />
+                  {clock ? [clock.h, clock.m, clock.s].join(":") : "--:--:--"}
+                </span>
+                <span className={styles.timerLabel}>{t.about.statsDaysSub}</span>
+              </dd>
+            </div>
+
+            {/* Birthday countdown */}
+            <div className={styles.factCard}>
+              <dt className={styles.factLabel}>{t.about.statsCakeLabel}</dt>
+              <FactNumber value={now ? daysToBirthday(birth, now) : null} locale={lang} />
+              <dd className={styles.factSub}>
+                {birthdayProgress === null
+                  ? "—"
+                  : `${number(birthdayProgress)}% · ${copy[lang].progress}`}
+              </dd>
+            </div>
+          </>
+        )}
+      </dl>
+    </section>
+  );
+}
+
+function SuezClock() {
+  const now = useNow();
   const { t } = useLanguage();
-  const time = useMemo(() => {
-    if (!now) return null;
-    try {
-      return new Intl.DateTimeFormat(t.intlLocale, {
+  const format = useMemo(
+    () =>
+      new Intl.DateTimeFormat(t.intlLocale, {
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
         hour12: false,
         timeZone: "Africa/Cairo",
-      }).format(now);
-    } catch {
-      return null;
-    }
-  }, [now, t.intlLocale]);
-  if (!time || !now) return null;
+      }),
+    [t.intlLocale]
+  );
   return (
-    <span className="tabular-nums" suppressHydrationWarning>
-      <time dateTime={now.toISOString()}>{time}</time> {t.hero.inSuez}
+    <span className={styles.clock}>
+      {now ? <time dateTime={now.toISOString()}>{format.format(now)}</time> : "—"} {t.hero.inSuez}
     </span>
+  );
+}
+
+function useAboutEntrance(root: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const section = root.current;
+    if (!section || !("IntersectionObserver" in window)) return;
+    const media = gsap.matchMedia(section);
+    media.add(motion, () => {
+      const tweens: gsap.core.Tween[] = [];
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const { isIntersecting, target } of entries) {
+            if (!isIntersecting) continue;
+            observer.unobserve(target);
+            const parts = target.querySelectorAll(
+              "[data-about-word], [role='tab'], [data-about-step], ." + styles.factCard
+            );
+            tweens.push(
+              gsap.from(parts.length ? parts : target, {
+                opacity: 0.35,
+                y: parts.length ? 18 : 12,
+                duration: 0.6,
+                stagger: 0.06,
+                ease: "power3.out",
+                clearProps: "opacity,transform",
+              })
+            );
+            if (target.hasAttribute("data-about-frame")) target.setAttribute("data-frame-ready", "");
+          }
+        },
+        { rootMargin: "0px 0px -6% 0px" }
+      );
+      section.querySelectorAll("[data-about-reveal]").forEach((node) => observer.observe(node));
+      return () => {
+        observer.disconnect();
+        tweens.forEach((tween) => tween.revert());
+      };
+    });
+    return () => media.revert();
+  }, [root]);
+}
+
+function Portrait({
+  image,
+  contactHref,
+  availability,
+}: {
+  image?: string;
+  contactHref: string;
+  availability?: SiteAvailability;
+}) {
+  const { t, lang } = useLanguage();
+  const words = copy[lang];
+  const frame = useRef(0);
+  const back = availability && formatBadgeDate(availability.until, lang);
+  const status =
+    availability && availability.status !== "available"
+      ? workLabel(availability, lang, { available: t.hero.available, unavailable: t.hero.unavailable })
+      : words.available;
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  function move(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || !matchMedia(finePointer).matches) return;
+    const { currentTarget, clientX, clientY } = event;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const box = currentTarget.getBoundingClientRect();
+      const x = gsap.utils.clamp(0, 1, (clientX - box.left) / box.width);
+      const y = gsap.utils.clamp(0, 1, (clientY - box.top) / box.height);
+      currentTarget.style.setProperty("--portrait-x", x * 100 + "%");
+      currentTarget.style.setProperty("--portrait-y", y * 100 + "%");
+      currentTarget.style.setProperty("--portrait-pan-x", (x - 0.5) * 10 + "px");
+      currentTarget.style.setProperty("--portrait-pan-y", (y - 0.5) * 8 + "px");
+    });
+  }
+
+  function stop(event: PointerEvent<HTMLDivElement>) {
+    cancelAnimationFrame(frame.current);
+    for (const variable of ["--portrait-x", "--portrait-y", "--portrait-pan-x", "--portrait-pan-y"]) {
+      event.currentTarget.style.removeProperty(variable);
+    }
+  }
+
+  return (
+    <figure className={styles.portrait} data-about-reveal data-about-frame>
+      <div className={styles.frame} onPointerMove={move} onPointerLeave={stop} onPointerCancel={stop}>
+        <div className={styles.crop}>
+          <SmartImage
+            src={image?.trim() || "/images/general/editorial-portrait-refined.webp"}
+            alt={t.about.photoAlt}
+            fill
+            sizes="(max-width: 540px) calc(100vw - 34px), (max-width: 767px) 440px, (max-width: 1200px) 39vw, 535px"
+            quality={85}
+            className={styles.image}
+          />
+        </div>
+        <span className={styles.corners} aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className={styles.frameAestheticBorder} aria-hidden="true" />
+      </div>
+
+      <figcaption className={styles.caption}>
+        <div className={styles.captionPrimary}>
+          <strong>{profile.name}</strong>
+          <span className={styles.captionRole}>{words.role}</span>
+        </div>
+        <div className={styles.location}>
+          <span>
+            <SuezFlag /> Suez
+          </span>
+          <span>
+            <EgyptFlag /> {words.location}
+          </span>
+          <span dir="ltr" className={styles.coords}>
+            29.97°N · 32.55°E
+          </span>
+          <SuezClock />
+        </div>
+        <a className={styles.availability} href={contactHref}>
+          <span className={styles.availPill}>
+            <span className={styles.availDot} />
+            {status}
+            {back && availability?.status !== "available" ? ` · ${words.returns} ${back}` : ""}
+          </span>
+          <span className={styles.availAction}>
+            {words.contact}
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </span>
+        </a>
+      </figcaption>
+    </figure>
   );
 }
 
 export default function About({
   availability,
   image,
+  contactHref = "mailto:" + profile.email,
+  projectsVisible = true,
 }: {
   availability?: SiteAvailability;
-  /** Dashboard-owned about photo — falls back to the baked-in portrait. */
   image?: string;
-}): React.JSX.Element {
-  const rootRef = useRef<HTMLElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  contactHref?: string;
+  projectsVisible?: boolean;
+}) {
+  const root = useRef<HTMLElement>(null);
   const { t, lang } = useLanguage();
-  /** Dashboard-owned orbit badge — flips with the master switch. */
-  const avail: SiteAvailability = availability ?? { status: "available", note: "", noteFr: "", until: "" };
-  const backDate = formatBadgeDate(avail.until, lang);
-  const orbitText =
-    avail.status === "available"
-      ? lang === "fr"
-        ? "DISPONIBLE • CONTACTEZ-MOI • "
-        : "OPEN FOR WORK • CONTACT ME • "
-      : `${workLabel(avail, lang, { available: t.hero.available, unavailable: t.hero.unavailable }).toUpperCase()} • ${
-          backDate ? (lang === "fr" ? `RETOUR ${backDate.toUpperCase()} • ` : `BACK ${backDate.toUpperCase()} • `) : ""
-        }${lang === "fr" ? "CONTACTEZ-MOI" : "CONTACT ME"} • `;
-  const pick = (v: LocalizedText): string => (lang === "fr" ? v.fr : v.en);
-  /** Storytelling chapters — inline copy so the narrative never waits on shared keys. */
-  const kickers =
-    lang === "fr"
-      ? ["Chapitre 01 — Le bâtisseur", "Chapitre 02 — L'ingénieur", "Chapitre 03 — La mission"]
-      : ["Chapter 01 — The Builder", "Chapter 02 — The Engineer", "Chapter 03 — The Mission"];
-  const hasBirthdate = parseISODate(personal.birthdate) !== null;
-  const hasEducation = personal.education.length > 0;
-  const status = getAcademicStatus();
-  const levelInfo =
-    status.kind === "studying" ? (t.about.levels[status.level - 1] ?? t.about.levels[0]) : null;
-  const frLang = lang === "fr";
-  /** Magazine meta — computed from real copy, never hardcoded. */
-  const storyWords = t.about.story.join(" ").split(/\s+/).filter(Boolean).length;
-  const readMins = Math.max(1, Math.round(storyWords / 200));
-  const storyLabel = frLang ? "Mon histoire" : "My story";
-  const minLabel = frLang ? "min de lecture" : "min read";
-  const chaptersLabel = frLang ? "chapitres" : "chapters";
-  const pullQuote = frLang
-    ? "Un grand logiciel doit aussi être un logiciel sûr."
-    : "Great software must also be safe software.";
-  const pullBy = frLang ? "— Ma règle d'or" : "— My golden rule";
-  const signRole = frLang ? "Développeur Full-Stack — Suez" : "Full-Stack Developer — Suez";
-  const principles = frLang
-    ? [
-        { icon: Zap, label: "Performance d'abord" },
-        { icon: ShieldCheck, label: "Sécurisé par défaut" },
-        { icon: Feather, label: "Design avec intention" },
-      ]
-    : [
-        { icon: Zap, label: "Performance first" },
-        { icon: ShieldCheck, label: "Secure by default" },
-        { icon: Feather, label: "Design with intent" },
-      ];
+  const words = copy[lang];
+  const academicStatus = getAcademicStatus();
+  const school = personal.education[0];
+  const readMins = Math.max(1, Math.round(t.about.story.join(" ").split(/\s+/).length / 200));
 
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || reduced) return;
-    gsap.registerPlugin(ScrollTrigger);
+  const [copied, setCopied] = useState(false);
 
-    const ctx = gsap.context(() => {
-      gsap.utils.toArray<HTMLElement>("[data-about-fade]").forEach((el) => {
-        gsap.fromTo(
-          el,
-          { autoAlpha: 0, y: 32 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.85,
-            ease: "power3.out",
-            scrollTrigger: { trigger: el, start: "top 88%", once: true },
-          },
-        );
-      });
+  function handleCopyEmail() {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(profile.email);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
+    }
+  }
 
-      gsap.utils.toArray<HTMLElement>("[data-about-mask]").forEach((el) => {
-        gsap.fromTo(
-          el,
-          { yPercent: 110 },
-          {
-            yPercent: 0,
-            duration: 0.9,
-            ease: "expo.out",
-            scrollTrigger: { trigger: el, start: "top 88%", once: true },
-          },
-        );
-      });
-
-      gsap.fromTo(
-        "[data-about-card]",
-        { autoAlpha: 0, y: 28 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.7,
-          stagger: 0.1,
-          ease: "power3.out",
-          scrollTrigger: { trigger: "[data-about-cards]", start: "top 85%", once: true },
-        },
-      );
-    }, root);
-
-    return (): void => {
-      ctx.revert();
-    };
-  }, [reduced]);
-
-  const onStoryMove = (event: React.MouseEvent<HTMLElement>): void => {
-    if (reduced || !window.matchMedia("(pointer: fine)").matches) return;
-    const el = event.currentTarget;
-    const rect = el.getBoundingClientRect();
-    el.style.setProperty("--sx", `${(event.clientX - rect.left).toFixed(0)}px`);
-    el.style.setProperty("--sy", `${(event.clientY - rect.top).toFixed(0)}px`);
-  };
-
-  const onFrameMove = (event: React.MouseEvent<HTMLDivElement>): void => {
-    if (reduced || !window.matchMedia("(pointer: fine)").matches) return;
-    const el = frameRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width - 0.5;
-    const py = (event.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `rotateX(${(-py * 6).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg)`;
-  };
-  const onFrameLeave = (): void => {
-    if (frameRef.current) frameRef.current.style.transform = "";
-  };
+  useAboutEntrance(root);
 
   return (
-    <section
-      ref={rootRef}
-      id="about"
-      aria-labelledby="about-heading"
-      className="relative overflow-clip border-t border-border"
-    >
-      <RoomScene scene="identity" />
-      {/* Marquee ribbon */}
-      <div
-        aria-hidden="true"
-        className="marquee relative overflow-hidden border-b border-border py-2.5"
-      >
-        <div className="marquee-track flex w-max items-center gap-6 [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-6 font-mono text-[11px] tracking-[0.35em] whitespace-nowrap text-faint uppercase"
-            >
-              {t.about.title}
-              <span className="h-1 w-1 rounded-full bg-accent" />
+    <section ref={root} id="about" aria-labelledby="about-heading" className={styles.section}>
+      <div className={styles.shell}>
+        {/* Signature Editorial Header (Section 04) */}
+        <header className={styles.intro}>
+          <p className={styles.marker}>02 / {t.about.title}</p>
+          <h2 id="about-heading" data-about-reveal className={styles.headline}>
+            <span className={styles.headlineLine}>{words.headlinePrefix}</span>{" "}
+            <span className={styles.headlineLine}>
+              <em className={styles.orangeAccent}>{words.headlineAccent}</em>
             </span>
-          ))}
-        </div>
-      </div>
-
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 30% at 50% 0%, rgba(255,61,0,0.06), transparent 65%)",
-        }}
-      />
-      {/* Giant watermark */}
-      <div
-        aria-hidden="true"
-        className="text-stroke display pointer-events-none absolute top-16 right-0 hidden text-[20vw] leading-none opacity-20 select-none md:block"
-      >
-        01
-      </div>
-
-      <div className="relative mx-auto w-full max-w-7xl px-5 py-20 sm:px-8">
-        {/* ——— Title ——— */}
-        <div data-about-fade className="flex flex-col items-center text-center">
-          <p className="flex items-center gap-4 font-mono text-xs tracking-[0.35em] text-faint uppercase">
-            <span
-              aria-hidden="true"
-              className="h-px w-10 bg-gradient-to-r from-transparent to-accent/60"
-            />
-            {t.about.eyebrow}
-            <span
-              aria-hidden="true"
-              className="h-px w-10 bg-gradient-to-l from-transparent to-accent/60"
-            />
-          </p>
-          <h2
-            id="about-heading"
-            className="display relative mt-4 text-4xl font-bold tracking-tight text-accent drop-shadow-[0_0_28px_rgba(255,61,0,0.25)] md:text-6xl xl:text-7xl"
-          >
-            {!reduced && (
-              <>
-                <Sparkles className="animate-float-slow absolute -top-2 -left-8 h-5 w-5 text-accent/70" aria-hidden="true" />
-                <Sparkles className="animate-float-slow absolute -right-7 bottom-1 h-4 w-4 text-accent/50" style={{ animationDelay: "1.6s" }} aria-hidden="true" />
-              </>
-            )}
-            {t.about.title}
           </h2>
-          <blockquote className="relative mt-8 max-w-2xl rounded-2xl border border-accent/15 bg-accent/[0.04] px-8 pt-10 pb-7 backdrop-blur-sm">
-            <span className="absolute -top-4 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-accent/40 bg-background text-accent shadow-[0_0_18px_rgba(255,61,0,0.45)]">
-              <Quote className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <p className="font-serif text-xl leading-relaxed font-medium text-foreground/90 italic md:text-2xl">
-              {t.about.lede}
-            </p>
-            <span aria-hidden="true" className="story-rule mx-auto mt-5 block w-28 opacity-70" />
-          </blockquote>
+        </header>
+
+        {/* Identity metadata strip */}
+        <ul className={styles.identityStrip} role="list" data-about-reveal>
+          <li>
+            <SuezFlag /> Suez, Egypt
+          </li>
+          {school && (
+            <>
+              <li>{school.school[lang]}</li>
+              <li>{school.faculty[lang]}</li>
+              <li>{school.department[lang]}</li>
+            </>
+          )}
+          <li>
+            <Sparkles size={14} className={styles.identityIcon} aria-hidden="true" />
+            {words.frontend}
+          </li>
+        </ul>
+
+        {/* Main Spread: Portrait + Story Chapters */}
+        <div className={styles.spread}>
+          <Portrait image={image} contactHref={contactHref} availability={availability} />
+          <div className={styles.story}>
+            <header data-about-reveal>
+              <div className={styles.storyMeta}>
+                <span>{words.story}</span>
+                <span>
+                  {t.about.story.length} {words.storyMeta[0]} · ~{readMins} {words.storyMeta[1]}
+                </span>
+              </div>
+              <h3 className={styles.storyMainTitle}>{words.storyTitle}</h3>
+              <p className={styles.lede}>{t.about.lede}</p>
+              <p className={styles.current}>
+                <span className={styles.currentDot} />
+                {t.hero.currently} — {t.hero.building}
+              </p>
+            </header>
+            <AboutChapters
+              labels={words.chapters}
+              story={t.about.story}
+              title={words.story}
+              lang={lang}
+            />
+          </div>
         </div>
 
-        {/* ——— Story + portrait ——— */}
-        <div className="royal-identity-monument mx-auto mt-14">
-          <div className="relative w-full flex-1 lg:max-w-2xl">
-            {/* Magic aurora wash behind the editorial column */}
-            <div aria-hidden="true" className="pointer-events-none absolute -inset-6 -z-10 overflow-hidden">
-              <div className="animate-aurora-a absolute -top-10 -left-10 h-64 w-64 rounded-full" style={{ background: "radial-gradient(circle, rgba(215,253,68,0.10) 0%, transparent 65%)" }} />
-              <div className="animate-aurora-b absolute top-1/3 -right-12 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,61,0,0.10) 0%, transparent 65%)" }} />
-              <div className="animate-aurora-c absolute -bottom-10 left-1/4 h-56 w-56 rounded-full" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 65%)" }} />
+        {/* Signature Quotation Experience (Section 06) */}
+        <figure className={styles.quoteFrame} data-about-reveal>
+          <div className={styles.quoteWatermark} aria-hidden="true">
+            “
+          </div>
+          <header className={styles.quoteHeader}>
+            <Quote size={24} strokeWidth={1.5} aria-hidden="true" className={styles.quoteGlyph} />
+            <span>{words.credit}</span>
+          </header>
+          <blockquote className={styles.quote}>“{words.quote}”</blockquote>
+          <figcaption className={styles.signature}>
+            <div className={styles.sigAuthor}>
+              <strong>{profile.name}</strong>
+              <span>Full-Stack Engineer & Cybersecurity Researcher · Suez</span>
             </div>
-            <p
-              data-about-fade
-              className="flex w-fit items-center gap-2.5 rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] tracking-[0.2em] text-muted uppercase"
-            >
-              <span className="relative flex h-2 w-2">
-                {!reduced && (
-                  <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-accent" />
-                )}
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-              </span>
-              {t.hero.currently} — {t.hero.building}
-            </p>
+            <span className={styles.signedBadge}>
+              <Feather size={14} aria-hidden="true" /> {words.signed}
+            </span>
+          </figcaption>
+        </figure>
 
-            {/* ——— Editorial story header ——— */}
-            <div data-about-fade className="mt-7 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="flex items-center gap-2 font-mono text-[11px] tracking-[0.3em] text-accent uppercase">
-                  <BookOpen className="h-4 w-4" aria-hidden="true" />
-                  {storyLabel}
-                </p>
-                <h3 className="display mt-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                  {frLang ? "L'histoire derrière le code" : "The story behind the code"}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-faint uppercase">
-                <span className="rounded-full border border-border px-3 py-1.5 tabular-nums">
-                  {t.about.story.length} {chaptersLabel}
-                </span>
-                <span className="rounded-full border border-border px-3 py-1.5 tabular-nums">
-                  ~{readMins} {minLabel}
-                </span>
-              </div>
-            </div>
+        {/* Engineering Pillars */}
+        <ul className={styles.pillars} role="list" data-about-reveal>
+          {words.pillars.map((label, index) => {
+            const Icon = pillars[index];
+            return (
+              <li key={label} className={styles.pillarCard}>
+                <div className={styles.pillarIconWrap} aria-hidden="true">
+                  <Icon size={19} strokeWidth={1.75} />
+                </div>
+                <strong>{label}</strong>
+              </li>
+            );
+          })}
+        </ul>
 
-            {/* ——— Story chapters — magazine cards, serif body ——— */}
-            <div className="relative mt-6">
-              <span aria-hidden="true" className="absolute top-4 bottom-4 left-[27px] w-px bg-gradient-to-b from-accent/60 via-[#ff3d00]/40 to-transparent" />
-              <div className="space-y-5">
-                {t.about.story.map((paragraph, i) => (
-                  <article
-                    key={i}
-                    data-about-mask
-                    onMouseMove={onStoryMove}
-                    className="story-card group relative overflow-hidden rounded-2xl border border-border bg-surface/70 p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_20px_60px_-24px_var(--accent)] sm:p-7"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0 left-0 h-[3px] w-0 bg-gradient-to-r from-accent to-[#ff3d00] shadow-[0_0_12px_rgba(255,61,0,0.8)] transition-all duration-500 group-hover:w-full"
-                    />
-                    <div className="relative z-[2] flex items-start gap-5">
-                      <span className="flex flex-col items-center gap-2">
-                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 shadow-[0_0_18px_rgba(215,253,68,0.15)]">
-                          <span className="story-chapter-num display text-2xl font-bold tabular-nums">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                        </span>
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-[0.28em] text-accent uppercase">
-                          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                          {kickers[i % kickers.length]}
-                        </p>
-                        <p className={i === 0 ? "story-body story-dropcap mt-3" : "story-body mt-3"}>
-                          {paragraph}
-                        </p>
+        {/* Education & Academic Dossier (Section 08, 09, 11) */}
+        <div className={styles.record}>
+          {personal.education.length > 0 && school && (
+            <div className={styles.academicDossier} data-about-reveal>
+              <div className={styles.dossierTop}>
+                <span className={styles.dossierTag}>{words.dossierBadge}</span>
+                <span className={styles.dossierLevelBadge}>
+                  <GraduationCap size={15} aria-hidden="true" />
+                  {words.levelPrefix} {academicStatus.levelPadded} / {academicStatus.levelTotal}
+                </span>
+              </div>
+
+              <h3 className={styles.dossierTitle}>{school.school[lang]}</h3>
+
+              <div className={styles.dossierMeta}>
+                <dl className={styles.schoolFacts}>
+                  <div>
+                    <dt>{t.about.eduFaculty}</dt>
+                    <dd>{school.faculty[lang]}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.about.eduDept}</dt>
+                    <dd>{school.department[lang]}</dd>
+                  </div>
+                  <div>
+                    <dt>{words.academicStatusLabel}</dt>
+                    <dd>
+                      <strong className={styles.activeLevelHighlight}>
+                        {lang === "fr" ? academicStatus.academicYearFr : academicStatus.academicYearEn}
+                      </strong>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Segmented 4-Stage Progress Rail (Section 08) */}
+              <div className={styles.progressRailSection}>
+                <div className={styles.railHeaderRow}>
+                  <span className={styles.railLabel}>ACADEMIC PROGRESSION</span>
+                  <span className={styles.railPercent}>{academicStatus.progressPercent}% YEAR CYCLE</span>
+                </div>
+
+                <div className={styles.stagesRail} role="progressbar" aria-valuenow={academicStatus.progressPercent} aria-valuemin={0} aria-valuemax={100}>
+                  {academicStatus.stages.map((stage) => {
+                    const isCompleted = stage.status === "completed";
+                    const isCurrent = stage.status === "current";
+                    return (
+                      <div
+                        key={stage.level}
+                        className={`${styles.stageSegment} ${
+                          isCompleted
+                            ? styles.stageCompleted
+                            : isCurrent
+                            ? styles.stageCurrent
+                            : styles.stageUpcoming
+                        }`}
+                      >
+                        <div className={styles.stageTrack}>
+                          {isCurrent && (
+                            <span
+                              className={styles.stageFill}
+                              style={{ width: `${academicStatus.progressPercent}%` }}
+                            />
+                          )}
+                        </div>
+                        <div className={styles.stageInfo}>
+                          <span className={styles.stageNum}>L{stage.levelNumber}</span>
+                          <span className={styles.stagePeriod}>{stage.period}</span>
+                        </div>
                       </div>
-                    </div>
-                    <span aria-hidden="true" className="story-rule relative z-[2] mt-5 block w-full opacity-40" />
-                    <p className="relative z-[2] mt-3 flex items-center justify-between font-mono text-[10px] tracking-[0.22em] text-faint uppercase">
-                      <span className="tabular-nums">
-                        {String(i + 1).padStart(2, "0")} / {String(t.about.story.length).padStart(2, "0")}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-1 w-1 rounded-full bg-accent" />
-                        {frLang ? "À suivre" : "To be continued"}
-                      </span>
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </div>
+                    );
+                  })}
+                </div>
 
-            {/* ——— Pull quote — golden rule in a breathing gradient frame ——— */}
-            <figure
-              data-about-fade
-              className="relative mt-6 overflow-hidden rounded-2xl p-[1.5px]"
-              style={{
-                background:
-                  "linear-gradient(120deg, rgba(215,253,68,0.55), rgba(255,61,0,0.55) 40%, rgba(139,92,246,0.55))",
-                boxShadow: "0 0 50px -18px rgba(255,61,0,0.5)",
-              }}
-            >
-              <div className="relative overflow-hidden rounded-[calc(1rem-1.5px)] bg-surface/95 px-6 py-7 text-center backdrop-blur-xl sm:p-8">
-                {!reduced && (
-                  <>
-                    <Sparkles className="animate-float-slow absolute top-4 left-6 h-4 w-4 text-accent/60" aria-hidden="true" />
-                    <Sparkles className="animate-float-slow absolute right-8 bottom-5 h-3 w-3 text-accent/40" style={{ animationDelay: "1.2s" }} aria-hidden="true" />
-                    <span aria-hidden="true" className="animate-glare pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/[0.05] blur-md" />
-                  </>
-                )}
-                <Quote className="relative mx-auto h-6 w-6 text-accent drop-shadow-[0_0_10px_rgba(255,61,0,0.6)]" aria-hidden="true" />
-                <blockquote className="relative mx-auto mt-3 max-w-xl font-serif text-xl leading-relaxed font-medium text-foreground italic md:text-2xl">
-                  &ldquo;{pullQuote}&rdquo;
-                </blockquote>
-                <figcaption className="relative mt-3 font-mono text-[11px] tracking-[0.28em] text-accent uppercase">
-                  {pullBy}
-                </figcaption>
-              </div>
-            </figure>
-
-            {/* ——— Principles + signature ——— */}
-            <div data-about-fade className="mt-6 flex flex-wrap items-center gap-2">
-              {principles.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <span
-                    key={p.label}
-                    className="flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-2 font-mono text-[10px] tracking-[0.18em] text-muted uppercase transition-colors duration-200 hover:border-accent/50 hover:text-foreground"
-                  >
-                    <Icon className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-                    {p.label}
+                <p className={styles.nextTransitionNote}>
+                  <Clock size={13} aria-hidden="true" />
+                  <span>
+                    {lang === "fr"
+                      ? academicStatus.nextTransitionFr
+                      : academicStatus.nextTransitionEn}
                   </span>
-                );
-              })}
-            </div>
-            <div data-about-fade className="mt-6 flex items-end justify-between gap-4 border-t border-border pt-5">
-              <div className="group/sign">
-                <p className="relative w-fit font-serif text-2xl text-foreground italic md:text-3xl">
-                  <span
-                    className="absolute -bottom-1 left-0 h-[2px] w-2/3 origin-left bg-gradient-to-r from-accent via-[#ff3d00] to-transparent shadow-[0_0_10px_rgba(255,61,0,0.7)] transition-all duration-500 group-hover/sign:w-full"
-                    aria-hidden="true"
-                  />
-                  {profile.name}
-                </p>
-                <p className="mt-1 font-mono text-[10px] tracking-[0.24em] text-faint uppercase">
-                  {signRole}
                 </p>
               </div>
-              <span className="mb-1 hidden items-center gap-1.5 font-mono text-[10px] tracking-[0.22em] text-accent uppercase sm:flex">
-                <Feather className="h-3.5 w-3.5" aria-hidden="true" />
-                {frLang ? "Signé" : "Signed"}
-              </span>
-            </div>
 
-            {/* ——— Highlight cards ——— */}
-            <div data-about-cards className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {t.about.cards.map((card, i) => {
-                const Icon = CARD_ICONS[i % CARD_ICONS.length] ?? Layers;
-                return (
-                  <div
-                    key={card.title}
-                    data-about-card
-                    className="group relative overflow-hidden rounded-xl border border-accent/10 bg-white/[0.04] p-5 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_16px_50px_-20px_var(--accent)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0 left-0 h-[3px] w-0 bg-accent shadow-[0_0_12px_rgba(255,61,0,0.8)] transition-all duration-500 group-hover:w-full"
+              {/* Official Institutional Seals in authentic colors (Section 09) */}
+              <div className={styles.officialMarks}>
+                <figure className={styles.markFrame}>
+                  <div className={styles.markImageWrap}>
+                    <Image
+                      src="/images/education/suez-official.png"
+                      alt="Official Suez University emblem"
+                      width={68}
+                      height={68}
+                      className={styles.officialLogo}
                     />
-                    <span
-                      aria-hidden="true"
-                      className="display absolute -top-1 right-3 text-5xl font-bold text-foreground/[0.07] select-none"
-                    >
-                      0{i + 1}
-                    </span>
-                    <span className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-transform duration-300 group-hover:scale-110">
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <h3 className="relative mt-3 text-2xl font-bold text-accent">{card.title}</h3>
-                    <p className="relative mt-2 text-sm leading-relaxed text-muted">{card.sub}</p>
+                  </div>
+                  <figcaption className={styles.markCaption}>{school.school[lang]}</figcaption>
+                </figure>
+                <figure className={styles.markFrame}>
+                  <div className={styles.markImageWrap}>
+                    <Image
+                      src="/images/education/science-official.jpg"
+                      alt="Official Faculty of Science emblem"
+                      width={68}
+                      height={68}
+                      className={styles.officialLogo}
+                    />
+                  </div>
+                  <figcaption className={styles.markCaption}>{school.faculty[lang]}</figcaption>
+                </figure>
+              </div>
+            </div>
+          )}
+
+          {/* Highlights & Engineering Principles */}
+          <div className={styles.highlightsContainer} data-about-reveal>
+            <div className={styles.highlightsHeader}>
+              <span className={styles.highlightsBadge}>SIGNATURE STANDARDS</span>
+              <h3 className={styles.highlightsTitle}>
+                {lang === "fr" ? "Principes Clés & Livrables" : "Core Principles & Output"}
+              </h3>
+            </div>
+            <div className={styles.highlightsList}>
+              {t.about.cards.map((item, idx) => {
+                const themes = [
+                  { tag: "PRODUCTION", color: "orange", icon: Code2 },
+                  { tag: "SECURITY", color: "emerald", icon: ShieldCheck },
+                  { tag: "GLOBAL", color: "gold", icon: Globe },
+                  { tag: "LIVE STATUS", color: "lime", icon: Zap },
+                ];
+                const theme = themes[idx] || themes[0];
+                const Icon = theme.icon;
+                return (
+                  <div key={item.title} className={styles.highlightCard} data-theme={theme.color}>
+                    <div className={styles.highlightCardHeader}>
+                      <span className={styles.highlightIndex}>0{idx + 1}</span>
+                      <span className={styles.highlightTag}>
+                        <Icon size={12} aria-hidden="true" />
+                        {theme.tag}
+                      </span>
+                    </div>
+                    <div className={styles.highlightContent}>
+                      <h4 className={styles.highlightCardTitle}>{item.title}</h4>
+                      <p className={styles.highlightCardSub}>{item.sub}</p>
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* ——— Portrait — orbital seal + floating magic chips ——— */}
-          <div data-about-fade className="royal-portrait group/portrait relative">
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 scale-110 rounded-full opacity-80 transition-opacity duration-500 group-hover/portrait:opacity-100"
-              style={{ background: "radial-gradient(circle, rgba(215,253,68,0.22) 0%, transparent 65%)" }}
-            />
-            {!reduced && (
-              <div aria-hidden="true" className="pointer-events-none absolute -inset-5">
-                <span className="animate-spin-slow absolute inset-0 rounded-[2rem] border border-dashed border-accent/35" />
-                <span
-                  className="animate-spin-slow absolute inset-3 rounded-[1.6rem] border-t border-[#ff3d00]/50"
-                  style={{ animationDirection: "reverse", animationDuration: "14s" }}
-                />
-                <span className="animate-ping-soft absolute top-0 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-accent shadow-[0_0_12px_rgba(215,253,68,0.9)]" />
-              </div>
-            )}
-            {/* Floating magic chips */}
-            <div aria-hidden="true" className="absolute -top-5 -left-8 z-10 hidden sm:block">
-              <span className="animate-float-slow flex items-center gap-1.5 rounded-full border border-accent/40 bg-background/85 px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] text-accent uppercase shadow-[0_0_18px_rgba(215,253,68,0.25)] backdrop-blur-md">
-                <Zap className="h-3 w-3" /> {frLang ? "Rapide" : "Fast"}
-              </span>
-            </div>
-            <div aria-hidden="true" className="absolute top-1/2 -right-9 z-10 hidden sm:block">
-              <span
-                className="animate-float-slow flex items-center gap-1.5 rounded-full border border-[#ff3d00]/40 bg-background/85 px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] text-[#ff3d00] uppercase shadow-[0_0_18px_rgba(255,61,0,0.25)] backdrop-blur-md"
-                style={{ animationDelay: "1.4s" }}
-              >
-                <ShieldCheck className="h-3 w-3" /> {frLang ? "Sécurisé" : "Secure"}
-              </span>
-            </div>
-            <div aria-hidden="true" className="absolute -bottom-5 -left-6 z-10 hidden sm:block">
-              <span
-                className="animate-float-slow flex items-center gap-1.5 rounded-full border border-[#8b5cf6]/40 bg-background/85 px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] text-[#a78bfa] uppercase shadow-[0_0_18px_rgba(139,92,246,0.25)] backdrop-blur-md"
-                style={{ animationDelay: "2.2s" }}
-              >
-                <Sparkles className="h-3 w-3" /> {frLang ? "Magique" : "Magical"}
-              </span>
-            </div>
-            <div
-              className="[perspective:1000px]"
-              onMouseMove={onFrameMove}
-              onMouseLeave={onFrameLeave}
-            >
-              <div
-                ref={frameRef}
-                className="group relative aspect-[5/8] overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)] transition-all duration-300 ease-out will-change-transform hover:border-accent/50 hover:shadow-[0_30px_90px_-24px_rgba(255,61,0,0.45)]"
-              >
-                <SmartImage
-                  src={image && image.trim() !== "" ? image : "/images/general/about2.jpg"}
-                  alt={t.about.photoAlt}
-                  fill
-                  quality={90}
-                  sizes="(max-width: 768px) 280px, 320px"
-                  className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-3 rounded-[20px] border border-white/15"
-                />
-                {!reduced && (
-                  <span
-                    aria-hidden="true"
-                    className="animate-glare pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  />
-                )}
-              </div>
-            </div>
-            {/* Orbiting contact badge — spins slowly, lands on #contact */}
-            <a
-              href="#contact"
-              aria-label={`${orbitText.trim()} — ${lang === "fr" ? "contactez-moi" : "contact me"}`}
-              title={`${orbitText.trim()} — ${lang === "fr" ? "contactez-moi" : "contact me"}`}
-              className="absolute -right-4 -bottom-7 z-10 flex h-28 w-28 items-center justify-center rounded-full border border-accent/40 bg-background/85 text-muted backdrop-blur-md transition-colors duration-300 hover:text-accent"
-            >
-              <span aria-hidden="true" className="animate-spin-slow absolute inset-0">
-                <svg viewBox="0 0 100 100" className="block h-full w-full">
-                  <defs>
-                    <path
-                      id="about-orbit"
-                      d="M 50,50 m -36,0 a 36,36 0 1,1 72,0 a 36,36 0 1,1 -72,0"
-                    />
-                  </defs>
-                  <text fontSize="10" letterSpacing="2" fill="currentColor" fontFamily="monospace">
-                    <textPath href="#about-orbit" textLength="224">
-                      {orbitText}
-                    </textPath>
-                  </text>
-                </svg>
-              </span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[0_0_18px_rgba(255,61,0,0.5)]">
-                <ArrowDownRight className="h-5 w-5" aria-hidden="true" />
-              </span>
-            </a>
-            <p className="mt-4 text-center font-mono text-[11px] tracking-[0.22em] text-faint uppercase">
-              {profile.name} — 29.97°N · 32.55°E
-            </p>
-            {/* From-frame — official flags beside each home */}
-            <p className="mt-2.5 flex items-center justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] py-0.5 pr-2.5 pl-1">
-                <SuezFlag />
-                <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">Suez</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] py-0.5 pr-2.5 pl-1">
-                <EgyptFlag />
-                <span className="font-mono text-[10px] tracking-[0.18em] text-muted uppercase">Egypt</span>
-              </span>
-            </p>
-            <p className="mt-2 text-center font-mono text-[11px] tracking-[0.22em] text-faint uppercase">
-              <SuezClock />
-            </p>
-          </div>
         </div>
 
-        {/* ——— Counters band — ignited top beam ——— */}
-        <div
-          data-about-fade
-          className={
-            hasBirthdate
-              ? "relative mt-20 grid grid-cols-2 border-y border-border lg:grid-cols-4"
-              : "relative mt-20 flex justify-center border-y border-border"
-          }
-        >
-          <span
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent shadow-[0_0_14px_rgba(255,61,0,0.6)]"
-          />
-          <div className="flex flex-col items-center gap-1 px-4 py-8 text-center transition-colors duration-300 hover:bg-accent/[0.04]">
-            <CountUp
-              end={3}
-              className="master-stat display text-5xl font-bold text-accent tabular-nums sm:text-6xl"
-            />
-            <span className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">
-              {t.about.statsLangLabel}
-            </span>
-            <span className="font-mono text-[11px] tracking-[0.18em] text-faint uppercase">
-              {t.about.statsLangSub}
-            </span>
-          </div>
-          {personal.birthdate && <LiveCells birthISO={personal.birthdate} />}
-        </div>
+        {/* Complete Counter Redesign: LIME ENERGY NUMERICS (Section 10) */}
+        <LiveFacts />
 
-        {/* ——— Education ——— */}
-        {hasEducation && (
-          <div data-about-fade className="royal-academic-archive mx-auto mt-16">
-            <h3 className="flex items-center gap-3 font-display text-2xl font-bold tracking-tight text-foreground">
-              <GraduationCap className="h-6 w-6 text-accent" aria-hidden="true" />
-              {t.about.eduTitle}
-            </h3>
-            <div className="museum-education">
-              <figure><Image src="/images/education/suez-official.png" alt="" width={64} height={64}/><figcaption>{lang === "fr" ? "Université de Suez" : "Suez University"}</figcaption></figure>
-              <figure><Image src="/images/education/science-official.jpg" alt="" width={64} height={64}/><figcaption>{lang === "fr" ? "Faculté des sciences" : "Faculty of Science"}</figcaption></figure>
+        {/* How I Work: Interactive Process (Section 12) */}
+        <AboutWorkflow />
+
+        {/* Finish / Technology Strip & Email CTA (Section 13, 14) */}
+        <div className={styles.finish} data-about-reveal>
+          <div className={styles.finishTop}>
+            <span className={styles.techBadge}>CORE TECHNOLOGICAL STACK</span>
+            <ul className={styles.stack} role="list">
+              {stackChips.map((chip) => {
+                const logo = techLogo(chip);
+                return (
+                  <li key={chip} className={styles.stackChip}>
+                    {logo && (
+                      <Image
+                        src={logo}
+                        alt=""
+                        width={18}
+                        height={18}
+                        className={styles.stackIcon}
+                      />
+                    )}
+                    <span>{chip}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className={styles.contactPanel}>
+            <div className={styles.contactText}>
+              <h3 className={styles.contactTitle}>{words.contactTitle}</h3>
+              <p className={styles.contactSub}>{words.contactSubtitle}</p>
             </div>
-            <ol className="mt-8">
-              {personal.education.map((entry) => (
-                <li
-                  key={`${pick(entry.school)}-${entry.period}`}
-                  className="relative flex gap-5 pb-2 last:pb-0"
+
+            <div className={styles.actions}>
+              {/* Primary Chamfered Orange CTA */}
+              <a
+                className={styles.cta}
+                href={projectsVisible ? "#projects" : "#services"}
+              >
+                <span>{projectsVisible ? words.work : words.services}</span>
+                <ArrowUpRight size={19} aria-hidden="true" className={styles.ctaArrow} />
+              </a>
+
+              {/* Interactive Email Copy / Mailto Action */}
+              <div className={styles.emailPillWrap}>
+                <button
+                  type="button"
+                  onClick={handleCopyEmail}
+                  className={styles.emailCopyBtn}
+                  aria-label={copied ? words.copiedEmail : words.copyEmail}
+                  title={words.copyEmail}
                 >
-                  <span aria-hidden="true" className="flex flex-col items-center">
-                    <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_12px_rgba(255,61,0,0.6)]" />
-                    <span className="w-px flex-1 bg-border" />
-                  </span>
-                  <div className="mb-8 flex-1 border border-border bg-surface/60 p-5 transition-all duration-300 last:mb-0 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_18px_50px_-24px_var(--accent)] sm:p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-display text-xl font-bold text-foreground">
-                        {pick(entry.school)}
-                      </p>
-                      <span className="border border-border px-3 py-1 font-mono text-[11px] tracking-[0.18em] text-muted uppercase">
-                        {entry.period}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
-                      {t.about.eduFaculty}: {pick(entry.faculty)} · {t.about.eduDept}:{" "}
-                      {pick(entry.department)}
-                    </p>
-                    <div className="mt-4 flex w-fit items-center gap-2.5 rounded-full border border-accent/30 bg-accent/10 px-4 py-2">
-                      {status.kind === "studying" ? (
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping-soft absolute inline-flex h-full w-full rounded-full bg-accent" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-                        </span>
-                      ) : (
-                        <GraduationCap className="h-4 w-4 text-accent" aria-hidden="true" />
-                      )}
-                      <span className="text-sm font-bold text-foreground">
-                        {status.kind === "studying" ? levelInfo?.label : t.about.graduatedLabel}
-                      </span>
-                    </div>
-                    <p className="mt-2.5 text-sm text-muted italic">
-                      “{status.kind === "studying" ? levelInfo?.motto : t.about.graduatedMotto}”
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+                  {copied ? (
+                    <CheckCheck size={17} className={styles.copiedIcon} aria-hidden="true" />
+                  ) : (
+                    <Copy size={16} aria-hidden="true" />
+                  )}
+                  <span>{copied ? words.copiedEmail : profile.email}</span>
+                </button>
+
+                <a
+                  href={"mailto:" + profile.email}
+                  className={styles.emailDirectLink}
+                  aria-label={words.email}
+                  title="Open in mail client"
+                >
+                  <Mail size={16} aria-hidden="true" />
+                </a>
+              </div>
+            </div>
           </div>
-        )}
-
-        <p className="mt-10 text-center font-mono text-[11px] tracking-[0.18em] uppercase">
-          <a
-            href={`mailto:${profile.email}`}
-            className="text-faint transition-colors duration-200 hover:text-accent"
-          >
-            {profile.email}
-          </a>
-        </p>
-      </div>
-
-      {/* Reverse stack ribbon — closes the section with motion */}
-      <div
-        aria-hidden="true"
-        className="marquee-rev relative overflow-hidden border-t border-border py-2.5"
-      >
-        <div className="marquee-rev-track flex w-max items-center gap-6 [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-          {[...stackChips, ...stackChips].map((chip, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-6 font-mono text-[11px] tracking-[0.35em] whitespace-nowrap text-faint uppercase"
-            >
-              {chip}
-              <span className="h-1 w-1 rounded-full bg-accent" />
-            </span>
-          ))}
         </div>
       </div>
     </section>

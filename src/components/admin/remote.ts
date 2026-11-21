@@ -148,7 +148,7 @@ function isLocalHost(hostname: string): boolean {
 
 async function revalidateProd(): Promise<boolean> {
   try {
-    if (typeof window === "undefined" || isLocalHost(window.location.hostname)) return false;
+    if (typeof window === "undefined") return false;
     let target: URL;
     try {
       target = new URL(PROD_ORIGIN, window.location.href);

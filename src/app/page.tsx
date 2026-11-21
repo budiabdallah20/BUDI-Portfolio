@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isLang } from "@/i18n/dictionaries";
 
 export const metadata: Metadata = {
   title: "BUDI — Mohamed Abdallah",
@@ -20,15 +21,15 @@ export default async function RootPage({
   searchParams: Promise<{ lang?: string | string[] }>;
 }): Promise<never> {
   const { lang: legacyParam } = await searchParams;
-  const legacy = Array.isArray(legacyParam) ? legacyParam[0] : legacyParam;
-  if (legacy === "en" || legacy === "fr") {
+  const legacy = (Array.isArray(legacyParam) ? legacyParam[0] : legacyParam) ?? null;
+  if (isLang(legacy)) {
     redirect(`/${legacy}`);
   }
   let preferred = "en";
   try {
     const store = await cookies();
-    const saved = store.get("budi-lang")?.value;
-    if (saved === "en" || saved === "fr") preferred = saved;
+    const saved = store.get("budi-lang")?.value ?? null;
+    if (isLang(saved)) preferred = saved;
   } catch {
     /* no cookie store — default English */
   }

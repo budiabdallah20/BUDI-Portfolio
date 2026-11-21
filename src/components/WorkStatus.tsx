@@ -62,15 +62,16 @@ function rail(
 export function paymentsFromSettings(s: AdminSettings | null | undefined): SitePayments {
   const r = (s ?? {}) as Record<string, unknown>;
   const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+  const wallet = str(r.vodafoneNumber) || "01065228072";
   return {
     vodafone: rail(
       r.vodafoneState,
       r.vodafoneOn,
       true,
-      str(r.vodafoneNumber) || "01065228072",
+      wallet,
       str(r.vodafoneAt),
     ),
-    taptap: rail(r.taptapState, r.taptapOn, true, "", str(r.taptapAt)),
+    taptap: rail(r.taptapState, r.taptapOn, true, wallet, str(r.taptapAt)),
     instapay: rail(
       r.instapayState,
       undefined,

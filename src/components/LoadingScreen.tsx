@@ -21,15 +21,11 @@ export default function LoadingScreen({ onComplete, onExit }: { onComplete: () =
       finish();
       return;
     }
-    const timers = [
-      window.setTimeout(() => setPhase("seal"), 520),
-      window.setTimeout(() => setPhase("doors"), 1400),
-      window.setTimeout(() => { setPhase("arrival"); onComplete(); }, 2820),
-      window.setTimeout(finish, 3500),
-    ];
+    const revealFrame = requestAnimationFrame(() => { setPhase("arrival"); onComplete(); });
+    const exitTimer = window.setTimeout(finish, 760);
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") finish(); };
     window.addEventListener("keydown", escape);
-    return () => { timers.forEach(timer => window.clearTimeout(timer)); window.removeEventListener("keydown", escape); };
+    return () => { cancelAnimationFrame(revealFrame); window.clearTimeout(exitTimer); window.removeEventListener("keydown", escape); };
   }, [finish, onComplete, reduced]);
 
   if (reduced) return <></>;
@@ -86,7 +82,7 @@ export default function LoadingScreen({ onComplete, onExit }: { onComplete: () =
           <path d={BUDI_WORDMARK_PATH} fillRule="evenodd" />
         </svg>
         {/* Museum label */}
-        <p className="egypt-gate-label">Portfolio · Museum</p>
+        <p className="egypt-gate-label">Portfolio</p>
       </div>
 
       {/* Skip button */}

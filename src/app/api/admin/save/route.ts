@@ -8,8 +8,12 @@ import { audit, auditEventFromReq } from "@/lib/audit";
 
 export const maxDuration = 60;
 
-/** 512KB per row-write — dashboard rows are kilobytes; anything bigger is abuse. */
-const BODY_CAP = 512 * 1024;
+/**
+ * 2MB per row-write. A single embedded cover image is allowed up to 1.4MB by
+ * the image validator, so the old 512KB ceiling rejected perfectly valid
+ * dashboard uploads before they reached Postgres.
+ */
+const BODY_CAP = 2 * 1024 * 1024;
 
 function gateError(gate: { status: number; error: string; retryAfterSec?: number }): NextResponse {
   const headers = gate.retryAfterSec ? { "Retry-After": String(gate.retryAfterSec) } : undefined;
@@ -49,7 +53,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     return auditFail(ev, "Bad JSON", 400);
   }
   // Post-parse ceiling: Content-Length can be omitted/chunked — measure reality.
-  if (JSON.stringify(body)?.length > BODY_CAP * 2) {
+  if (JSON.stringify(body).length > BODY_CAP) {
     return auditFail(ev, "Payload too large", 413);
   }
   const { table, row } = body as { table?: unknown; row?: unknown };

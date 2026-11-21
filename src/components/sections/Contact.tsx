@@ -1,7 +1,7 @@
 "use client";
-import RoomScene from "@/components/museum/RoomScene";
 
-import { useState } from "react";
+
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
 import {
@@ -18,6 +18,7 @@ import {
   Send,
 } from "lucide-react";
 import { profile, socialLinks } from "@/data/portfolio";
+import { studioScopeContactAnchor, studioScopeStorageKey, studioServiceContactAnchor, studioServices } from "@/data/studio-services";
 import Logo from "@/components/Logo";
 import type { SiteAvailability, SitePayments } from "@/components/WorkStatus";
 import {
@@ -31,10 +32,41 @@ import type { VerificationBadgeItem } from "@/components/admin/store";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { cn } from "@/lib/utils";
+import { ContactStudio } from "./ContactStudio";
 
 const VODA_DONATE_URL = "https://vodafonecash.vodafone.com.eg/";
 const TAPTAP_URL = "https://www.taptapsend.com/";
 const WHATSAPP_URL = "https://wa.me/201065228072";
+
+function subscribeToContactHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  window.addEventListener("budi:service-scope", onChange);
+  return () => {
+    window.removeEventListener("hashchange", onChange);
+    window.removeEventListener("budi:service-scope", onChange);
+  };
+}
+
+function serviceFromContactHash() {
+  return studioServices.find(service =>
+    window.location.hash === "#" + studioServiceContactAnchor(service.key) ||
+    window.location.hash === "#" + studioScopeContactAnchor(service.key)
+  );
+}
+
+function emptyContactTopic() {
+  return undefined;
+}
+
+function scopeFromContactHash() {
+  const service = serviceFromContactHash();
+  if (!service || location.hash !== "#" + studioScopeContactAnchor(service.key)) return undefined;
+  try {
+    return window.sessionStorage.getItem(studioScopeStorageKey(service.key))?.slice(0, 1500);
+  } catch {
+    return undefined;
+  }
+}
 
 /** Brand glyphs as inline SVG — <img> can't inherit currentColor, inline can. */
 function WhatsAppGlyph({ className }: { className?: string }): React.JSX.Element {
@@ -53,14 +85,14 @@ function PhoneGlyph({ className }: { className?: string }): React.JSX.Element {
   );
 }
 
-function downloadVCard(): void {
+function downloadVCard(email: string): void {
   const lines = [
     "BEGIN:VCARD",
     "VERSION:3.0",
     "FN:Mohamed Abdallah",
     "TITLE:Full-Stack Developer",
     "TEL;TYPE=CELL:+201065228072",
-    "EMAIL:budiabdallah922@gmail.com",
+    "EMAIL:" + email.replace(/[\r\n]/g, ""),
     "ADR:;;Suez;;;Egypt",
     "URL:https://github.com/budiabdallah20",
     "END:VCARD",
@@ -208,12 +240,14 @@ export default function Contact({
   payments: paymentsProp,
   siteVerified: siteVerifiedProp,
   verificationBadges: verificationBadgesProp,
+  editorial = false,
 }: {
   email?: string;
   availability?: SiteAvailability;
   payments?: SitePayments;
   siteVerified?: boolean;
   verificationBadges?: VerificationBadgeItem[] | VerificationBadgeData[];
+  editorial?: boolean;
 }): React.JSX.Element {
   const { lang, t } = useLanguage();
   const reduced = useReducedMotion();
@@ -222,6 +256,25 @@ export default function Contact({
   const [contactCardOpen, setContactCardOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const c = lang === "fr" ? COPY.fr : COPY.en;
+  const contactService = useSyncExternalStore(subscribeToContactHash, serviceFromContactHash, emptyContactTopic);
+  const scopeDraft = useSyncExternalStore(subscribeToContactHash, scopeFromContactHash, emptyContactTopic);
+  const contactTopic = contactService?.[lang].name;
+  const emailSubject = contactTopic ? `?subject=${encodeURIComponent(contactTopic)}${scopeDraft ? "&body=" + encodeURIComponent(scopeDraft) : ""}` : "";
+  const whatsappMessage = contactTopic
+    ? `?text=${encodeURIComponent(scopeDraft ?? (lang === "fr" ? `Bonjour, j’aimerais discuter de ce service : ${contactTopic}` : `Hi, I’d like to discuss this service: ${contactTopic}`))}`
+    : "";
+  useEffect(() => {
+    if (!contactService) return;
+    const target = document.getElementById(location.hash.slice(1));
+    if (!target) return;
+    // The contextual copy changes layout after native fragment navigation.
+    const frame = requestAnimationFrame(() => {
+      const top = target.getBoundingClientRect().top;
+      if (top < 72 || top >= window.innerHeight) target.scrollIntoView({ block: "start", behavior: "instant" });
+      target.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [contactService, scopeDraft]);
   /** Dashboard-owned contact email wins — portfolio address is the fallback. */
   const email = emailProp || profile.email;
   /** ① Availability badge — dashboard master switch ONLY (never edited on site). */
@@ -281,7 +334,7 @@ export default function Contact({
       hint: c.tapHint,
       rank: c.rankFastest,
       valueDir: undefined,
-      href: WHATSAPP_URL,
+      href: WHATSAPP_URL + whatsappMessage,
       external: true,
       ctaIcon: Send,
       cta: c.openChat,
@@ -305,7 +358,7 @@ export default function Contact({
       hint: c.tapHint,
       rank: c.rankFormal,
       valueDir: "ltr" as const,
-      href: `mailto:${email}`,
+      href: `mailto:${email}${emailSubject}`,
       external: false,
       ctaIcon: Mail,
       cta: c.sendEmail,
@@ -403,10 +456,11 @@ export default function Contact({
     <section
       id="contact"
       aria-labelledby="contact-heading"
-      className="contact-reimagined relative overflow-clip border-t border-border py-24 sm:py-32"
+      className={editorial ? "creative-section creative-contact" : "contact-reimagined relative overflow-clip border-t border-border py-24 sm:py-32"}
     >
-      <RoomScene scene="courtyard" />
+
       <p className="sr-only" role="status">{clipboardStatus}</p>
+      {!editorial && <>
       <div
         aria-hidden="true"
         className="absolute inset-0"
@@ -436,7 +490,16 @@ export default function Contact({
         </>
       )}
 
-      <div className="contact-stage relative mx-auto w-full max-w-7xl px-5 sm:px-8">
+      </>}
+      <div className={editorial ? "creative-wrap" : "contact-stage relative mx-auto w-full max-w-7xl px-5 sm:px-8"}>
+        {studioServices.flatMap(service => [studioServiceContactAnchor(service.key), studioScopeContactAnchor(service.key)].map(anchor => (
+          <span className="block h-px -mb-px" key={anchor} id={anchor}
+            tabIndex={-1} role="group" aria-label={service[lang].name} />
+        )))}
+        {editorial ? (
+          <ContactStudio locale={lang} email={email} emailHref={`mailto:${email}${emailSubject}`}
+            whatsappHref={WHATSAPP_URL + whatsappMessage} topic={contactTopic} />
+        ) : <>
         <div className="flex flex-col items-center text-center">
           <p className="flex items-center gap-4 font-mono text-xs tracking-[0.35em] text-faint uppercase">
             <span
@@ -458,6 +521,13 @@ export default function Contact({
           <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
             {c.lede}
           </p>
+          {contactTopic && (
+            <p className="mt-3 max-w-xl rounded-md border border-border px-3 py-2 text-sm text-foreground" role="status">
+              <span className="text-muted">{lang === "fr" ? "Service sélectionné" : "Selected service"} · </span>
+              {contactTopic}
+              {scopeDraft && <span className="block text-muted">{lang === "fr" ? "Périmètre joint aux brouillons e-mail et WhatsApp." : "Scope included in the email and WhatsApp drafts."}</span>}
+            </p>
+          )}
         </div>
 
         {/* ——— ① Identity banner: hire-ready at a glance ——— */}
@@ -480,7 +550,7 @@ export default function Contact({
               }}
             />
             <span className="contact-portrait-frame relative block shrink-0 overflow-hidden rounded-2xl">
-              <Logo variant="full" className="contact-brand-logo relative z-10 w-[72%] text-[#f7eed9]" />
+              <span className="studio-signal" aria-hidden="true" /><Logo variant="full" className="contact-brand-logo relative z-10 w-[72%] text-[#f7eed9]" />
             </span>
             <div className="contact-identity-details relative flex min-w-0 flex-1 flex-col justify-center gap-4">
             <div className="contact-identity-copy relative min-w-0">
@@ -754,8 +824,10 @@ export default function Contact({
           </div>
         </div>
 
-        {/* ——— ⑦ Support — unmissable emerald/gold donation gate ——— */}
-        <div className="contact-payment relative mt-6 overflow-hidden rounded-3xl p-[2px]" role="region" aria-label={lang === "fr" ? "Moyens de paiement" : "Payment methods"}>
+        </>}
+
+        {!editorial && (
+        <div id="support" className="contact-payment relative mt-6 overflow-hidden rounded-3xl p-[2px]" role="region" aria-label={lang === "fr" ? "Moyens de paiement" : "Payment methods"}>
           <span
             aria-hidden="true"
             className="absolute inset-0"
@@ -933,6 +1005,7 @@ export default function Contact({
           </div>
           </div>
         </div>
+        )}
       </div>
 
       {contactCardOpen && (
@@ -1031,7 +1104,7 @@ export default function Contact({
               </button>
               <button
                 type="button"
-                onClick={downloadVCard}
+                onClick={() => downloadVCard(email)}
                 className="rounded-md border border-border bg-surface/60 px-4 py-2 text-sm font-semibold text-foreground hover:border-accent/50 hover:text-accent"
               >
                 {lang === "fr" ? "Télécharger vCard" : "Download vCard"}

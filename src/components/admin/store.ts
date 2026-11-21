@@ -124,6 +124,8 @@ export interface AdminProject {
   tags: string[];
   /** Featured flag — featured projects pin first. */
   featured: boolean;
+  /** Manual display order (lower first). Optional for older rows. */
+  sortOrder?: number;
   /** Progress 0-100 for in-progress projects. */
   progress: number;
   /** Release version label (e.g. "v2.1"). */

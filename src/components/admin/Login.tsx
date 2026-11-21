@@ -426,7 +426,7 @@ export default function Login({
               <span>{attempts === 0 ? "No attempts" : `${attempts} miss${attempts > 1 ? "es" : ""}`}</span>
             </div>
             <p className="relative mt-4 border-t border-white/10 pt-4 font-mono text-[10px] tracking-[0.18em] text-white/30 uppercase">
-              Tip — paste the 4-digit code · Enter unlocks
+              Tip — 4-digit dashboard PIN · not the footer admin password
             </p>
 
             {/* Deployment misconfiguration ≠ a typo. This block only exists

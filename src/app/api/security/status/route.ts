@@ -55,7 +55,7 @@ const GUARDS: Omit<StatusGuards, "rateLimits"> = {
     ],
   },
   timeouts: { enforced: true, entries: TIMEOUTS },
-  maxBodyBytes: 4 * 1024 * 1024,
+  maxBodyBytes: 2 * 1024 * 1024,
 };
 
 /**

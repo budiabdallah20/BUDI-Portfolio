@@ -4,12 +4,13 @@ import { useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 
-export default function FeaturedGallery({ names, label, render, peek, className }: {
+export default function FeaturedGallery({ names, label, render, peek, className, archive = false }: {
   names: string[];
   label: string;
   render: (index: number) => ReactNode;
   peek: (index: number) => ReactNode;
   className: string;
+  archive?: boolean;
 }) {
   const { lang } = useLanguage();
   const [position, setPosition] = useState({ index: 0, step: 1 });
@@ -24,7 +25,7 @@ export default function FeaturedGallery({ names, label, render, peek, className 
   const format = new Intl.NumberFormat(lang, { minimumIntegerDigits: 2 });
   return <div className={`featured-gallery ${className}`} role="group" aria-label={label}
     onKeyDown={event => {
-      if (count < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (count < 2 || event.altKey || event.ctrlKey || event.metaKey || event.target instanceof HTMLSelectElement) return;
       const direction = getComputedStyle(event.currentTarget).direction === "rtl" ? -1 : 1;
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
@@ -37,6 +38,19 @@ export default function FeaturedGallery({ names, label, render, peek, className 
       }
     }}>
     <div className="featured-controls">
+      {archive && count > 1 && (
+        <select
+          className="studio-project-select"
+          aria-label={lang === "fr" ? "Choisir un projet" : "Choose a project"}
+          value={index}
+          onChange={event => {
+            const selected = Number(event.target.value);
+            setPosition({ index: selected, step: selected >= index ? 1 : -1 });
+          }}
+        >
+          {names.map((name, itemIndex) => <option key={itemIndex} value={itemIndex}>{name}</option>)}
+        </select>
+      )}
       <span className="featured-position" aria-live="polite">{format.format(index + 1)} / {format.format(count)}<span className="sr-only"> · {names[index]}</span></span>
       <span className="featured-progress" aria-hidden="true"><span style={{ inlineSize: `${((index + 1) / count) * 100}%` }} /></span>
       {count > 1 && <div className="featured-arrows" ref={controls}>
